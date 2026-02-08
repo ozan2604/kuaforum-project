@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6520D7B1-795B-47FC-8F87-B9FB8D8226D1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{679F142A-9ABF-41FA-956E-18312897AC1A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KuaforumAPI.Domain", "src\Core\KuaforumAPI.Domain\KuaforumAPI.Domain.csproj", "{FF34E03A-230E-450D-8EAA-5D9D239B9B95}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KuaforumAPI.Application", "src\Core\KuaforumAPI.Application\KuaforumAPI.Application.csproj", "{3A7DE53D-1854-4656-9449-893E60F8B591}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastructure", "{D1192779-3A34-43D2-8A89-B676D59C738D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KuaforumAPI.Persistence", "src\Infrastructure\KuaforumAPI.Persistence\KuaforumAPI.Persistence.csproj", "{5FEACE0B-405C-4072-A966-70583F813236}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KuaforumAPI.Infrastructure", "src\Infrastructure\KuaforumAPI.Infrastructure\KuaforumAPI.Infrastructure.csproj", "{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Presentation", "Presentation", "{20BC3532-19A4-48E0-A5CE-2362EB68595A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KuaforumAPI.WebAPI", "src\Presentation\KuaforumAPI.WebAPI\KuaforumAPI.WebAPI.csproj", "{BEB19571-0123-4388-8A1D-6714FE696A2E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FF34E03A-230E-450D-8EAA-5D9D239B9B95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF34E03A-230E-450D-8EAA-5D9D239B9B95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF34E03A-230E-450D-8EAA-5D9D239B9B95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF34E03A-230E-450D-8EAA-5D9D239B9B95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A7DE53D-1854-4656-9449-893E60F8B591}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A7DE53D-1854-4656-9449-893E60F8B591}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A7DE53D-1854-4656-9449-893E60F8B591}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A7DE53D-1854-4656-9449-893E60F8B591}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FEACE0B-405C-4072-A966-70583F813236}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FEACE0B-405C-4072-A966-70583F813236}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FEACE0B-405C-4072-A966-70583F813236}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FEACE0B-405C-4072-A966-70583F813236}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEB19571-0123-4388-8A1D-6714FE696A2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEB19571-0123-4388-8A1D-6714FE696A2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEB19571-0123-4388-8A1D-6714FE696A2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEB19571-0123-4388-8A1D-6714FE696A2E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{679F142A-9ABF-41FA-956E-18312897AC1A} = {6520D7B1-795B-47FC-8F87-B9FB8D8226D1}
+		{FF34E03A-230E-450D-8EAA-5D9D239B9B95} = {679F142A-9ABF-41FA-956E-18312897AC1A}
+		{3A7DE53D-1854-4656-9449-893E60F8B591} = {679F142A-9ABF-41FA-956E-18312897AC1A}
+		{D1192779-3A34-43D2-8A89-B676D59C738D} = {6520D7B1-795B-47FC-8F87-B9FB8D8226D1}
+		{5FEACE0B-405C-4072-A966-70583F813236} = {D1192779-3A34-43D2-8A89-B676D59C738D}
+		{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37} = {D1192779-3A34-43D2-8A89-B676D59C738D}
+		{20BC3532-19A4-48E0-A5CE-2362EB68595A} = {6520D7B1-795B-47FC-8F87-B9FB8D8226D1}
+		{BEB19571-0123-4388-8A1D-6714FE696A2E} = {20BC3532-19A4-48E0-A5CE-2362EB68595A}
+	EndGlobalSection
+EndGlobal

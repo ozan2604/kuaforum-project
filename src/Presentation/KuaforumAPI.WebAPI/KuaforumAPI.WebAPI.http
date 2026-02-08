@@ -1,0 +1,6 @@
+@KuaforumAPI.WebAPI_HostAddress = http://localhost:5124
+
+GET {{KuaforumAPI.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

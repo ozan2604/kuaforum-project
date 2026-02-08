@@ -1,0 +1,405 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\presentation\\kuaforumapi.webapi\\controllers\\employeecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|solutionrelative:src\\presentation\\kuaforumapi.webapi\\controllers\\employeecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\presentation\\kuaforumapi.webapi\\controllers\\coreexamplescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|solutionrelative:src\\presentation\\kuaforumapi.webapi\\controllers\\coreexamplescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\presentation\\kuaforumapi.webapi\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|solutionrelative:src\\presentation\\kuaforumapi.webapi\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\presentation\\kuaforumapi.webapi\\controllers\\appointmentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|solutionrelative:src\\presentation\\kuaforumapi.webapi\\controllers\\appointmentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\presentation\\kuaforumapi.webapi\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|solutionrelative:src\\presentation\\kuaforumapi.webapi\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5FEACE0B-405C-4072-A966-70583F813236}|src\\Infrastructure\\KuaforumAPI.Persistence\\KuaforumAPI.Persistence.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\infrastructure\\kuaforumapi.persistence\\contexts\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5FEACE0B-405C-4072-A966-70583F813236}|src\\Infrastructure\\KuaforumAPI.Persistence\\KuaforumAPI.Persistence.csproj|solutionrelative:src\\infrastructure\\kuaforumapi.persistence\\contexts\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\presentation\\kuaforumapi.webapi\\middlewares\\exceptionmiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BEB19571-0123-4388-8A1D-6714FE696A2E}|src\\Presentation\\KuaforumAPI.WebAPI\\KuaforumAPI.WebAPI.csproj|solutionrelative:src\\presentation\\kuaforumapi.webapi\\middlewares\\exceptionmiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208175550_mig1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208175550_mig1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\infrastructure\\kuaforumapi.infrastructure\\services\\employeeservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|solutionrelative:src\\infrastructure\\kuaforumapi.infrastructure\\services\\employeeservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\infrastructure\\kuaforumapi.infrastructure\\services\\servicemanagementservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|solutionrelative:src\\infrastructure\\kuaforumapi.infrastructure\\services\\servicemanagementservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\infrastructure\\kuaforumapi.infrastructure\\serviceregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|solutionrelative:src\\infrastructure\\kuaforumapi.infrastructure\\serviceregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\infrastructure\\kuaforumapi.infrastructure\\services\\shopservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|solutionrelative:src\\infrastructure\\kuaforumapi.infrastructure\\services\\shopservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208142114_shopEmplooye.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208142114_shopEmplooye.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5FEACE0B-405C-4072-A966-70583F813236}|src\\Infrastructure\\KuaforumAPI.Persistence\\KuaforumAPI.Persistence.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\infrastructure\\kuaforumapi.persistence\\serviceregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5FEACE0B-405C-4072-A966-70583F813236}|src\\Infrastructure\\KuaforumAPI.Persistence\\KuaforumAPI.Persistence.csproj|solutionrelative:src\\infrastructure\\kuaforumapi.persistence\\serviceregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\infrastructure\\kuaforumapi.infrastructure\\services\\salonapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ABB1EFF2-F6CA-4138-ACDE-B17CFF9BDC37}|src\\Infrastructure\\KuaforumAPI.Infrastructure\\KuaforumAPI.Infrastructure.csproj|solutionrelative:src\\infrastructure\\kuaforumapi.infrastructure\\services\\salonapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FF34E03A-230E-450D-8EAA-5D9D239B9B95}|src\\Core\\KuaforumAPI.Domain\\KuaforumAPI.Domain.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\core\\kuaforumapi.domain\\common\\baseentity.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FF34E03A-230E-450D-8EAA-5D9D239B9B95}|src\\Core\\KuaforumAPI.Domain\\KuaforumAPI.Domain.csproj|solutionrelative:src\\core\\kuaforumapi.domain\\common\\baseentity.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FF34E03A-230E-450D-8EAA-5D9D239B9B95}|src\\Core\\KuaforumAPI.Domain\\KuaforumAPI.Domain.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\core\\kuaforumapi.domain\\entities\\shop.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FF34E03A-230E-450D-8EAA-5D9D239B9B95}|src\\Core\\KuaforumAPI.Domain\\KuaforumAPI.Domain.csproj|solutionrelative:src\\core\\kuaforumapi.domain\\entities\\shop.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5FEACE0B-405C-4072-A966-70583F813236}|src\\Infrastructure\\KuaforumAPI.Persistence\\KuaforumAPI.Persistence.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\infrastructure\\kuaforumapi.persistence\\migrations\\20260208131539_addshop.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5FEACE0B-405C-4072-A966-70583F813236}|src\\Infrastructure\\KuaforumAPI.Persistence\\KuaforumAPI.Persistence.csproj|solutionrelative:src\\infrastructure\\kuaforumapi.persistence\\migrations\\20260208131539_addshop.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3A7DE53D-1854-4656-9449-893E60F8B591}|src\\Core\\KuaforumAPI.Application\\KuaforumAPI.Application.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\core\\kuaforumapi.application\\interfaces\\services\\isalonapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3A7DE53D-1854-4656-9449-893E60F8B591}|src\\Core\\KuaforumAPI.Application\\KuaforumAPI.Application.csproj|solutionrelative:src\\core\\kuaforumapi.application\\interfaces\\services\\isalonapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3A7DE53D-1854-4656-9449-893E60F8B591}|src\\Core\\KuaforumAPI.Application\\KuaforumAPI.Application.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\core\\kuaforumapi.application\\services\\coreexampleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3A7DE53D-1854-4656-9449-893E60F8B591}|src\\Core\\KuaforumAPI.Application\\KuaforumAPI.Application.csproj|solutionrelative:src\\core\\kuaforumapi.application\\services\\coreexampleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3A7DE53D-1854-4656-9449-893E60F8B591}|src\\Core\\KuaforumAPI.Application\\KuaforumAPI.Application.csproj|c:\\users\\ozan\\desktop\\kuaforum\\kuaforumapi\\src\\core\\kuaforumapi.application\\interfaces\\services\\icoreexampleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3A7DE53D-1854-4656-9449-893E60F8B591}|src\\Core\\KuaforumAPI.Application\\KuaforumAPI.Application.csproj|solutionrelative:src\\core\\kuaforumapi.application\\interfaces\\services\\icoreexampleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 8,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CoreExamplesController.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\CoreExamplesController.cs",
+              "RelativeDocumentMoniker": "src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\CoreExamplesController.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\CoreExamplesController.cs",
+              "RelativeToolTip": "src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\CoreExamplesController.cs",
+              "ViewState": "AgIAADUAAAAAAAAAAAAswAIAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T20:08:09.165Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\AuthController.cs",
+              "RelativeDocumentMoniker": "src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\AuthController.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\AuthController.cs",
+              "RelativeToolTip": "src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\AuthController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T20:08:04.251Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "AppointmentController.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\AppointmentController.cs",
+              "RelativeDocumentMoniker": "src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\AppointmentController.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\AppointmentController.cs",
+              "RelativeToolTip": "src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\AppointmentController.cs",
+              "ViewState": "AgIAACMAAAAAAAAAAAAgwAYAAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T20:07:53.255Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ApplicationDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Contexts\\ApplicationDbContext.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Persistence\\Contexts\\ApplicationDbContext.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Contexts\\ApplicationDbContext.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Persistence\\Contexts\\ApplicationDbContext.cs",
+              "ViewState": "AgIAAHAAAAAAAAAAAAAUwAAAAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T20:07:12.07Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:130:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "ISalonApplicationService.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Application\\Interfaces\\Services\\ISalonApplicationService.cs",
+              "RelativeDocumentMoniker": "src\\Core\\KuaforumAPI.Application\\Interfaces\\Services\\ISalonApplicationService.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Application\\Interfaces\\Services\\ISalonApplicationService.cs",
+              "RelativeToolTip": "src\\Core\\KuaforumAPI.Application\\Interfaces\\Services\\ISalonApplicationService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T21:23:49.476Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "EmployeeController.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\EmployeeController.cs",
+              "RelativeDocumentMoniker": "src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\EmployeeController.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\EmployeeController.cs",
+              "RelativeToolTip": "src\\Presentation\\KuaforumAPI.WebAPI\\Controllers\\EmployeeController.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAYwCYAAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T15:41:41.608Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "ServiceManagementService.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\ServiceManagementService.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\ServiceManagementService.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\ServiceManagementService.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\ServiceManagementService.cs",
+              "ViewState": "AgIAAFoAAAAAAAAAAAAkwG4AAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T16:41:24.557Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "CoreExampleService.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Application\\Services\\CoreExampleService.cs",
+              "RelativeDocumentMoniker": "src\\Core\\KuaforumAPI.Application\\Services\\CoreExampleService.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Application\\Services\\CoreExampleService.cs",
+              "RelativeToolTip": "src\\Core\\KuaforumAPI.Application\\Services\\CoreExampleService.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAAwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T21:23:30.899Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "Microsoft.Common.CurrentVersion.targets",
+              "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
+              "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
+              "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
+              "RelativeToolTip": "..\\..\\..\\..\\..\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
+              "ViewState": "AgIAAKATAAAAAAAAAAAIwKoTAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
+              "WhenOpened": "2026-02-07T19:14:00.394Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "ServiceRegistration.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\ServiceRegistration.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\ServiceRegistration.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\ServiceRegistration.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\ServiceRegistration.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAiwCAAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T14:03:23.42Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Program.cs",
+              "RelativeDocumentMoniker": "src\\Presentation\\KuaforumAPI.WebAPI\\Program.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Program.cs",
+              "RelativeToolTip": "src\\Presentation\\KuaforumAPI.WebAPI\\Program.cs",
+              "ViewState": "AgIAAD8AAAAAAAAAAAAAAEkAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T19:13:27.081Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "ExceptionMiddleware.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Middlewares\\ExceptionMiddleware.cs",
+              "RelativeDocumentMoniker": "src\\Presentation\\KuaforumAPI.WebAPI\\Middlewares\\ExceptionMiddleware.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Presentation\\KuaforumAPI.WebAPI\\Middlewares\\ExceptionMiddleware.cs",
+              "RelativeToolTip": "src\\Presentation\\KuaforumAPI.WebAPI\\Middlewares\\ExceptionMiddleware.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB4AAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T13:36:38.118Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "20260208175550_mig1.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208175550_mig1.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208175550_mig1.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208175550_mig1.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208175550_mig1.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T17:55:50.728Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "EmployeeService.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\EmployeeService.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\EmployeeService.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\EmployeeService.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\EmployeeService.cs",
+              "ViewState": "AgIAALEAAAAAAAAAAAAtwMQAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T13:59:14.736Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "ShopService.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\ShopService.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\ShopService.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\ShopService.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\ShopService.cs",
+              "ViewState": "AgIAAD4AAAAAAAAAAAAhwEoAAAAqAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T13:26:51.637Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "20260208142114_shopEmplooye.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208142114_shopEmplooye.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208142114_shopEmplooye.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208142114_shopEmplooye.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208142114_shopEmplooye.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T14:21:14.461Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "ServiceRegistration.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\ServiceRegistration.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Persistence\\ServiceRegistration.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\ServiceRegistration.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Persistence\\ServiceRegistration.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAawBUAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T21:27:08.711Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "ICoreExampleService.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Application\\Interfaces\\Services\\ICoreExampleService.cs",
+              "RelativeDocumentMoniker": "src\\Core\\KuaforumAPI.Application\\Interfaces\\Services\\ICoreExampleService.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Application\\Interfaces\\Services\\ICoreExampleService.cs",
+              "RelativeToolTip": "src\\Core\\KuaforumAPI.Application\\Interfaces\\Services\\ICoreExampleService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T21:24:00.047Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "Shop.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Domain\\Entities\\Shop.cs",
+              "RelativeDocumentMoniker": "src\\Core\\KuaforumAPI.Domain\\Entities\\Shop.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Domain\\Entities\\Shop.cs",
+              "RelativeToolTip": "src\\Core\\KuaforumAPI.Domain\\Entities\\Shop.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAAwAkAAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T13:13:46.235Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "SalonApplicationService.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\SalonApplicationService.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\SalonApplicationService.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\SalonApplicationService.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Infrastructure\\Services\\SalonApplicationService.cs",
+              "ViewState": "AgIAAD8AAAAAAAAAAAAkwAsAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T21:22:24.733Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "20260208131539_addshop.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208131539_addshop.cs",
+              "RelativeDocumentMoniker": "src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208131539_addshop.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208131539_addshop.cs",
+              "RelativeToolTip": "src\\Infrastructure\\KuaforumAPI.Persistence\\Migrations\\20260208131539_addshop.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAxwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-08T13:15:39.835Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "BaseEntity.cs",
+              "DocumentMoniker": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Domain\\Common\\BaseEntity.cs",
+              "RelativeDocumentMoniker": "src\\Core\\KuaforumAPI.Domain\\Common\\BaseEntity.cs",
+              "ToolTip": "C:\\Users\\Ozan\\Desktop\\Kuaforum\\KuaforumAPI\\src\\Core\\KuaforumAPI.Domain\\Common\\BaseEntity.cs",
+              "RelativeToolTip": "src\\Core\\KuaforumAPI.Domain\\Common\\BaseEntity.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-06T22:05:31.844Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

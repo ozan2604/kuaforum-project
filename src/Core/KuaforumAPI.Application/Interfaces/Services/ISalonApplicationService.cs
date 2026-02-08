@@ -1,0 +1,15 @@
+using KuaforumAPI.Application.DTOs.SalonApplication;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace KuaforumAPI.Application.Interfaces.Services
+{
+    public interface ISalonApplicationService
+    {
+        Task ApplyAsync(string userId, CreateSalonApplicationDto request);
+        Task<List<SalonApplicationListDto>> GetPendingApplicationsAsync();
+        Task ApproveApplicationAsync(Guid applicationId);
+        Task RejectApplicationAsync(Guid applicationId);
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "tm5Rve4xt9IAhXdGroot1wmwgsvSTQEieX6C6rSVPKQ=",
+  "Source": "KuaforumAPI.WebAPI",
+  "BasePath": "_content/KuaforumAPI.WebAPI",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
