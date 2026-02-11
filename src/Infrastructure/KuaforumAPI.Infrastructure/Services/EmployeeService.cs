@@ -96,6 +96,47 @@ namespace KuaforumAPI.Infrastructure.Services
             }
         }
 
+        public async Task<List<EmployeeListDto>> GetEmployeesAsync(string ownerId)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) return new List<EmployeeListDto>();
+
+            var employees = await _context.ShopEmployees
+                .Where(se => se.ShopId == shop.Id)
+                .Include(se => se.User)
+                .ToListAsync();
+
+            return employees.Select(e => new EmployeeListDto
+            {
+                Id = e.Id,
+                UserId = e.UserId,
+                FirstName = e.User.FirstName,
+                LastName = e.User.LastName,
+                Email = e.User.Email,
+                Title = e.Title,
+                IsActive = e.IsActive
+            }).ToList();
+        }
+
+        public async Task<List<EmployeeListDto>> GetEmployeesByShopIdAsync(Guid shopId)
+        {
+            var employees = await _context.ShopEmployees
+                .Where(se => se.ShopId == shopId && se.IsActive)
+                .Include(se => se.User)
+                .ToListAsync();
+
+            return employees.Select(e => new EmployeeListDto
+            {
+                Id = e.Id,
+                UserId = e.UserId,
+                FirstName = e.User.FirstName,
+                LastName = e.User.LastName,
+                Email = e.User.Email, // Maybe hide email for public?
+                Title = e.Title,
+                IsActive = e.IsActive
+            }).ToList();
+        }
+
         public async Task AssignServicesAsync(string ownerId, Guid shopEmployeeId, List<Guid> serviceIds)
         {
             // 1. Validate Owner and Employee

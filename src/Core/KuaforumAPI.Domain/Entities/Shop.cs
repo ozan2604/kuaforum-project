@@ -23,6 +23,12 @@ namespace KuaforumAPI.Domain.Entities
 
         public string PhoneNumber { get; set; }
 
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+
+        public string CoverImagePath { get; set; }
+        public virtual ICollection<ShopImage> Images { get; set; }
+
         public bool IsActive { get; set; } = true;
     }
 }

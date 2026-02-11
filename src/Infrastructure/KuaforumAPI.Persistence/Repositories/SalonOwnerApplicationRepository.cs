@@ -25,5 +25,12 @@ namespace KuaforumAPI.Persistence.Repositories
                 .Where(a => a.Status == ApplicationStatus.Pending)
                 .ToListAsync();
         }
+
+        public async Task<List<SalonOwnerApplication>> GetByUserIdAsync(string userId)
+        {
+            return await _context.SalonOwnerApplications
+                .Where(a => a.UserId == userId)
+                .ToListAsync();
+        }
     }
 }

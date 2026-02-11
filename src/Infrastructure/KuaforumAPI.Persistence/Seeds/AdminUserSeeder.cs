@@ -31,6 +31,13 @@ namespace KuaforumAPI.Persistence.Seeds
                     await userManager.AddToRoleAsync(adminUser, Roles.Admin);
                 }
             }
+            else
+            {
+                if (!await userManager.IsInRoleAsync(user, Roles.Admin))
+                {
+                    await userManager.AddToRoleAsync(user, Roles.Admin);
+                }
+            }
         }
     }
 }

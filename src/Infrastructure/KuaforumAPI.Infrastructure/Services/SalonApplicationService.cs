@@ -4,21 +4,19 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
     public class SalonApplicationService : ISalonApplicationService
     {
         private readonly ISalonOwnerApplicationRepository _repository;
+        private readonly IShopRepository _shopRepository; // Added
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public SalonApplicationService(ISalonOwnerApplicationRepository repository, UserManager<ApplicationUser> userManager)
+        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager)
         {
             _repository = repository;
+            _shopRepository = shopRepository; // Added
             _userManager = userManager;
         }
 
@@ -29,7 +27,13 @@ namespace KuaforumAPI.Infrastructure.Services
                 UserId = userId,
                 ShopName = request.ShopName,
                 Description = request.Description,
-                Status = ApplicationStatus.Pending
+                Address = request.Address,
+                City = request.City,
+                District = request.District,
+                PhoneNumber = request.PhoneNumber,
+                TaxNumber = request.TaxNumber,
+                Status = ApplicationStatus.Pending,
+                CreatedAt = DateTime.UtcNow // Ensure creation time
             };
 
             await _repository.AddAsync(application);
@@ -46,9 +50,17 @@ namespace KuaforumAPI.Infrastructure.Services
                 UserName = a.User.UserName,
                 ShopName = a.ShopName,
                 Description = a.Description,
+                TaxNumber = a.TaxNumber,
                 Status = a.Status,
                 CreatedAt = a.CreatedAt
             }).ToList();
+        }
+
+        public async Task<SalonOwnerApplication> GetApplicationByUserIdAsync(string userId)
+        {
+            var applications = await _repository.GetByUserIdAsync(userId);
+            // Assuming one active application per user for now, or get the latest
+            return applications.OrderByDescending(a => a.CreatedAt).FirstOrDefault();
         }
 
         public async Task ApproveApplicationAsync(Guid applicationId)
@@ -56,6 +68,31 @@ namespace KuaforumAPI.Infrastructure.Services
             var application = await _repository.GetByIdAsync(applicationId);
             if (application == null) throw new Exception("Application not found");
 
+            // Check if user already has a shop to prevent duplicates (optional but good safety)
+            var existingShop = await _shopRepository.GetByOwnerIdAsync(application.UserId);
+            if (existingShop != null)
+            {
+                throw new Exception("User already has a shop.");
+            }
+
+            // Create Shop
+            var shop = new Shop
+            {
+                OwnerId = application.UserId,
+                Name = application.ShopName,
+                Description = application.Description,
+                Address = application.Address,
+                City = application.City,
+                District = application.District,
+                PhoneNumber = application.PhoneNumber,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _shopRepository.AddAsync(shop);
+
+            // Update Application Status
             application.Status = ApplicationStatus.Approved;
             
             // Assign Role

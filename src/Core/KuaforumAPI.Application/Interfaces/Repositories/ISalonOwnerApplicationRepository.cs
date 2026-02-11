@@ -7,5 +7,6 @@ namespace KuaforumAPI.Application.Interfaces.Repositories
     public interface ISalonOwnerApplicationRepository : IGenericRepository<SalonOwnerApplication>
     {
         Task<List<SalonOwnerApplication>> GetPendingApplicationsWithUserAsync();
+        Task<List<SalonOwnerApplication>> GetByUserIdAsync(string userId);
     }
 }

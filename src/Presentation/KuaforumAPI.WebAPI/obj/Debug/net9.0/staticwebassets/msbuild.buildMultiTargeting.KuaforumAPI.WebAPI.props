@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\KuaforumAPI.WebAPI.props" />
-</Project>

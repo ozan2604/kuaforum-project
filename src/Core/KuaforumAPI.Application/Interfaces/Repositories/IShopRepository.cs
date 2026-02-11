@@ -6,5 +6,6 @@ namespace KuaforumAPI.Application.Interfaces.Repositories
     public interface IShopRepository : IGenericRepository<Shop>
     {
         Task<Shop> GetByOwnerIdAsync(string ownerId);
+        Task<IEnumerable<Shop>> GetAllWithDetailsAsync();
     }
 }

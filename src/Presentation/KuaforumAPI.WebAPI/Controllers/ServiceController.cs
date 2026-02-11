@@ -44,5 +44,13 @@ namespace KuaforumAPI.WebAPI.Controllers
             var result = await _serviceManagementService.GetShopServicesAsync(userId);
             return Ok(result);
         }
+
+        [HttpGet("public/{shopId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicShopServices(Guid shopId)
+        {
+            var result = await _serviceManagementService.GetServicesByShopIdAsync(shopId);
+            return Ok(result);
+        }
     }
 }

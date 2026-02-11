@@ -118,5 +118,37 @@ namespace KuaforumAPI.Infrastructure.Services
 
             return result;
         }
+
+        public async Task<List<ServiceCategoryDto>> GetServicesByShopIdAsync(Guid shopId)
+        {
+            // Similar logic but by ShopId directly
+             var categories = await _context.ServiceCategories
+                .Where(c => c.ShopId == shopId)
+                .ToListAsync();
+
+            var services = await _context.ShopServices
+                .Where(s => s.ShopId == shopId && s.IsActive)
+                .ToListAsync();
+
+            // Map to DTOs
+            var result = categories.Select(c => new ServiceCategoryDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description,
+                Services = services
+                    .Where(s => s.CategoryId == c.Id)
+                    .Select(s => new ShopServiceDto
+                    {
+                        Id = s.Id,
+                        Name = s.Name,
+                        Price = s.Price,
+                        Duration = s.Duration,
+                        IsActive = s.IsActive
+                    }).ToList()
+            }).ToList();
+
+            return result;
+        }
     }
 }

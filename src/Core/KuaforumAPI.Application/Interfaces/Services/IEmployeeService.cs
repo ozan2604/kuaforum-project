@@ -8,6 +8,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
     public interface IEmployeeService
     {
         Task AddEmployeeAsync(string ownerId, CreateEmployeeDto request);
+        Task<List<EmployeeListDto>> GetEmployeesAsync(string ownerId); // For Owner
+        Task<List<EmployeeListDto>> GetEmployeesByShopIdAsync(Guid shopId); // For Public
         Task AssignServicesAsync(string ownerId, Guid shopEmployeeId, List<Guid> serviceIds);
         Task<List<ShopServiceDto>> GetEmployeeServicesAsync(string ownerId, Guid shopEmployeeId);
         

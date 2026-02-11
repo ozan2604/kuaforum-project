@@ -8,6 +8,7 @@ namespace KuaforumAPI.Persistence.Contexts
     {
         public DbSet<SalonOwnerApplication> SalonOwnerApplications { get; set; }
         public DbSet<Shop> Shops { get; set; }
+        public DbSet<ShopImage> ShopImages { get; set; }
         public DbSet<ShopEmployee> ShopEmployees { get; set; }
         public DbSet<ServiceCategory> ServiceCategories { get; set; }
         public DbSet<ShopService> ShopServices { get; set; }
@@ -36,10 +37,16 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.HasOne(s => s.Owner)
                     .WithMany()
                     .HasForeignKey(s => s.OwnerId)
-                    .OnDelete(DeleteBehavior.Restrict); // Or Cascade depending on requirements, usually Owner deletion cascades to Shop? 
-                    // Let's keep it typical: Owner deletes -> Shop Deletes.
-                    // But if Owner has many shops? MVP says 1 shop.
-                    // Let's stick to default or make it explicit if needed.
+                    .OnDelete(DeleteBehavior.Restrict); 
+            });
+
+            // ShopImage Configuration
+            builder.Entity<ShopImage>(entity =>
+            {
+                entity.HasOne(si => si.Shop)
+                    .WithMany(s => s.Images)
+                    .HasForeignKey(si => si.ShopId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ShopEmployee Configuration
@@ -163,6 +170,20 @@ namespace KuaforumAPI.Persistence.Contexts
                     .WithMany()
                     .HasForeignKey(a => a.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // UserAddress Configuration
+            builder.Entity<UserAddress>(entity =>
+            {
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.City).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.District).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.OpenAddress).IsRequired().HasMaxLength(200);
+
+                entity.HasOne(ua => ua.User)
+                    .WithMany(u => u.Addresses)
+                    .HasForeignKey(ua => ua.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
 

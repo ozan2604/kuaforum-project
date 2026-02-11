@@ -36,6 +36,15 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Services assigned successfully." });
         }
 
+        [HttpGet]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> GetEmployees()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _employeeService.GetEmployeesAsync(userId);
+            return Ok(result);
+        }
+
         [HttpGet("{id}/services")]
         [Authorize(Roles = Roles.SalonOwner)]
         public async Task<IActionResult> GetServices(Guid id)
@@ -60,6 +69,14 @@ namespace KuaforumAPI.WebAPI.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var result = await _employeeService.GetScheduleAsync(userId, id);
+            return Ok(result);
+        }
+
+        [HttpGet("public/shop/{shopId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetShopEmployees(Guid shopId)
+        {
+            var result = await _employeeService.GetEmployeesByShopIdAsync(shopId);
             return Ok(result);
         }
     }

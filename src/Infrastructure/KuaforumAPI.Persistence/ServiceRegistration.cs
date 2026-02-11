@@ -18,6 +18,8 @@ namespace KuaforumAPI.Persistence
             services.AddScoped<ICoreExampleRepository, CoreExampleRepository>();
             services.AddScoped<ISalonOwnerApplicationRepository, SalonOwnerApplicationRepository>();
             services.AddScoped<IShopRepository, ShopRepository>();
+            services.AddScoped<IShopImageRepository, ShopImageRepository>();
+            services.AddScoped<IUserAddressRepository, UserAddressRepository>();
         }
     }
 }

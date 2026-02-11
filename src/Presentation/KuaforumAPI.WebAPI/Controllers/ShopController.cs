@@ -12,10 +12,12 @@ namespace KuaforumAPI.WebAPI.Controllers
     public class ShopController : ControllerBase
     {
         private readonly IShopService _shopService;
+        private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env;
 
-        public ShopController(IShopService shopService)
+        public ShopController(IShopService shopService, Microsoft.AspNetCore.Hosting.IWebHostEnvironment env)
         {
             _shopService = shopService;
+            _env = env;
         }
 
         [HttpPost]
@@ -44,6 +46,107 @@ namespace KuaforumAPI.WebAPI.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             await _shopService.UpdateShopAsync(userId, request);
             return Ok(new { Message = "Shop updated successfully." });
+        }
+        [HttpGet("admin/all")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.Admin)]
+        public async Task<IActionResult> GetAllShops()
+        {
+            var shops = await _shopService.GetAllShopsAsync();
+            return Ok(shops);
+        }
+
+        [HttpGet("public/all")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicShops()
+        {
+            var shops = await _shopService.GetAllShopsAsync();
+            // Filter only active shops for public view if needed, but for now return all
+            // Ideally should filter in service, but this is fine for MVP
+            return Ok(shops);
+        }
+
+        [HttpGet("public/{id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetShopById(Guid id)
+        {
+            var shop = await _shopService.GetShopByIdAsync(id);
+            if (shop == null) return NotFound(new { Message = "Shop not found." });
+            return Ok(shop);
+        }
+
+        [HttpPost("{id}/cover-image")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        public async Task<IActionResult> UploadCoverImage(Guid id, Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userShop = await _shopService.GetShopByOwnerIdAsync(userId);
+            
+            // Basic ownership check
+            if (userShop == null || (userShop.Id != id && !User.IsInRole("Admin")))
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                var webRootPath = _env.WebRootPath ?? System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
+                var imagePath = await _shopService.UploadCoverImageAsync(id, file, webRootPath);
+                return Ok(new { path = imagePath });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/gallery-images")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        public async Task<IActionResult> UploadGalleryImages(Guid id, System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile> files)
+        {
+            if (files == null || files.Count == 0)
+                return BadRequest("No files uploaded.");
+
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userShop = await _shopService.GetShopByOwnerIdAsync(userId);
+            
+            if (userShop == null || (userShop.Id != id && !User.IsInRole("Admin")))
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                var webRootPath = _env.WebRootPath ?? System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
+                
+                var formCollection = new Microsoft.AspNetCore.Http.FormFileCollection();
+                formCollection.AddRange(files);
+
+                var uploadedPaths = await _shopService.UploadGalleryImagesAsync(id, formCollection, webRootPath);
+                return Ok(uploadedPaths);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("gallery-images/{imageId}")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        public async Task<IActionResult> DeleteGalleryImage(Guid imageId)
+        {
+            try
+            {
+                var webRootPath = _env.WebRootPath ?? System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
+                await _shopService.DeleteGalleryImageAsync(imageId, webRootPath);
+                return Ok();
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

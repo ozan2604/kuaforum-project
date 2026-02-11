@@ -19,5 +19,12 @@ namespace KuaforumAPI.Persistence.Repositories
         {
             return await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
         }
+
+        public async Task<IEnumerable<Shop>> GetAllWithDetailsAsync()
+        {
+            return await _context.Shops
+                .Include(s => s.Owner)
+                .ToListAsync();
+        }
     }
 }

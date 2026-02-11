@@ -29,6 +29,15 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Application submitted successfully." });
         }
 
+        [HttpGet("my-application")]
+        [Authorize]
+        public async Task<IActionResult> GetMyApplication()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var application = await _salonApplicationService.GetApplicationByUserIdAsync(userId);
+            return Ok(application);
+        }
+
         [HttpGet("pending")]
         [Authorize(Roles = Roles.Admin)]
         public async Task<IActionResult> GetPendingApplications()

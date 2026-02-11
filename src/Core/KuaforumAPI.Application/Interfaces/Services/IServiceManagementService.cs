@@ -1,6 +1,4 @@
 using KuaforumAPI.Application.DTOs.Service;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace KuaforumAPI.Application.Interfaces.Services
 {
@@ -8,7 +6,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
     {
         Task CreateCategoryAsync(string ownerId, CreateServiceCategoryDto request);
         Task CreateServiceAsync(string ownerId, CreateShopServiceDto request);
-        Task<List<ServiceCategoryDto>> GetShopServicesAsync(string userId); // For Owner
-        // Task<List<ServiceCategoryDto>> GetShopServicesPublicAsync(Guid shopId); // For Customers (Later)
+        Task<List<ServiceCategoryDto>> GetShopServicesAsync(string userId);
+        Task<List<ServiceCategoryDto>> GetServicesByShopIdAsync(System.Guid shopId);
     }
 }
