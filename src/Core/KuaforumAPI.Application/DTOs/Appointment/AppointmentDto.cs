@@ -25,5 +25,6 @@ namespace KuaforumAPI.Application.DTOs.Appointment
 
         public AppointmentStatus Status { get; set; }
         public string? Note { get; set; }
+        public bool HasReview { get; set; }
     }
 }

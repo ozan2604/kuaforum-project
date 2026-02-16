@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using KuaforumAPI.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using KuaforumAPI.Domain.Entities;
+using KuaforumAPI.Application.Interfaces.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,16 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
+
+
+
+var trCulture = new System.Globalization.CultureInfo("tr-TR");
+System.Globalization.CultureInfo.DefaultThreadCurrentCulture = trCulture;
+System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = trCulture;
+
+// Cloudinary
+builder.Services.Configure<KuaforumAPI.Application.Settings.CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.AddScoped<KuaforumAPI.Application.Interfaces.Services.IImageService, KuaforumAPI.Infrastructure.Services.CloudinaryImageService>();
 
 var app = builder.Build();
 

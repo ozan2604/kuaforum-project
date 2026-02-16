@@ -22,7 +22,7 @@ namespace KuaforumAPI.Persistence.Repositories
 
         public async Task<IEnumerable<Shop>> GetAllWithDetailsAsync()
         {
-            return await _context.Shops
+              return await _context.Shops
                 .Include(s => s.Owner)
                 .ToListAsync();
         }

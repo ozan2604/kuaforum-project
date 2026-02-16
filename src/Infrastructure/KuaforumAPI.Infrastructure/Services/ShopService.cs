@@ -17,12 +17,16 @@ namespace KuaforumAPI.Infrastructure.Services
     {
         private readonly IShopRepository _shopRepository;
         private readonly IShopImageRepository _shopImageRepository;
+        private readonly IShopEmployeeRepository _shopEmployeeRepository;
+        private readonly IImageService _imageService;
         private readonly IValidator<CreateShopDto> _validator;
 
-        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IValidator<CreateShopDto> validator)
+        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator)
         {
             _shopRepository = shopRepository;
             _shopImageRepository = shopImageRepository;
+            _shopEmployeeRepository = shopEmployeeRepository;
+            _imageService = imageService;
             _validator = validator;
         }
 
@@ -51,6 +55,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = request.PhoneNumber,
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
+                Category = request.Category,
                 IsActive = true
             };
 
@@ -75,9 +80,12 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
+                Category = shop.Category,
                 IsActive = shop.IsActive,
                 CoverImagePath = shop.CoverImagePath,
-                ImageUrls = images.Select(i => i.Url).ToList(),
+                Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
+                AverageRating = shop.AverageRating,
+                ReviewCount = shop.ReviewCount,
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             };
@@ -105,6 +113,7 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.PhoneNumber = request.PhoneNumber;
             shop.Latitude = request.Latitude;
             shop.Longitude = request.Longitude;
+            shop.Category = request.Category;
             
             await _shopRepository.UpdateAsync(shop);
         }
@@ -130,9 +139,12 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
+                Category = shop.Category,
                 IsActive = shop.IsActive,
                 CoverImagePath = shop.CoverImagePath,
-                // ImageUrls = ... (Skip for list view)
+                // Images = ... (Skip for list view)
+                AverageRating = shop.AverageRating,
+                ReviewCount = shop.ReviewCount,
                 OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
                 OwnerEmail = shop.Owner?.Email,
                 CreatedAt = shop.CreatedAt,
@@ -146,6 +158,54 @@ namespace KuaforumAPI.Infrastructure.Services
             if (shop == null) return null;
 
             var images = await _shopImageRepository.GetByShopIdAsync(shop.Id);
+            
+            // Calculate Weekly Schedule
+            var employees = await _shopEmployeeRepository.GetByShopIdWithSchedulesAsync(shop.Id);
+            var weeklySchedule = new List<ShopScheduleDto>();
+            string saturdayClosingTime = "Closed";
+
+            if (employees.Any())
+            {
+                var allSchedules = employees.SelectMany(e => e.Schedules).ToList();
+                
+                for (int i = 0; i < 7; i++)
+                {
+                    var day = (DayOfWeek)i;
+                    var daySchedules = allSchedules.Where(s => s.DayOfWeek == day && s.IsWorking).ToList();
+
+                    if (daySchedules.Any())
+                    {
+                        var minStart = daySchedules.Min(s => s.StartTime);
+                        var maxEnd = daySchedules.Max(s => s.EndTime);
+
+                        weeklySchedule.Add(new ShopScheduleDto
+                        {
+                            Day = day.ToString(),
+                            DayOfWeek = i,
+                            OpeningTime = minStart.ToString(@"hh\:mm"),
+                            ClosingTime = maxEnd.ToString(@"hh\:mm"),
+                            IsClosed = false
+                        });
+
+                        // Keep existing logic for backward compatibility or specific display if needed
+                        if (day == DayOfWeek.Saturday)
+                        {
+                            saturdayClosingTime = maxEnd.ToString(@"hh\:mm");
+                        }
+                    }
+                    else
+                    {
+                        weeklySchedule.Add(new ShopScheduleDto
+                        {
+                            Day = day.ToString(),
+                            DayOfWeek = i,
+                            OpeningTime = null,
+                            ClosingTime = null,
+                            IsClosed = true
+                        });
+                    }
+                }
+            }
 
             return new ShopDto
             {
@@ -158,15 +218,20 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
+                Category = shop.Category,
                 IsActive = shop.IsActive,
                 CoverImagePath = shop.CoverImagePath,
-                ImageUrls = images.Select(i => i.Url).ToList(),
+                Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
+                AverageRating = shop.AverageRating,
+                ReviewCount = shop.ReviewCount,
+                SaturdayClosingTime = saturdayClosingTime,
+                WeeklySchedule = weeklySchedule.OrderBy(s => s.DayOfWeek == 0 ? 7 : s.DayOfWeek).ToList(), // Order Monday (1) to Sunday (0/7)
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             };
         }
 
-        public async Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file, string webRootPath)
+        public async Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
             if (shop == null) throw new NotFoundException("Shop not found");
@@ -174,77 +239,48 @@ namespace KuaforumAPI.Infrastructure.Services
             // Delete old cover image if exists
             if (!string.IsNullOrEmpty(shop.CoverImagePath))
             {
-                var oldPath = Path.Combine(webRootPath, shop.CoverImagePath.TrimStart('/'));
-                if (File.Exists(oldPath))
-                {
-                    File.Delete(oldPath);
-                }
+                await _imageService.DeleteImageAsync(shop.CoverImagePath);
             }
 
-            var uploadsFolder = Path.Combine(webRootPath, "uploads", "shops", "covers");
-            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-            var uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
-            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(fileStream);
-            }
-
-            var relativePath = "/uploads/shops/covers/" + uniqueFileName;
-            shop.CoverImagePath = relativePath;
+            var imageUrl = await _imageService.UploadImageAsync(file, "shops/covers", 1200, 400);
+            
+            shop.CoverImagePath = imageUrl;
             await _shopRepository.UpdateAsync(shop);
 
-            return relativePath;
+            return imageUrl;
         }
 
-        public async Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files, string webRootPath)
+        public async Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
             if (shop == null) throw new NotFoundException("Shop not found");
-
-            var uploadsFolder = Path.Combine(webRootPath, "uploads", "shops", "gallery");
-            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
             var uploadedUrls = new List<string>();
 
             foreach (var file in files)
             {
-                var uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
-                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                var imageUrl = await _imageService.UploadImageAsync(file, "shops/gallery");
+                if (imageUrl == null) continue;
 
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await file.CopyToAsync(fileStream);
-                }
-
-                var relativePath = "/uploads/shops/gallery/" + uniqueFileName;
-                
                 var shopImage = new ShopImage
                 {
                     ShopId = shopId,
-                    Url = relativePath
+                    Url = imageUrl
                 };
 
                 await _shopImageRepository.AddAsync(shopImage);
-                uploadedUrls.Add(relativePath);
+                uploadedUrls.Add(imageUrl);
             }
 
             return uploadedUrls;
         }
 
-        public async Task DeleteGalleryImageAsync(Guid imageId, string webRootPath)
+        public async Task DeleteGalleryImageAsync(Guid imageId)
         {
             var image = await _shopImageRepository.GetByIdAsync(imageId);
             if (image == null) throw new NotFoundException("Image not found");
 
-            var filePath = Path.Combine(webRootPath, image.Url.TrimStart('/'));
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-            }
-
+            await _imageService.DeleteImageAsync(image.Url);
             await _shopImageRepository.DeleteAsync(image);
         }
     }

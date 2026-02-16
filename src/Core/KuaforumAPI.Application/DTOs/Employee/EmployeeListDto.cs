@@ -10,6 +10,8 @@ namespace KuaforumAPI.Application.DTOs.Employee
         public string LastName { get; set; }
         public string Email { get; set; }
         public string Title { get; set; }
+        public double AverageRating { get; set; }
+        public int ReviewCount { get; set; }
         public bool IsActive { get; set; }
     }
 }

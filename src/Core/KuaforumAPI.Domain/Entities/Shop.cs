@@ -1,4 +1,5 @@
 using KuaforumAPI.Domain.Common;
+using KuaforumAPI.Domain.Enums;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -28,6 +29,11 @@ namespace KuaforumAPI.Domain.Entities
 
         public string CoverImagePath { get; set; }
         public virtual ICollection<ShopImage> Images { get; set; }
+
+        public double AverageRating { get; set; }
+        public int ReviewCount { get; set; }
+
+        public ShopCategory Category { get; set; } = ShopCategory.Kuafor; // Default
 
         public bool IsActive { get; set; } = true;
     }

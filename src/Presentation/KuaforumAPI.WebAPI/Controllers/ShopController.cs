@@ -12,12 +12,10 @@ namespace KuaforumAPI.WebAPI.Controllers
     public class ShopController : ControllerBase
     {
         private readonly IShopService _shopService;
-        private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env;
 
-        public ShopController(IShopService shopService, Microsoft.AspNetCore.Hosting.IWebHostEnvironment env)
+        public ShopController(IShopService shopService)
         {
             _shopService = shopService;
-            _env = env;
         }
 
         [HttpPost]
@@ -92,8 +90,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
             try
             {
-                var webRootPath = _env.WebRootPath ?? System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
-                var imagePath = await _shopService.UploadCoverImageAsync(id, file, webRootPath);
+                var imagePath = await _shopService.UploadCoverImageAsync(id, file);
                 return Ok(new { path = imagePath });
             }
             catch (System.Exception ex)
@@ -119,12 +116,10 @@ namespace KuaforumAPI.WebAPI.Controllers
 
             try
             {
-                var webRootPath = _env.WebRootPath ?? System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
-                
                 var formCollection = new Microsoft.AspNetCore.Http.FormFileCollection();
                 formCollection.AddRange(files);
 
-                var uploadedPaths = await _shopService.UploadGalleryImagesAsync(id, formCollection, webRootPath);
+                var uploadedPaths = await _shopService.UploadGalleryImagesAsync(id, formCollection);
                 return Ok(uploadedPaths);
             }
             catch (System.Exception ex)
@@ -139,8 +134,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         {
             try
             {
-                var webRootPath = _env.WebRootPath ?? System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
-                await _shopService.DeleteGalleryImageAsync(imageId, webRootPath);
+                await _shopService.DeleteGalleryImageAsync(imageId);
                 return Ok();
             }
             catch (System.Exception ex)

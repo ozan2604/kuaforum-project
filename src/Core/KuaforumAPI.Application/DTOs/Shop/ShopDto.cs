@@ -1,5 +1,7 @@
 using System;
 
+using KuaforumAPI.Domain.Enums;
+
 namespace KuaforumAPI.Application.DTOs.Shop
 {
     public class ShopDto
@@ -13,9 +15,16 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public string PhoneNumber { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public ShopCategory Category { get; set; }
         
+        public string SaturdayClosingTime { get; set; }
+        public System.Collections.Generic.List<ShopScheduleDto> WeeklySchedule { get; set; }
+
         public string CoverImagePath { get; set; }
-        public System.Collections.Generic.List<string> ImageUrls { get; set; }
+        public System.Collections.Generic.List<ShopImageDto> Images { get; set; }
+
+        public double AverageRating { get; set; }
+        public int ReviewCount { get; set; }
 
         public bool IsActive { get; set; }
         public string OwnerName { get; set; }

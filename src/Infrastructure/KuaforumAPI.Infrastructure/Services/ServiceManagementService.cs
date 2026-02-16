@@ -98,6 +98,13 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Where(s => s.ShopId == shop.Id && s.IsActive)
                 .ToListAsync();
 
+            // Fetch Employee Assignments
+            var employeeServices = await _context.ShopEmployeeServices
+                .Where(ses => ses.ShopEmployee.ShopId == shop.Id && ses.ShopEmployee.IsActive)
+                .Include(ses => ses.ShopEmployee)
+                .ThenInclude(se => se.User)
+                .ToListAsync();
+
             // Map to DTOs
             var result = categories.Select(c => new ServiceCategoryDto
             {
@@ -112,7 +119,18 @@ namespace KuaforumAPI.Infrastructure.Services
                         Name = s.Name,
                         Price = s.Price,
                         Duration = s.Duration,
-                        IsActive = s.IsActive
+                        IsActive = s.IsActive,
+                        Employees = employeeServices
+                            .Where(es => es.ShopServiceId == s.Id)
+                            .Select(es => new ServiceEmployeeDto
+                            {
+                                Id = es.ShopEmployee.Id,
+                                FirstName = es.ShopEmployee.User.FirstName,
+                                LastName = es.ShopEmployee.User.LastName,
+                                Title = es.ShopEmployee.Title,
+                                AverageRating = es.ShopEmployee.AverageRating,
+                                ReviewCount = es.ShopEmployee.ReviewCount
+                            }).ToList()
                     }).ToList()
             }).ToList();
 
@@ -130,6 +148,13 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Where(s => s.ShopId == shopId && s.IsActive)
                 .ToListAsync();
 
+            // Fetch Employee Assignments
+            var employeeServices = await _context.ShopEmployeeServices
+                .Where(ses => ses.ShopEmployee.ShopId == shopId && ses.ShopEmployee.IsActive)
+                .Include(ses => ses.ShopEmployee)
+                .ThenInclude(se => se.User)
+                .ToListAsync();
+
             // Map to DTOs
             var result = categories.Select(c => new ServiceCategoryDto
             {
@@ -144,7 +169,18 @@ namespace KuaforumAPI.Infrastructure.Services
                         Name = s.Name,
                         Price = s.Price,
                         Duration = s.Duration,
-                        IsActive = s.IsActive
+                        IsActive = s.IsActive,
+                        Employees = employeeServices
+                            .Where(es => es.ShopServiceId == s.Id)
+                            .Select(es => new ServiceEmployeeDto
+                            {
+                                Id = es.ShopEmployee.Id,
+                                FirstName = es.ShopEmployee.User.FirstName,
+                                LastName = es.ShopEmployee.User.LastName,
+                                Title = es.ShopEmployee.Title,
+                                AverageRating = es.ShopEmployee.AverageRating,
+                                ReviewCount = es.ShopEmployee.ReviewCount
+                            }).ToList()
                     }).ToList()
             }).ToList();
 

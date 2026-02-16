@@ -24,4 +24,8 @@
     <ProjectReference Include="..\..\Infrastructure\KuaforumAPI.Infrastructure\KuaforumAPI.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+
 </Project>

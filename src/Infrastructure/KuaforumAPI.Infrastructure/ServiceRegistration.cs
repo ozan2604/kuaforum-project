@@ -27,7 +27,12 @@ namespace KuaforumAPI.Infrastructure
             services.AddScoped<IShopService, ShopService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IServiceManagementService, ServiceManagementService>();
+            services.AddScoped<IServiceManagementService, ServiceManagementService>();
             services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<IFavoriteService, FavoriteService>();
+            services.AddScoped<IReviewService, ReviewService>();
+            // Timezone & Localization
+            services.AddScoped<IDateTimeService, DateTimeService>();
 
             services.AddScoped<IValidator<CreateEmployeeDto>, CreateEmployeeValidator>();
             services.AddScoped<IValidator<CreateServiceCategoryDto>, CreateServiceCategoryValidator>();

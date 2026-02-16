@@ -11,5 +11,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<List<AppointmentDto>> GetMyAppointmentsAsync(string userId);
         Task<List<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId);
         Task UpdateStatusAsync(string ownerId, Guid appointmentId, UpdateAppointmentStatusDto request);
+        Task<EmployeeAvailabilityDto> GetEmployeeAvailabilityAsync(Guid employeeId, DateTime date);
+        Task<AppointmentDto> GetReviewableAppointmentAsync(string userId, Guid shopId);
     }
 }

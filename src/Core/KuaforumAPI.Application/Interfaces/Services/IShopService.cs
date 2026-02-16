@@ -13,8 +13,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<IEnumerable<ShopDto>> GetAllShopsAsync();
         Task<ShopDto> GetShopByIdAsync(Guid id);
         
-        Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file, string webRootPath);
-        Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files, string webRootPath);
-        Task DeleteGalleryImageAsync(Guid imageId, string webRootPath);
+        Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file);
+        Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files);
+        Task DeleteGalleryImageAsync(Guid imageId);
     }
 }

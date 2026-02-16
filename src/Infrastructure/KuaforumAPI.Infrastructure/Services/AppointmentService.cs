@@ -11,6 +11,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using KuaforumAPI.Infrastructure.Services;
+using KuaforumAPI.Application.Interfaces.Services;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -18,11 +20,13 @@ namespace KuaforumAPI.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IShopRepository _shopRepository;
+        private readonly IDateTimeService _dateTimeService;
 
-        public AppointmentService(ApplicationDbContext context, IShopRepository shopRepository)
+        public AppointmentService(ApplicationDbContext context, IShopRepository shopRepository, IDateTimeService dateTimeService)
         {
             _context = context;
             _shopRepository = shopRepository;
+            _dateTimeService = dateTimeService;
         }
 
         public async Task CreateAsync(string userId, CreateAppointmentDto request)
@@ -43,7 +47,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!hasSkill) throw new ValidationException("This employee cannot perform this service.");
 
             // 3. Time Calculations
-            var appointmentStart = request.StartTime; // Assuming UTC or correct local time from client
+            var appointmentStart = _dateTimeService.ToTurkeyTime(request.StartTime); // Ensure Turkey Time for consistency
             var appointmentEnd = appointmentStart.AddMinutes(service.Duration);
 
             // 4. Schedule Check
@@ -108,16 +112,21 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<List<AppointmentDto>> GetMyAppointmentsAsync(string userId)
         {
-            var appointments = await _context.Appointments
+            var query = _context.Appointments
                 .Include(a => a.Shop)
                 .Include(a => a.ShopService)
                 .Include(a => a.ShopEmployee)
                     .ThenInclude(e => e.User)
                 .Where(a => a.UserId == userId)
-                .OrderByDescending(a => a.StartTime)
-                .ToListAsync();
+                .OrderByDescending(a => a.StartTime);
 
-            return MapToDto(appointments);
+            var items = await query.Select(a => new 
+            { 
+                Appointment = a, 
+                HasReview = _context.Reviews.Any(r => r.AppointmentId == a.Id) 
+            }).ToListAsync();
+
+            return items.Select(i => MapToDto(i.Appointment, i.HasReview)).ToList();
         }
 
         public async Task<List<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId)
@@ -135,7 +144,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 .OrderByDescending(a => a.StartTime)
                 .ToListAsync();
 
-            return MapToDto(appointments);
+            return appointments.Select(a => MapToDto(a)).ToList();
         }
 
         public async Task UpdateStatusAsync(string ownerId, Guid appointmentId, UpdateAppointmentStatusDto request)
@@ -154,9 +163,9 @@ namespace KuaforumAPI.Infrastructure.Services
              await _context.SaveChangesAsync();
         }
 
-        private List<AppointmentDto> MapToDto(List<Appointment> appointments)
+        private AppointmentDto MapToDto(Appointment a, bool hasReview = false)
         {
-            return appointments.Select(a => new AppointmentDto
+            return new AppointmentDto
             {
                 Id = a.Id,
                 ShopId = a.ShopId,
@@ -166,14 +175,120 @@ namespace KuaforumAPI.Infrastructure.Services
                 Price = a.ShopService.Price,
                 Duration = a.ShopService.Duration,
                 ShopEmployeeId = a.ShopEmployeeId,
-                EmployeeName = a.ShopEmployee.Title + " " + a.ShopEmployee.User?.FirstName, // Need to include User logic better if null
+                EmployeeName = a.ShopEmployee.Title + " " + (a.ShopEmployee.User != null ? a.ShopEmployee.User.FirstName : ""), 
                 UserId = a.UserId,
-                CustomerName = a.User?.FirstName + " " + a.User?.LastName,
+                CustomerName = (a.User != null ? a.User.FirstName + " " + a.User.LastName : ""),
                 StartTime = a.StartTime,
                 EndTime = a.EndTime,
                 Status = a.Status,
-                Note = a.Note
-            }).ToList();
+                Note = a.Note,
+                HasReview = hasReview
+            };
+        }
+        public async Task<EmployeeAvailabilityDto> GetEmployeeAvailabilityAsync(Guid employeeId, DateTime date)
+        {
+            // 1. Get Schedule for the specific day
+            var dayOfWeek = date.DayOfWeek;
+            var schedule = await _context.EmployeeSchedules
+                .FirstOrDefaultAsync(es => es.ShopEmployeeId == employeeId && es.DayOfWeek == dayOfWeek);
+
+            if (schedule == null || !schedule.IsWorking)
+            {
+                return new EmployeeAvailabilityDto { IsWorking = false };
+            }
+
+            // 2. Get Appointments for that day (Turkey Time logic is important here)
+            // We need to query appointments where the StartTime falls on this date.
+            // Since we store UTC, we need to be careful. 
+            // The 'date' parameter is expected to be Midnight of the day in Turkey Time (or Client Local Time).
+            
+            // Let's assume 'date' is just the date part.
+            // We'll define the range in UTC because DB 'StartTime' is likely UTC (or whatever we standardized to).
+            // Actually, we standardized to 'ToTurkeyTime' in Create, but EF stores what we give it. 
+            // If we standardized, we should have standardized the STORAGE or the INPUT. 
+            // Let's assume the DB stores what DateTimeService.ToTurkeyTime returns (which is Unspecified or Local kind with shifted ticks if we just did ConvertTime).
+            // Wait, DateTimeService.ToTurkeyTime returns a DateTime with the ticks of Turkey time. 
+            // If we save this to Postgres 'timestamp without time zone', it saves those ticks. 
+            // So queries should straightforwardly match the date components.
+
+            var startOfDay = date.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            var appointments = await _context.Appointments
+                .Where(a => 
+                    a.ShopEmployeeId == employeeId &&
+                    a.Status != AppointmentStatus.Cancelled &&
+                    a.Status != AppointmentStatus.Rejected &&
+                    a.StartTime >= startOfDay &&
+                    a.StartTime < endOfDay)
+                .Select(a => new TimeSlotDto
+                {
+                    StartTime = a.StartTime,
+                    EndTime = a.EndTime
+                })
+                .ToListAsync();
+
+            return new EmployeeAvailabilityDto
+            {
+                IsWorking = true,
+                WorkStartTime = schedule.StartTime,
+                WorkEndTime = schedule.EndTime,
+                BreakStartTime = schedule.BreakStartTime,
+                BreakEndTime = schedule.BreakEndTime,
+                BookedSlots = appointments
+            };
+
+        }
+
+        public async Task<AppointmentDto> GetReviewableAppointmentAsync(string userId, Guid shopId)
+        {
+            // Find the most recent COMPLETED appointment for this shop that has NOT been reviewed
+            var appointment = await _context.Appointments
+                .Include(a => a.Shop)
+                .Include(a => a.ShopService)
+                .Include(a => a.ShopEmployee)
+                    .ThenInclude(e => e.User)
+                .Where(a => 
+                    a.UserId == userId && 
+                    a.ShopId == shopId && 
+                    a.Status == AppointmentStatus.Completed)
+                .OrderByDescending(a => a.EndTime) // Most recent first
+                .FirstOrDefaultAsync();
+
+            if (appointment == null) return null;
+
+            // Check if it already has a review
+            var hasReview = await _context.Reviews.AnyAsync(r => r.AppointmentId == appointment.Id);
+
+            if (hasReview)
+            {
+                // If the most recent one is reviewed, maybe check others? 
+                // Requirement says "allow adding review". Usually user reviews their latest experience.
+                // If they have 5 unreviewed past appointments, which one do we pick?
+                // Let's iterate or query for the first without review.
+                
+                // Better query:
+                // We can't easily do !Any() in a complex query with join in EF Core sometimes depending on version, 
+                // but let's try a subquery approach or just fetch top 5 and filter in memory if needed.
+                // Actually, let's try a direct query.
+                
+                appointment = await _context.Appointments
+                    .Include(a => a.Shop)
+                    .Include(a => a.ShopService)
+                    .Include(a => a.ShopEmployee)
+                        .ThenInclude(e => e.User)
+                    .Where(a => 
+                        a.UserId == userId && 
+                        a.ShopId == shopId && 
+                        a.Status == AppointmentStatus.Completed &&
+                        !_context.Reviews.Any(r => r.AppointmentId == a.Id)) // Subquery
+                    .OrderByDescending(a => a.EndTime)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (appointment == null) return null;
+
+            return MapToDto(appointment, false);
         }
     }
 }

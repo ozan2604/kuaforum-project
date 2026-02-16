@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace KuaforumAPI.Application.DTOs.Service
 {
@@ -9,5 +10,6 @@ namespace KuaforumAPI.Application.DTOs.Service
         public decimal Price { get; set; }
         public int Duration { get; set; }
         public bool IsActive { get; set; }
+        public List<ServiceEmployeeDto> Employees { get; set; } = new List<ServiceEmployeeDto>();
     }
 }

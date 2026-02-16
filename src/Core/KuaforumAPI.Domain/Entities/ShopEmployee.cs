@@ -22,8 +22,13 @@ namespace KuaforumAPI.Domain.Entities
         [MaxLength(100)]
         public string Title { get; set; } // e.g., Senior Stylist, Colorist
 
+        public double AverageRating { get; set; }
+        public int ReviewCount { get; set; }
+
         public DateTime StartDate { get; set; } = DateTime.UtcNow;
 
         public bool IsActive { get; set; } = true;
+
+        public virtual ICollection<EmployeeSchedule> Schedules { get; set; }
     }
 }

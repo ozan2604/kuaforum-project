@@ -4,6 +4,7 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
+using KuaforumAPI.Application.Interfaces.Services;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -12,12 +13,14 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly ISalonOwnerApplicationRepository _repository;
         private readonly IShopRepository _shopRepository; // Added
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IDateTimeService _dateTimeService;
 
-        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager)
+        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager, IDateTimeService dateTimeService)
         {
             _repository = repository;
             _shopRepository = shopRepository; // Added
             _userManager = userManager;
+            _dateTimeService = dateTimeService;
         }
 
         public async Task ApplyAsync(string userId, CreateSalonApplicationDto request)
@@ -33,7 +36,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = request.PhoneNumber,
                 TaxNumber = request.TaxNumber,
                 Status = ApplicationStatus.Pending,
-                CreatedAt = DateTime.UtcNow // Ensure creation time
+                CreatedAt = _dateTimeService.Now // Ensure creation time
             };
 
             await _repository.AddAsync(application);
@@ -85,9 +88,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 City = application.City,
                 District = application.District,
                 PhoneNumber = application.PhoneNumber,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = _dateTimeService.Now,
+                UpdatedAt = _dateTimeService.Now
             };
 
             await _shopRepository.AddAsync(shop);

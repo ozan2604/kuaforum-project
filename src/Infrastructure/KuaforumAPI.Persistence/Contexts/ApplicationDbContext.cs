@@ -9,15 +9,21 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<SalonOwnerApplication> SalonOwnerApplications { get; set; }
         public DbSet<Shop> Shops { get; set; }
         public DbSet<ShopImage> ShopImages { get; set; }
+        public DbSet<UserFavoriteShop> UserFavoriteShops { get; set; }
         public DbSet<ShopEmployee> ShopEmployees { get; set; }
         public DbSet<ServiceCategory> ServiceCategories { get; set; }
         public DbSet<ShopService> ShopServices { get; set; }
         public DbSet<ShopEmployeeService> ShopEmployeeServices { get; set; }
         public DbSet<EmployeeSchedule> EmployeeSchedules { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<Review> Reviews { get; set; }
+        public DbSet<ReviewImage> ReviewImages { get; set; }
 
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
+
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, KuaforumAPI.Application.Interfaces.Services.IDateTimeService dateTimeService) : base(options)
         {
+            _dateTimeService = dateTimeService;
         }
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -139,7 +145,7 @@ namespace KuaforumAPI.Persistence.Contexts
             builder.Entity<EmployeeSchedule>(entity =>
             {
                 entity.HasOne(es => es.ShopEmployee)
-                    .WithMany()
+                    .WithMany(se => se.Schedules)
                     .HasForeignKey(es => es.ShopEmployeeId)
                     .OnDelete(DeleteBehavior.Cascade); // Employee silinirse takvimi de silinsin.
 
@@ -185,23 +191,77 @@ namespace KuaforumAPI.Persistence.Contexts
                     .HasForeignKey(ua => ua.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+
+            // UserFavoriteShop Configuration
+            builder.Entity<UserFavoriteShop>(entity =>
+            {
+                entity.Property(e => e.CircleUserId).IsRequired();
+                
+                entity.HasOne(ufs => ufs.Shop)
+                    .WithMany()
+                    .HasForeignKey(ufs => ufs.ShopId)
+                    .OnDelete(DeleteBehavior.Cascade); // Shop silinirse favoriler de silinsin
+            });
+
+            // Review Configuration
+            builder.Entity<Review>(entity =>
+            {
+                entity.Property(e => e.Rating).IsRequired();
+                entity.Property(e => e.Comment).HasMaxLength(1000);
+
+                entity.HasOne(r => r.Appointment)
+                    .WithMany()
+                    .HasForeignKey(r => r.AppointmentId)
+                    .OnDelete(DeleteBehavior.Restrict); // Appointment shouldn't be deleted easily if reviewed, or cascade? Restrict is safer.
+
+                entity.HasOne(r => r.User)
+                    .WithMany()
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(r => r.Shop)
+                    .WithMany()
+                    .HasForeignKey(r => r.ShopId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(r => r.ShopEmployee)
+                    .WithMany()
+                    .HasForeignKey(r => r.ShopEmployeeId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ReviewImage Configuration
+            builder.Entity<ReviewImage>(entity =>
+            {
+                entity.Property(e => e.Url).IsRequired();
+
+                entity.HasOne(ri => ri.Review)
+                    .WithMany(r => r.Images)
+                    .HasForeignKey(ri => ri.ReviewId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
 
         public DbSet<CoreExample> CoreExamples { get; set; }
 
-        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var entries = ChangeTracker.Entries<KuaforumAPI.Domain.Common.BaseEntity>();
 
             foreach (var entry in entries)
             {
-                if (entry.State == EntityState.Modified)
+                if (entry.State == EntityState.Added)
                 {
-                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                    entry.Entity.CreatedAt = _dateTimeService.Now;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    entry.Entity.UpdatedAt = _dateTimeService.Now;
                 }
             }
 
-            return base.SaveChangesAsync(cancellationToken);
+            return await base.SaveChangesAsync(cancellationToken);
         }
     }
 }

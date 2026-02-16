@@ -54,5 +54,23 @@ namespace KuaforumAPI.WebAPI.Controllers
             await _appointmentService.UpdateStatusAsync(userId, id, request);
             return Ok(new { Message = "Appointment status updated." });
         }
+        [HttpGet("availability")]
+        public async Task<IActionResult> GetAvailability(Guid employeeId, DateTime date)
+        {
+            // The date comes from query string, likely as 'yyyy-MM-dd'. Model binder handles it.
+            // We might need to ensure it's treated as the correct date part.
+            var result = await _appointmentService.GetEmployeeAvailabilityAsync(employeeId, date);
+            return Ok(result);
+        }
+        [HttpGet("reviewable")]
+        [Authorize]
+        public async Task<IActionResult> GetReviewable(Guid shopId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var appointment = await _appointmentService.GetReviewableAppointmentAsync(userId, shopId);
+            // Return 200 OK with null if no appointment, or 204 No Content. 
+            // Client expects JSON usually. returning null is fine.
+            return Ok(appointment);
+        }
     }
 }

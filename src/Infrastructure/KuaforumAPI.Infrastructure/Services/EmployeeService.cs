@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using KuaforumAPI.Infrastructure.Services;
+using KuaforumAPI.Application.Interfaces.Services;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -22,19 +24,22 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IGenericRepository<ShopEmployee> _shopEmployeeRepository; // Using generic repo strictly
         private readonly IValidator<CreateEmployeeDto> _validator;
         private readonly ApplicationDbContext _context; // Ideally avoid this, but needed for transaction if not using UnitOfWork
+        private readonly IDateTimeService _dateTimeService;
 
         public EmployeeService(
             UserManager<ApplicationUser> userManager,
             IShopRepository shopRepository,
             IGenericRepository<ShopEmployee> shopEmployeeRepository,
             IValidator<CreateEmployeeDto> validator,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IDateTimeService dateTimeService)
         {
             _userManager = userManager;
             _shopRepository = shopRepository;
             _shopEmployeeRepository = shopEmployeeRepository;
             _validator = validator;
             _context = context;
+            _dateTimeService = dateTimeService;
         }
 
         public async Task AddEmployeeAsync(string ownerId, CreateEmployeeDto request)
@@ -81,7 +86,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     ShopId = shop.Id,
                     UserId = user.Id,
                     Title = request.Title,
-                    StartDate = DateTime.UtcNow,
+                    StartDate = _dateTimeService.Now,
                     IsActive = true
                 };
 

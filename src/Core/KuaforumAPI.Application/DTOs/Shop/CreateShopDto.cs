@@ -1,5 +1,7 @@
 
 
+using KuaforumAPI.Domain.Enums;
+
 namespace KuaforumAPI.Application.DTOs.Shop
 {
     public class CreateShopDto
@@ -12,5 +14,6 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public string PhoneNumber { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public ShopCategory Category { get; set; }
     }
 }

@@ -11,6 +11,8 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using KuaforumAPI.Infrastructure.Services;
+using KuaforumAPI.Application.Interfaces.Services;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -20,21 +22,55 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly IUserAddressRepository _userAddressRepository;
+        private readonly IDateTimeService _dateTimeService;
 
         public AuthService(UserManager<ApplicationUser> userManager, 
                            SignInManager<ApplicationUser> signInManager,
                            IConfiguration configuration,
-                           IUserAddressRepository userAddressRepository)
+                           IUserAddressRepository userAddressRepository,
+                           IDateTimeService dateTimeService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _userAddressRepository = userAddressRepository;
+            _dateTimeService = dateTimeService;
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
-            var user = await _userManager.FindByEmailAsync(request.Email);
+            ApplicationUser user = null;
+
+            // Check if Identifier is Email
+            if (request.Identifier.Contains("@"))
+            {
+                user = await _userManager.FindByEmailAsync(request.Identifier);
+            }
+            else
+            {
+                // Check if Identifier is Phone
+                // Normalization for UX: 
+                // DB stores as "05XXXXXXXXX" (11 digits).
+                // User might enter: "5XXXXXXXXX" (10 digits) or "905XXXXXXXXX" (12 digits).
+                
+                var potentialPhones = new List<string> { request.Identifier };
+                
+                // If 10 digits (e.g. 532...), try adding '0'
+                if (request.Identifier.Length == 10 && !request.Identifier.StartsWith("0"))
+                {
+                    potentialPhones.Add("0" + request.Identifier);
+                }
+                
+                // If 12 digits (e.g. 90532...), try removing '9' and replace with '0' -> actually just substring
+                if (request.Identifier.Length == 12 && request.Identifier.StartsWith("90"))
+                {
+                     potentialPhones.Add("0" + request.Identifier.Substring(2));
+                }
+
+                // Check against any of these variations
+                user = _userManager.Users.FirstOrDefault(u => potentialPhones.Contains(u.PhoneNumber));
+            }
+
             if (user == null)
             {
                 throw new UnauthorizedAccessException("Invalid credentials");
@@ -61,12 +97,20 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
+            // Uniqueness Check for Phone
+            var existingUserWithPhone = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
+            if (existingUserWithPhone != null)
+            {
+                throw new Exception("Phone number is already taken.");
+            }
+
             var user = new ApplicationUser
             {
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 Email = request.Email,
-                UserName = request.UserName
+                UserName = request.UserName,
+                PhoneNumber = request.PhoneNumber
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -101,7 +145,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id)
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.MobilePhone, user.PhoneNumber ?? "")
             };
 
             foreach (var role in userRoles)
@@ -111,7 +156,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expiry = DateTime.Now.AddDays(Convert.ToDouble(_configuration["Jwt:DurationInDays"]));
+            var expiry = _dateTimeService.Now.AddDays(Convert.ToDouble(_configuration["Jwt:DurationInDays"]));
 
             var token = new JwtSecurityToken(
                 _configuration["Jwt:Issuer"],
