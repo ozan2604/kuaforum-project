@@ -10,7 +10,9 @@ namespace KuaforumAPI.Application.DTOs.SalonApplication
         public string UserName { get; set; } // Extra info for Admin
         public string ShopName { get; set; }
         public string Description { get; set; }
-        public string TaxNumber { get; set; } // Added TaxNumber
+        public string ContactEmail { get; set; }
+        public ShopCategory Category { get; set; }
+        public TargetGender GenderPreference { get; set; }
         public ApplicationStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
     }

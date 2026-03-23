@@ -13,8 +13,13 @@ namespace KuaforumAPI.Domain.Entities
         public string Address { get; set; }
         public string City { get; set; }
         public string District { get; set; }
+        public string Neighborhood { get; set; } // Added
+        public string Street { get; set; } // Added
+        public string BuildingNumber { get; set; } // Added
         public string PhoneNumber { get; set; }
-        public string TaxNumber { get; set; }
+        public string ContactEmail { get; set; } // Added
+        public ShopCategory Category { get; set; } // Added
+        public TargetGender GenderPreference { get; set; } = TargetGender.Unisex;
         public ApplicationStatus Status { get; set; } = ApplicationStatus.Pending;
     }
 }

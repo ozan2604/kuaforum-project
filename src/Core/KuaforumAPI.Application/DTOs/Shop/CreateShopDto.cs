@@ -15,5 +15,6 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public ShopCategory Category { get; set; }
+        public TargetGender GenderPreference { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 using FluentValidation;
 using KuaforumAPI.Application.DTOs.Appointment;
+using KuaforumAPI.Application.DTOs.Common;
 using KuaforumAPI.Application.DTOs.Service;
 using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
@@ -102,7 +103,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 UserId = userId,
                 StartTime = appointmentStart,
                 EndTime = appointmentEnd,
-                Status = AppointmentStatus.Pending,
+                Status = shop.IsAutoProcessEnabled ? AppointmentStatus.Confirmed : AppointmentStatus.Pending,
                 Note = request.Note
             };
 
@@ -129,22 +130,35 @@ namespace KuaforumAPI.Infrastructure.Services
             return items.Select(i => MapToDto(i.Appointment, i.HasReview)).ToList();
         }
 
-        public async Task<List<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId)
+        public async Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10)
         {
              var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
              if (shop == null || shop.Id != shopId) throw new ValidationException("Unauthorized or Shop not found.");
 
-             var appointments = await _context.Appointments
+             var query = _context.Appointments
                 .Include(a => a.Shop)
                 .Include(a => a.ShopService)
                 .Include(a => a.ShopEmployee)
                     .ThenInclude(e => e.User)
                 .Include(a => a.User)
-                .Where(a => a.ShopId == shopId)
+                .Where(a => a.ShopId == shopId);
+
+            if (status.HasValue)
+            {
+                query = query.Where(a => a.Status == status.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var appointments = await query
                 .OrderByDescending(a => a.StartTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            return appointments.Select(a => MapToDto(a)).ToList();
+            var appointmentDtos = appointments.Select(a => MapToDto(a)).ToList();
+
+            return new PagedResult<AppointmentDto>(appointmentDtos, totalCount, page, pageSize);
         }
 
         public async Task UpdateStatusAsync(string ownerId, Guid appointmentId, UpdateAppointmentStatusDto request)
@@ -289,6 +303,44 @@ namespace KuaforumAPI.Infrastructure.Services
             if (appointment == null) return null;
 
             return MapToDto(appointment, false);
+        }
+
+        public async Task<List<AppointmentDto>> GetAssignedAppointmentsAsync(string employeeUserId)
+        {
+            // 1. Find the Employee record for this user
+            // Note: A user could potentially be an employee in multiple shops (unlikely in this domain, but possible in schema).
+            // But usually, one User is linked to one ShopEmployee per shop.
+            // Let's assume we want ALL appointments across all shops if they are employee in multiple.
+
+            var assignedAppointments = await _context.Appointments
+                .Include(a => a.Shop)
+                .Include(a => a.ShopService)
+                .Include(a => a.ShopEmployee)
+                    .ThenInclude(e => e.User)
+                .Include(a => a.User) // Customer
+                .Where(a => a.ShopEmployee.UserId == employeeUserId)
+                .OrderByDescending(a => a.StartTime)
+                .ToListAsync();
+
+            return assignedAppointments.Select(a => MapToDto(a)).ToList();
+        }
+
+        public async Task UpdateStatusByEmployeeAsync(string employeeUserId, Guid appointmentId, UpdateAppointmentStatusDto request)
+        {
+            var appointment = await _context.Appointments
+                .Include(a => a.ShopEmployee)
+                .FirstOrDefaultAsync(a => a.Id == appointmentId);
+
+            if (appointment == null) throw new ValidationException("Appointment not found.");
+
+            // Verify that the logged-in user is indeed the employee assigned to this appointment
+            if (appointment.ShopEmployee.UserId != employeeUserId)
+            {
+                throw new ValidationException("You are not authorized to manage this appointment.");
+            }
+
+            appointment.Status = request.Status;
+            await _context.SaveChangesAsync();
         }
     }
 }

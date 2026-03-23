@@ -22,7 +22,12 @@ namespace KuaforumAPI.Domain.Entities
 
         public string District { get; set; }
 
+        public string Neighborhood { get; set; } // Added
+        public string Street { get; set; } // Added
+        public string BuildingNumber { get; set; } // Added
+
         public string PhoneNumber { get; set; }
+        public string ContactEmail { get; set; } // Added
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
@@ -35,6 +40,10 @@ namespace KuaforumAPI.Domain.Entities
 
         public ShopCategory Category { get; set; } = ShopCategory.Kuafor; // Default
 
+        public TargetGender GenderPreference { get; set; } = TargetGender.Unisex;
+
         public bool IsActive { get; set; } = true;
+        
+        public bool IsAutoProcessEnabled { get; set; } = false;
     }
 }

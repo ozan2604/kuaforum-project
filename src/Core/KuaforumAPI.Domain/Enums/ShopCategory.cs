@@ -7,6 +7,14 @@ namespace KuaforumAPI.Domain.Enums
         GuzellikMerkezi = 3,
         SpaMerkezi = 4,
         DovmeStudyosu = 5,
+        PiercingStudyosu = 6,
+        NailArt = 7,
+        CiltBakimMerkezi = 8,
+        LazerEpilasyon = 9,
+        MasajSalonu = 10,
+        Solaryum = 11,
+        MakyajStudyosu = 12,
+        KasKirpikStudyosu = 13,
         Diger = 99
     }
 }

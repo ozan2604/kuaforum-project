@@ -9,5 +9,6 @@ namespace KuaforumAPI.Application.Interfaces.Repositories
     {
         Task<IEnumerable<ShopEmployee>> GetByShopIdAsync(Guid shopId);
         Task<IEnumerable<ShopEmployee>> GetByShopIdWithSchedulesAsync(Guid shopId);
+
     }
 }

@@ -33,8 +33,13 @@ namespace KuaforumAPI.Infrastructure.Services
                 Address = request.Address,
                 City = request.City,
                 District = request.District,
+                Neighborhood = request.Neighborhood,
+                Street = request.Street,
+                BuildingNumber = request.BuildingNumber,
                 PhoneNumber = request.PhoneNumber,
-                TaxNumber = request.TaxNumber,
+                ContactEmail = request.ContactEmail,
+                Category = (ShopCategory)request.CategoryId,
+                GenderPreference = request.GenderPreference,
                 Status = ApplicationStatus.Pending,
                 CreatedAt = _dateTimeService.Now // Ensure creation time
             };
@@ -53,7 +58,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 UserName = a.User.UserName,
                 ShopName = a.ShopName,
                 Description = a.Description,
-                TaxNumber = a.TaxNumber,
+                ContactEmail = a.ContactEmail,
+                Category = a.Category,
+                GenderPreference = a.GenderPreference,
                 Status = a.Status,
                 CreatedAt = a.CreatedAt
             }).ToList();
@@ -78,16 +85,26 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new Exception("User already has a shop.");
             }
 
+            var fullAddress = !string.IsNullOrWhiteSpace(application.Address) 
+                ? application.Address 
+                : $"{application.Neighborhood} Mah., {application.Street} Sok., No: {application.BuildingNumber}, {application.District}/{application.City}";
+
             // Create Shop
             var shop = new Shop
             {
                 OwnerId = application.UserId,
-                Name = application.ShopName,
+                Name = application.ShopName ?? "Unnamed Shop",
                 Description = application.Description,
-                Address = application.Address,
-                City = application.City,
-                District = application.District,
-                PhoneNumber = application.PhoneNumber,
+                Address = fullAddress,
+                City = application.City ?? "Bilinmiyor",
+                District = application.District ?? "Bilinmiyor",
+                Neighborhood = application.Neighborhood,
+                Street = application.Street,
+                BuildingNumber = application.BuildingNumber,
+                PhoneNumber = application.PhoneNumber ?? "0000000000",
+                ContactEmail = application.ContactEmail,
+                Category = application.Category,
+                GenderPreference = application.GenderPreference,
                 CreatedAt = _dateTimeService.Now,
                 UpdatedAt = _dateTimeService.Now
             };

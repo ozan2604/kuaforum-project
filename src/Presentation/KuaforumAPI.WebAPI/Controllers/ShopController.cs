@@ -142,5 +142,14 @@ namespace KuaforumAPI.WebAPI.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpPatch("{id}/auto-process")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> UpdateAutoProcess(Guid id, [FromBody] bool isEnabled)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _shopService.UpdateAutoProcessAsync(userId, id, isEnabled);
+            return Ok(new { Message = "Auto process setting updated." });
+        }
     }
 }

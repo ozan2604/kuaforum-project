@@ -79,5 +79,22 @@ namespace KuaforumAPI.WebAPI.Controllers
             var result = await _employeeService.GetEmployeesByShopIdAsync(shopId);
             return Ok(result);
         }
+        [HttpGet("me")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _employeeService.GetMyProfileAsync(userId);
+            return Ok(result);
+        }
+
+        [HttpPut("me")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateEmployeeProfileDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.UpdateMyProfileAsync(userId, request);
+            return Ok(new { Message = "Profile updated successfully." });
+        }
     }
 }

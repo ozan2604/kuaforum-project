@@ -130,6 +130,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Include(se => se.User)
                 .ToListAsync();
 
+            var employeeIds = employees.Select(e => e.Id).ToList();
+            var services = await _context.ShopEmployeeServices
+                .Where(ses => employeeIds.Contains(ses.ShopEmployeeId))
+                .ToListAsync();
+
             return employees.Select(e => new EmployeeListDto
             {
                 Id = e.Id,
@@ -138,7 +143,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 LastName = e.User.LastName,
                 Email = e.User.Email, // Maybe hide email for public?
                 Title = e.Title,
-                IsActive = e.IsActive
+                AverageRating = e.AverageRating,
+                ReviewCount = e.ReviewCount,
+                IsActive = e.IsActive,
+                ServiceIds = services.Where(s => s.ShopEmployeeId == e.Id).Select(s => s.ShopServiceId).ToList()
             }).ToList();
         }
 
@@ -292,6 +300,72 @@ namespace KuaforumAPI.Infrastructure.Services
                 BreakStartTime = s.BreakStartTime?.ToString(@"hh\:mm"),
                 BreakEndTime = s.BreakEndTime?.ToString(@"hh\:mm")
             }).ToList();
+        }
+
+        public async Task<EmployeeProfileDto> GetMyProfileAsync(string userId)
+        {
+            var employee = await _context.ShopEmployees
+                .Include(se => se.User)
+                .Include(se => se.Shop)
+                .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive);
+
+            if (employee == null)
+            {
+                // Optionally throw exception or return null if user is not an employee.
+                // For now, let's assume if they hit this endpoint (Role = Employee), they SHOULD have a record.
+                throw new FluentValidation.ValidationException("Employee profile not found.");
+            }
+
+            return new EmployeeProfileDto
+            {
+                Id = employee.Id,
+                UserId = employee.UserId,
+                ShopId = employee.ShopId,
+                ShopName = employee.Shop.Name,
+                FirstName = employee.User.FirstName,
+                LastName = employee.User.LastName,
+                Email = employee.User.Email,
+                Title = employee.Title,
+                AverageRating = employee.AverageRating,
+                ReviewCount = employee.ReviewCount,
+                IsActive = employee.IsActive
+            };
+        }
+
+        public async Task UpdateMyProfileAsync(string userId, UpdateEmployeeProfileDto request)
+        {
+            var employee = await _context.ShopEmployees
+                .Include(se => se.User)
+                .FirstOrDefaultAsync(se => se.UserId == userId); // Allow updating even if inactive? Usually yes.
+
+            if (employee == null)
+            {
+                throw new FluentValidation.ValidationException("Employee profile not found.");
+            }
+
+            // Update Employee specific fields
+            employee.Title = request.Title;
+
+            // Update User fields
+            var user = employee.User;
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
+
+            // We are using DbContext for ShopEmployee and Identity UserManager for User usually,
+            // but since we included User navigation prop and tracked it via context, EF might update it.
+            // However, Identity best practice is to use UserManager for user updates to handle security stamps etc.
+            // But for simple name change, context update often works if concurrent edits aren't an issue.
+            // Let's try standard context save first. 
+            // Better: Use UserManager to be safe and consistent with Identity.
+            
+            var identityResult = await _userManager.UpdateAsync(user);
+            if (!identityResult.Succeeded)
+            {
+                 throw new FluentValidation.ValidationException("Failed to update user profile.");
+            }
+
+            // Save changes to ShopEmployee
+            await _context.SaveChangesAsync();
         }
     }
 }

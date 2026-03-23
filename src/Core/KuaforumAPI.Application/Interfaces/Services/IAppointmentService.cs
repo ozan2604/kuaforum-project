@@ -1,7 +1,6 @@
 using KuaforumAPI.Application.DTOs.Appointment;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using KuaforumAPI.Application.DTOs.Common;
+using KuaforumAPI.Domain.Enums;
 
 namespace KuaforumAPI.Application.Interfaces.Services
 {
@@ -9,9 +8,11 @@ namespace KuaforumAPI.Application.Interfaces.Services
     {
         Task CreateAsync(string userId, CreateAppointmentDto request);
         Task<List<AppointmentDto>> GetMyAppointmentsAsync(string userId);
-        Task<List<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId);
+        Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10);
         Task UpdateStatusAsync(string ownerId, Guid appointmentId, UpdateAppointmentStatusDto request);
         Task<EmployeeAvailabilityDto> GetEmployeeAvailabilityAsync(Guid employeeId, DateTime date);
         Task<AppointmentDto> GetReviewableAppointmentAsync(string userId, Guid shopId);
+        Task<List<AppointmentDto>> GetAssignedAppointmentsAsync(string employeeUserId);
+        Task UpdateStatusByEmployeeAsync(string employeeUserId, Guid appointmentId, UpdateAppointmentStatusDto request);
     }
 }

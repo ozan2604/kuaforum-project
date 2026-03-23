@@ -1,6 +1,7 @@
 using KuaforumAPI.Application.Constants;
 using KuaforumAPI.Application.DTOs.Appointment;
 using KuaforumAPI.Application.Interfaces.Services;
+using KuaforumAPI.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -37,12 +38,30 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(result);
         }
 
-        [HttpGet("shop/{shopId}")]
-        [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> GetShopAppointments(Guid shopId)
+        [HttpGet("employee/my-appointments")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> GetAssignedAppointments()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _appointmentService.GetShopAppointmentsAsync(userId, shopId);
+            var result = await _appointmentService.GetAssignedAppointmentsAsync(userId);
+            return Ok(result);
+        }
+
+        [HttpPut("employee/{id}/status")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> UpdateStatusByEmployee(Guid id, [FromBody] UpdateAppointmentStatusDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _appointmentService.UpdateStatusByEmployeeAsync(userId, id, request);
+            return Ok(new { Message = "Appointment status updated." });
+        }
+
+        [HttpGet("shop/{shopId}")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> GetShopAppointments(Guid shopId, [FromQuery] AppointmentStatus? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _appointmentService.GetShopAppointmentsAsync(userId, shopId, status, page, pageSize);
             return Ok(result);
         }
 

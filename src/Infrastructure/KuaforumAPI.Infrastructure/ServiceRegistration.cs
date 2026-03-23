@@ -38,6 +38,8 @@ namespace KuaforumAPI.Infrastructure
             services.AddScoped<IValidator<CreateServiceCategoryDto>, CreateServiceCategoryValidator>();
             services.AddScoped<IValidator<CreateShopServiceDto>, CreateShopServiceValidator>();
 
+            // Background Services
+            services.AddHostedService<Services.Background.AppointmentAutoCompleterService>();
         }
     }
 }

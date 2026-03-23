@@ -56,6 +56,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
                 Category = request.Category,
+                GenderPreference = request.GenderPreference,
                 IsActive = true
             };
 
@@ -81,7 +82,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
                 Category = shop.Category,
+                GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
+                IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
                 CoverImagePath = shop.CoverImagePath,
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
                 AverageRating = shop.AverageRating,
@@ -114,6 +117,7 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.Latitude = request.Latitude;
             shop.Longitude = request.Longitude;
             shop.Category = request.Category;
+            shop.GenderPreference = request.GenderPreference;
             
             await _shopRepository.UpdateAsync(shop);
         }
@@ -140,7 +144,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
                 Category = shop.Category,
+                GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
+                IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
                 CoverImagePath = shop.CoverImagePath,
                 // Images = ... (Skip for list view)
                 AverageRating = shop.AverageRating,
@@ -219,7 +225,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
                 Category = shop.Category,
+                GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
+                IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
                 CoverImagePath = shop.CoverImagePath,
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
                 AverageRating = shop.AverageRating,
@@ -282,6 +290,15 @@ namespace KuaforumAPI.Infrastructure.Services
 
             await _imageService.DeleteImageAsync(image.Url);
             await _shopImageRepository.DeleteAsync(image);
+        }
+
+        public async Task UpdateAutoProcessAsync(string ownerId, Guid shopId, bool isEnabled)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null || shop.Id != shopId) throw new FluentValidation.ValidationException("Shop not found or unauthorized.");
+
+            shop.IsAutoProcessEnabled = isEnabled;
+            await _shopRepository.UpdateAsync(shop);
         }
     }
 }

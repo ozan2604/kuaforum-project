@@ -32,5 +32,7 @@ namespace KuaforumAPI.Persistence.Repositories
                 .Include(e => e.Schedules)
                 .ToListAsync();
         }
+
+
     }
 }
