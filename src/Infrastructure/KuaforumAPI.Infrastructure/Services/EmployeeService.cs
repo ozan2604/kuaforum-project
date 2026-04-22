@@ -60,25 +60,46 @@ namespace KuaforumAPI.Infrastructure.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // 2. Create User
-                var user = new ApplicationUser
-                {
-                    UserName = request.Email,
-                    Email = request.Email,
-                    FirstName = request.FirstName,
-                    LastName = request.LastName,
-                    EmailConfirmed = true // Auto-confirm for simplicity in this flow
-                };
+                // 2. Check if User Exists by Phone
+                var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
+                bool isNewUser = false;
 
-                var result = await _userManager.CreateAsync(user, request.Password);
-                if (!result.Succeeded)
+                if (user == null)
                 {
-                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                    throw new Exception($"User creation failed: {errors}");
+                    isNewUser = true;
+                    // Create New User
+                    user = new ApplicationUser
+                    {
+                        UserName = request.PhoneNumber, // Use phone number as username
+                        Email = $"{request.PhoneNumber}@kuaforum.dummy", // Dummy email
+                        PhoneNumber = request.PhoneNumber,
+                        FirstName = request.FirstName,
+                        LastName = request.LastName,
+                        EmailConfirmed = true,
+                        PhoneNumberConfirmed = true
+                    };
+
+                    // Default password for newly created employees
+                    var result = await _userManager.CreateAsync(user, "Kuaforum123!");
+                    if (!result.Succeeded)
+                    {
+                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                        throw new Exception($"User creation failed: {errors}");
+                    }
                 }
 
-                // 3. Assign Role
-                await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee);
+                // 3. Assign Role if not already
+                if (!await _userManager.IsInRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee))
+                {
+                    await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee);
+                }
+
+                // 4. Ensure not already an employee in this shop
+                var existingEmployee = await _context.ShopEmployees.FirstOrDefaultAsync(se => se.ShopId == shop.Id && se.UserId == user.Id);
+                if (existingEmployee != null)
+                {
+                    throw new Exception("Bu kullanıcı zaten dükkanınızda çalışan olarak ekli.");
+                }
 
                 // 4. Link to Shop
                 var shopEmployee = new ShopEmployee
@@ -119,14 +140,15 @@ namespace KuaforumAPI.Infrastructure.Services
                 LastName = e.User.LastName,
                 Email = e.User.Email,
                 Title = e.Title,
-                IsActive = e.IsActive
+                IsActive = e.IsActive,
+                IsDeleted = e.IsDeleted
             }).ToList();
         }
 
         public async Task<List<EmployeeListDto>> GetEmployeesByShopIdAsync(Guid shopId)
         {
             var employees = await _context.ShopEmployees
-                .Where(se => se.ShopId == shopId && se.IsActive)
+                .Where(se => se.ShopId == shopId && se.IsActive && !se.IsDeleted)
                 .Include(se => se.User)
                 .ToListAsync();
 
@@ -146,6 +168,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 AverageRating = e.AverageRating,
                 ReviewCount = e.ReviewCount,
                 IsActive = e.IsActive,
+                IsDeleted = e.IsDeleted,
                 ServiceIds = services.Where(s => s.ShopEmployeeId == e.Id).Select(s => s.ShopServiceId).ToList()
             }).ToList();
         }
@@ -232,6 +255,53 @@ namespace KuaforumAPI.Infrastructure.Services
                 Duration = s.Duration,
                 IsActive = s.IsActive
             }).ToList();
+        }
+
+        public async Task UpdateEmployeeAsync(string ownerId, Guid shopEmployeeId, UpdateEmployeeOwnerDto request)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+
+            var employee = await _context.ShopEmployees
+                .Include(se => se.User)
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
+
+            if (employee == null)
+            {
+                throw new FluentValidation.ValidationException("Employee not found in your shop.");
+            }
+
+            employee.Title = request.Title;
+            employee.IsActive = request.IsActive;
+
+            var user = employee.User;
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
+
+            var identityResult = await _userManager.UpdateAsync(user);
+            if (!identityResult.Succeeded)
+            {
+                throw new FluentValidation.ValidationException("Failed to update user profile.");
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteEmployeeAsync(string ownerId, Guid shopEmployeeId)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+
+            var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
+            if (employee == null || employee.ShopId != shop.Id)
+            {
+                throw new FluentValidation.ValidationException("Employee not found in your shop.");
+            }
+
+            // Soft delete - completely remove from shop visibility
+            employee.IsActive = false;
+            employee.IsDeleted = true;
+            await _shopEmployeeRepository.UpdateAsync(employee);
         }
 
         public async Task UpdateScheduleAsync(string ownerId, Guid shopEmployeeId, UpdateScheduleDto request)

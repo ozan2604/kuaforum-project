@@ -81,6 +81,73 @@ namespace KuaforumAPI.Infrastructure.Services
             await _serviceRepository.AddAsync(service);
         }
 
+        public async Task UpdateCategoryAsync(string ownerId, Guid categoryId, UpdateServiceCategoryDto request)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("You must have a shop to manage services.");
+
+            var category = await _categoryRepository.GetByIdAsync(categoryId);
+            if (category == null || category.ShopId != shop.Id)
+                throw new FluentValidation.ValidationException("Category not found.");
+
+            category.Name = request.Name;
+            category.Description = request.Description;
+            category.IsActive = request.IsActive;
+
+            await _categoryRepository.UpdateAsync(category);
+        }
+
+        public async Task DeleteCategoryAsync(string ownerId, Guid categoryId)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("You must have a shop to manage services.");
+
+            var category = await _categoryRepository.GetByIdAsync(categoryId);
+
+            if (category == null || category.ShopId != shop.Id)
+                throw new FluentValidation.ValidationException("Category not found.");
+
+            var hasActiveServices = await _context.ShopServices.AnyAsync(s => s.CategoryId == categoryId && !s.IsDeleted);
+            if (hasActiveServices)
+                throw new FluentValidation.ValidationException("Cannot delete category with existing services. Please delete or move services first.");
+
+            category.IsDeleted = true;
+            category.IsActive = false;
+            await _categoryRepository.UpdateAsync(category);
+        }
+
+        public async Task UpdateServiceAsync(string ownerId, Guid serviceId, UpdateShopServiceDto request)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("You must have a shop to manage services.");
+
+            var service = await _serviceRepository.GetByIdAsync(serviceId);
+            if (service == null || service.ShopId != shop.Id)
+                throw new FluentValidation.ValidationException("Service not found.");
+
+            service.Name = request.Name;
+            service.Price = request.Price;
+            service.Duration = request.Duration;
+            service.IsActive = request.IsActive;
+
+            await _serviceRepository.UpdateAsync(service);
+        }
+
+        public async Task DeleteServiceAsync(string ownerId, Guid serviceId)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("You must have a shop to manage services.");
+
+            var service = await _serviceRepository.GetByIdAsync(serviceId);
+            if (service == null || service.ShopId != shop.Id)
+                throw new FluentValidation.ValidationException("Service not found.");
+
+            // Soft delete service
+            service.IsDeleted = true;
+            service.IsActive = false;
+            await _serviceRepository.UpdateAsync(service);
+        }
+
         public async Task<List<ServiceCategoryDto>> GetShopServicesAsync(string userId)
         {
             var shop = await _shopRepository.GetByOwnerIdAsync(userId);
@@ -95,12 +162,12 @@ namespace KuaforumAPI.Infrastructure.Services
                 .ToListAsync();
 
             var services = await _context.ShopServices
-                .Where(s => s.ShopId == shop.Id && s.IsActive)
+                .Where(s => s.ShopId == shop.Id)
                 .ToListAsync();
 
             // Fetch Employee Assignments
             var employeeServices = await _context.ShopEmployeeServices
-                .Where(ses => ses.ShopEmployee.ShopId == shop.Id && ses.ShopEmployee.IsActive)
+                .Where(ses => ses.ShopEmployee.ShopId == shop.Id && !ses.ShopEmployee.IsDeleted)
                 .Include(ses => ses.ShopEmployee)
                 .ThenInclude(se => se.User)
                 .ToListAsync();
@@ -111,6 +178,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 Id = c.Id,
                 Name = c.Name,
                 Description = c.Description,
+                IsActive = c.IsActive,
+                IsDeleted = c.IsDeleted,
                 Services = services
                     .Where(s => s.CategoryId == c.Id)
                     .Select(s => new ShopServiceDto
@@ -120,6 +189,7 @@ namespace KuaforumAPI.Infrastructure.Services
                         Price = s.Price,
                         Duration = s.Duration,
                         IsActive = s.IsActive,
+                        IsDeleted = s.IsDeleted,
                         Employees = employeeServices
                             .Where(es => es.ShopServiceId == s.Id)
                             .Select(es => new ServiceEmployeeDto
@@ -141,16 +211,16 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             // Similar logic but by ShopId directly
              var categories = await _context.ServiceCategories
-                .Where(c => c.ShopId == shopId)
+                .Where(c => c.ShopId == shopId && c.IsActive && !c.IsDeleted)
                 .ToListAsync();
 
             var services = await _context.ShopServices
-                .Where(s => s.ShopId == shopId && s.IsActive)
+                .Where(s => s.ShopId == shopId && s.IsActive && !s.IsDeleted)
                 .ToListAsync();
 
             // Fetch Employee Assignments
             var employeeServices = await _context.ShopEmployeeServices
-                .Where(ses => ses.ShopEmployee.ShopId == shopId && ses.ShopEmployee.IsActive)
+                .Where(ses => ses.ShopEmployee.ShopId == shopId && !ses.ShopEmployee.IsDeleted)
                 .Include(ses => ses.ShopEmployee)
                 .ThenInclude(se => se.User)
                 .ToListAsync();
@@ -161,6 +231,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 Id = c.Id,
                 Name = c.Name,
                 Description = c.Description,
+                IsActive = c.IsActive,
+                IsDeleted = c.IsDeleted,
                 Services = services
                     .Where(s => s.CategoryId == c.Id)
                     .Select(s => new ShopServiceDto
@@ -170,6 +242,7 @@ namespace KuaforumAPI.Infrastructure.Services
                         Price = s.Price,
                         Duration = s.Duration,
                         IsActive = s.IsActive,
+                        IsDeleted = s.IsDeleted,
                         Employees = employeeServices
                             .Where(es => es.ShopServiceId == s.Id)
                             .Select(es => new ServiceEmployeeDto

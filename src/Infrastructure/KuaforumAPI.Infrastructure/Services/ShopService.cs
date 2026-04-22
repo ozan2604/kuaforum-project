@@ -52,6 +52,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 Address = request.Address,
                 City = request.City,
                 District = request.District,
+                Neighborhood = request.Neighborhood,
+                Street = request.Street,
+                BuildingNumber = request.BuildingNumber,
                 PhoneNumber = request.PhoneNumber,
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
@@ -78,6 +81,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 Address = shop.Address,
                 City = shop.City,
                 District = shop.District,
+                Neighborhood = shop.Neighborhood,
+                Street = shop.Street,
+                BuildingNumber = shop.BuildingNumber,
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
@@ -113,6 +119,9 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.Address = request.Address;
             shop.City = request.City;
             shop.District = request.District;
+            shop.Neighborhood = request.Neighborhood;
+            shop.Street = request.Street;
+            shop.BuildingNumber = request.BuildingNumber;
             shop.PhoneNumber = request.PhoneNumber;
             shop.Latitude = request.Latitude;
             shop.Longitude = request.Longitude;
@@ -122,9 +131,9 @@ namespace KuaforumAPI.Infrastructure.Services
             await _shopRepository.UpdateAsync(shop);
         }
 
-        public async Task<IEnumerable<ShopDto>> GetAllShopsAsync()
+        public async Task<IEnumerable<ShopDto>> GetAllShopsAsync(string? city = null, string? district = null, string? neighborhood = null)
         {
-            var shops = await _shopRepository.GetAllWithDetailsAsync();
+            var shops = await _shopRepository.GetAllWithDetailsAsync(city, district, neighborhood);
             // Note: GetAllWithDetailsAsync should ideally include Images, but for now we might lazy load or separate queries.
             // Assuming GetAllWithDetailsAsync includes Owner.
             // If Images are not included in the repository method, we might need to fetch them.
@@ -140,6 +149,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 Address = shop.Address,
                 City = shop.City,
                 District = shop.District,
+                Neighborhood = shop.Neighborhood,
+                Street = shop.Street,
+                BuildingNumber = shop.BuildingNumber,
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
@@ -148,7 +160,6 @@ namespace KuaforumAPI.Infrastructure.Services
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
                 CoverImagePath = shop.CoverImagePath,
-                // Images = ... (Skip for list view)
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
@@ -156,6 +167,30 @@ namespace KuaforumAPI.Infrastructure.Services
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             });
+        }
+
+        public async Task DeleteShopAsync(Guid id)
+        {
+            var shop = await _shopRepository.GetByIdAsync(id);
+            if (shop == null)
+            {
+                throw new NotFoundException("Shop not found.");
+            }
+
+            var imagesToDelete = await _shopRepository.DeleteShopWithDependenciesAsync(id);
+
+            foreach (var imageUrl in imagesToDelete)
+            {
+                try
+                {
+                    await _imageService.DeleteImageAsync(imageUrl);
+                }
+                catch (Exception ex)
+                {
+                    // Log exception but continue deleting other images/shop
+                    Console.WriteLine($"Error deleting image {imageUrl}: {ex.Message}");
+                }
+            }
         }
 
         public async Task<ShopDto> GetShopByIdAsync(Guid id)
@@ -221,6 +256,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 Address = shop.Address,
                 City = shop.City,
                 District = shop.District,
+                Neighborhood = shop.Neighborhood,
+                Street = shop.Street,
+                BuildingNumber = shop.BuildingNumber,
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
@@ -233,7 +271,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 SaturdayClosingTime = saturdayClosingTime,
-                WeeklySchedule = weeklySchedule.OrderBy(s => s.DayOfWeek == 0 ? 7 : s.DayOfWeek).ToList(), // Order Monday (1) to Sunday (0/7)
+                WeeklySchedule = weeklySchedule.OrderBy(s => s.DayOfWeek == 0 ? 7 : s.DayOfWeek).ToList(),
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             };

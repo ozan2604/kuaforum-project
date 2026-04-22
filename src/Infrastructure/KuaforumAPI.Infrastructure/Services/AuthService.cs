@@ -21,19 +21,19 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
-        private readonly IUserAddressRepository _userAddressRepository;
+
         private readonly IDateTimeService _dateTimeService;
 
         public AuthService(UserManager<ApplicationUser> userManager, 
                            SignInManager<ApplicationUser> signInManager,
                            IConfiguration configuration,
-                           IUserAddressRepository userAddressRepository,
+
                            IDateTimeService dateTimeService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
-            _userAddressRepository = userAddressRepository;
+
             _dateTimeService = dateTimeService;
         }
 
@@ -104,12 +104,19 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new Exception("Phone number is already taken.");
             }
 
+            var isSalonOwner = !string.IsNullOrEmpty(request.Role) && request.Role == KuaforumAPI.Application.Constants.Roles.SalonOwner;
+
+            if (isSalonOwner && string.IsNullOrWhiteSpace(request.Email))
+            {
+                throw new Exception("Email is required for Salon Owners.");
+            }
+
             var user = new ApplicationUser
             {
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 Email = request.Email,
-                UserName = request.UserName,
+                UserName = request.PhoneNumber, // Map PhoneNumber as UserName
                 PhoneNumber = request.PhoneNumber
             };
 
@@ -121,8 +128,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new Exception($"Registration failed: {errors}");
             }
 
-            // Assign Default Role
-            await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Customer);
+            // Assign Role
+            var roleToAssign = isSalonOwner ? KuaforumAPI.Application.Constants.Roles.SalonOwner : KuaforumAPI.Application.Constants.Roles.Customer;
+            await _userManager.AddToRoleAsync(user, roleToAssign);
 
             return new AuthResponse
             {
@@ -143,7 +151,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.MobilePhone, user.PhoneNumber ?? "")
@@ -174,8 +182,8 @@ namespace KuaforumAPI.Infrastructure.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) throw new Exception("User not found");
 
-            // Check Uniqueness
-            if (request.Email != user.Email)
+            // Email uniqueness check (only if email is provided and changed)
+            if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
             {
                 var userWithEmail = await _userManager.FindByEmailAsync(request.Email);
                 if (userWithEmail != null && userWithEmail.Id != userId)
@@ -184,24 +192,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
             }
 
-            if (request.UserName != user.UserName)
-            {
-                var userWithUserName = await _userManager.FindByNameAsync(request.UserName);
-                if (userWithUserName != null && userWithUserName.Id != userId)
-                {
-                    throw new Exception("Username is already taken.");
-                }
-            }
-
-            // Phone number uniqueness check - Identity doesn't have FindByPhoneNumberAsync by default
-            // We can scan or trust Identity's validation if configured, but let's check manually if possible.
-            // Since we don't have direct access to users DbContext here easily (userManager abstracts it), 
-            // we rely on UserManager.Users IQueryable if available, or just skip if expensive.
-            // But user explicitly asked for it. 
-            // _userManager.Users is IQueryable.
+            // Phone number uniqueness check
             if (request.PhoneNumber != user.PhoneNumber)
             {
-                 // Assuming _userManager.Users works with EF Core provider
                  var userWithPhone = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber && u.Id != userId);
                  if (userWithPhone != null)
                  {
@@ -212,7 +205,7 @@ namespace KuaforumAPI.Infrastructure.Services
             user.FirstName = request.FirstName;
             user.LastName = request.LastName;
             user.PhoneNumber = request.PhoneNumber;
-            user.UserName = request.UserName;
+            user.UserName = request.PhoneNumber; // UserName always mirrors PhoneNumber
             user.Email = request.Email;
 
             var result = await _userManager.UpdateAsync(user);
@@ -247,68 +240,7 @@ namespace KuaforumAPI.Infrastructure.Services
             }
         }
 
-        public async Task<List<AddressDto>> GetAddressesAsync(string userId)
-        {
-            var addresses = await _userAddressRepository.GetByUserIdAsync(userId);
-            return addresses.Select(a => new AddressDto
-            {
-                Id = a.Id.ToString(), // GenericRepository uses Guid Id from BaseEntity
-                Title = a.Title,
-                City = a.City,
-                District = a.District,
-                OpenAddress = a.OpenAddress,
-                Latitude = a.Latitude,
-                Longitude = a.Longitude,
-                IsDefault = a.IsDefault
-            }).ToList();
-        }
 
-        public async Task<AddressDto> AddAddressAsync(string userId, CreateAddressDto request)
-        {
-            var address = new UserAddress
-            {
-                UserId = userId,
-                Title = request.Title,
-                City = request.City,
-                District = request.District,
-                OpenAddress = request.OpenAddress,
-                Latitude = request.Latitude,
-                Longitude = request.Longitude,
-                IsDefault = false // Default handling logic can be added later
-            };
-
-            await _userAddressRepository.AddAsync(address);
-
-            return new AddressDto
-            {
-                Id = address.Id.ToString(),
-                Title = address.Title,
-                City = address.City,
-                District = address.District,
-                OpenAddress = address.OpenAddress,
-                Latitude = address.Latitude,
-                Longitude = address.Longitude,
-                IsDefault = address.IsDefault
-            };
-        }
-
-        public async Task DeleteAddressAsync(string userId, string addressId)
-        {
-            if (!Guid.TryParse(addressId, out var guidAddressId))
-            {
-                 throw new Exception("Invalid address ID format.");
-            }
-
-            var address = await _userAddressRepository.GetByIdAsync(guidAddressId);
-            if (address == null) throw new Exception("Address not found");
-
-            if (address.UserId != userId)
-            {
-                throw new UnauthorizedAccessException("You can only delete your own addresses.");
-            }
-
-            await _userAddressRepository.DeleteAsync(address);
-        }
 
         public async Task DeleteAccountAsync(string userId)
         {

@@ -10,12 +10,8 @@ namespace KuaforumAPI.Application.DTOs.Auth
         [Required]
         public string LastName { get; set; } = string.Empty;
 
-        [Required]
         [EmailAddress]
-        public string Email { get; set; } = string.Empty;
-
-        [Required]
-        public string UserName { get; set; } = string.Empty;
+        public string? Email { get; set; }
 
         [Required]
         [Phone]
@@ -23,5 +19,7 @@ namespace KuaforumAPI.Application.DTOs.Auth
 
         [Required]
         public string Password { get; set; } = string.Empty;
+        
+        public string? Role { get; set; }
     }
 }

@@ -13,6 +13,9 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task AssignServicesAsync(string ownerId, Guid shopEmployeeId, List<Guid> serviceIds);
         Task<List<ShopServiceDto>> GetEmployeeServicesAsync(string ownerId, Guid shopEmployeeId);
         
+        Task UpdateEmployeeAsync(string ownerId, Guid shopEmployeeId, UpdateEmployeeOwnerDto request);
+        Task DeleteEmployeeAsync(string ownerId, Guid shopEmployeeId);
+        
         Task UpdateScheduleAsync(string ownerId, Guid shopEmployeeId, UpdateScheduleDto request);
         Task<List<ScheduleDto>> GetScheduleAsync(string ownerId, Guid shopEmployeeId);
 

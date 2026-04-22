@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace KuaforumAPI.WebAPI.Controllers
 {
@@ -47,17 +49,74 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
         [HttpGet("admin/all")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.Admin)]
-        public async Task<IActionResult> GetAllShops()
+        public async Task<IActionResult> GetAllShops(
+            [FromServices] KuaforumAPI.Persistence.Contexts.ApplicationDbContext context, 
+            [FromQuery] string search = "", 
+            [FromQuery] int page = 1, 
+            [FromQuery] int pageSize = 10)
         {
-            var shops = await _shopService.GetAllShopsAsync();
-            return Ok(shops);
+            var query = context.Shops.Include(s => s.Owner).AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+                query = query.Where(s => 
+                    s.Name.ToLower().Contains(lowerSearch) || 
+                    (s.Owner != null && (s.Owner.FirstName.ToLower().Contains(lowerSearch) || s.Owner.LastName.ToLower().Contains(lowerSearch) || s.Owner.Email.ToLower().Contains(lowerSearch))) ||
+                    (s.City != null && s.City.ToLower().Contains(lowerSearch)) ||
+                    (s.PhoneNumber != null && s.PhoneNumber.Contains(search))
+                );
+            }
+
+            var totalCount = await EntityFrameworkQueryableExtensions.CountAsync(query);
+
+            var pagedShops = await EntityFrameworkQueryableExtensions.ToListAsync(
+                query
+                .OrderByDescending(s => s.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+            );
+
+            var shops = pagedShops.Select(shop => new KuaforumAPI.Application.DTOs.Shop.ShopDto
+            {
+                Id = shop.Id,
+                Name = shop.Name,
+                Description = shop.Description,
+                Address = shop.Address,
+                City = shop.City,
+                District = shop.District,
+                PhoneNumber = shop.PhoneNumber,
+                Latitude = shop.Latitude,
+                Longitude = shop.Longitude,
+                Category = shop.Category,
+                GenderPreference = shop.GenderPreference,
+                IsActive = shop.IsActive,
+                IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                CoverImagePath = shop.CoverImagePath,
+                AverageRating = shop.AverageRating,
+                ReviewCount = shop.ReviewCount,
+                OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
+                OwnerEmail = shop.Owner != null ? shop.Owner.Email : null,
+                CreatedAt = shop.CreatedAt,
+                UpdatedAt = shop.UpdatedAt
+            }).ToList();
+
+            return Ok(new { TotalCount = totalCount, Shops = shops });
+        }
+
+        [HttpDelete("admin/{id}")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.Admin)]
+        public async Task<IActionResult> DeleteShopByAdmin(Guid id)
+        {
+            await _shopService.DeleteShopAsync(id);
+            return Ok(new { Message = "Shop deleted successfully." });
         }
 
         [HttpGet("public/all")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPublicShops()
+        public async Task<IActionResult> GetPublicShops([FromQuery] string? city = null, [FromQuery] string? district = null, [FromQuery] string? neighborhood = null)
         {
-            var shops = await _shopService.GetAllShopsAsync();
+            var shops = await _shopService.GetAllShopsAsync(city, district, neighborhood);
             // Filter only active shops for public view if needed, but for now return all
             // Ideally should filter in service, but this is fine for MVP
             return Ok(shops);

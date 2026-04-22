@@ -66,6 +66,25 @@ namespace KuaforumAPI.Infrastructure.Services
             }).ToList();
         }
 
+        public async Task<List<SalonApplicationListDto>> GetRejectedApplicationsAsync()
+        {
+            var applications = await _repository.GetRejectedApplicationsWithUserAsync();
+
+            return applications.Select(a => new SalonApplicationListDto
+            {
+                Id = a.Id,
+                UserId = a.UserId,
+                UserName = a.User.UserName,
+                ShopName = a.ShopName,
+                Description = a.Description,
+                ContactEmail = a.ContactEmail,
+                Category = a.Category,
+                GenderPreference = a.GenderPreference,
+                Status = a.Status,
+                CreatedAt = a.CreatedAt
+            }).ToList();
+        }
+
         public async Task<SalonOwnerApplication> GetApplicationByUserIdAsync(string userId)
         {
             var applications = await _repository.GetByUserIdAsync(userId);
@@ -105,6 +124,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 ContactEmail = application.ContactEmail,
                 Category = application.Category,
                 GenderPreference = application.GenderPreference,
+                CoverImagePath = string.Empty,  // Placeholder; owner can upload later from their panel
                 CreatedAt = _dateTimeService.Now,
                 UpdatedAt = _dateTimeService.Now
             };

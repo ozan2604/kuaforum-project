@@ -26,6 +26,14 @@ namespace KuaforumAPI.Persistence.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<SalonOwnerApplication>> GetRejectedApplicationsWithUserAsync()
+        {
+            return await _context.SalonOwnerApplications
+                .Include(a => a.User)
+                .Where(a => a.Status == ApplicationStatus.Rejected)
+                .ToListAsync();
+        }
+
         public async Task<List<SalonOwnerApplication>> GetByUserIdAsync(string userId)
         {
             return await _context.SalonOwnerApplications

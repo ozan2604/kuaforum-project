@@ -15,13 +15,9 @@ namespace KuaforumAPI.Application.Validators
                 .NotEmpty().WithMessage("Last name is required.")
                 .MaximumLength(50).WithMessage("Last name must not exceed 50 characters.");
 
-            RuleFor(x => x.Email)
-                .NotEmpty().WithMessage("Email is required.")
-                .EmailAddress().WithMessage("A valid email is required.");
-
-            RuleFor(x => x.Password)
-                .NotEmpty().WithMessage("Password is required.")
-                .MinimumLength(6).WithMessage("Password must be at least 6 characters.");
+            RuleFor(x => x.PhoneNumber)
+                .NotEmpty().WithMessage("Telefon numarası zorunludur.")
+                .Matches(@"^05\d{9}$").WithMessage("Telefon numarası 05XXXXXXXXX formatında olmalıdır.");
 
             RuleFor(x => x.Title)
                 .NotEmpty().WithMessage("Title is required.")

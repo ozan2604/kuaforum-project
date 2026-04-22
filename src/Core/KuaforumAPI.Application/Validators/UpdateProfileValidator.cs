@@ -9,10 +9,9 @@ namespace KuaforumAPI.Application.Validators
         {
             RuleFor(x => x.FirstName).NotEmpty().MaximumLength(50);
             RuleFor(x => x.LastName).NotEmpty().MaximumLength(50);
-            RuleFor(x => x.UserName).NotEmpty().MaximumLength(50);
-            RuleFor(x => x.Email).NotEmpty().EmailAddress();
-            RuleFor(x => x.PhoneNumber).NotEmpty().Matches(@"^\+90\s[0-9]{3}\s[0-9]{3}\s[0-9]{2}\s[0-9]{2}$")
-                .WithMessage("Phone number must follow +90 5XX XXX XX XX format.");
+            RuleFor(x => x.Email).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));
+            RuleFor(x => x.PhoneNumber).NotEmpty().Matches(@"^0[0-9]{10}$")
+                .WithMessage("Telefon numarası 05XXXXXXXXX formatında olmalıdır.");
         }
     }
 }

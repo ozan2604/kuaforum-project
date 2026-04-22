@@ -36,6 +36,42 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Service created successfully." });
         }
 
+        [HttpPut("categories/{id}")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] UpdateServiceCategoryDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _serviceManagementService.UpdateCategoryAsync(userId, id, request);
+            return Ok(new { Message = "Category updated successfully." });
+        }
+
+        [HttpDelete("categories/{id}")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> DeleteCategory(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _serviceManagementService.DeleteCategoryAsync(userId, id);
+            return Ok(new { Message = "Category deleted successfully." });
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> UpdateService(Guid id, [FromBody] UpdateShopServiceDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _serviceManagementService.UpdateServiceAsync(userId, id, request);
+            return Ok(new { Message = "Service updated successfully." });
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> DeleteService(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _serviceManagementService.DeleteServiceAsync(userId, id);
+            return Ok(new { Message = "Service deleted successfully." });
+        }
+
         [HttpGet("my-shop")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
         public async Task<IActionResult> GetMyShopServices()

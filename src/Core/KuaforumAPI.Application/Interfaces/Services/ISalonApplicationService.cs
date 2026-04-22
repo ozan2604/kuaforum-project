@@ -10,6 +10,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
     {
         Task ApplyAsync(string userId, CreateSalonApplicationDto request);
         Task<List<SalonApplicationListDto>> GetPendingApplicationsAsync();
+        Task<List<SalonApplicationListDto>> GetRejectedApplicationsAsync();
         Task<SalonOwnerApplication> GetApplicationByUserIdAsync(string userId);
         Task ApproveApplicationAsync(Guid applicationId);
         Task RejectApplicationAsync(Guid applicationId);

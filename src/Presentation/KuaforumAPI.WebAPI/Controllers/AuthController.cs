@@ -59,32 +59,7 @@ namespace KuaforumAPI.WebAPI.Controllers
             return NoContent();
         }
 
-        [Authorize]
-        [HttpGet("addresses")]
-        public async Task<ActionResult<IEnumerable<AddressDto>>> GetAddresses()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var addresses = await _authService.GetAddressesAsync(userId);
-            return Ok(addresses);
-        }
 
-        [Authorize]
-        [HttpPost("addresses")]
-        public async Task<ActionResult<AddressDto>> AddAddress(CreateAddressDto request)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var address = await _authService.AddAddressAsync(userId, request);
-            return CreatedAtAction(nameof(GetAddresses), new { }, address);
-        }
-
-        [Authorize]
-        [HttpDelete("addresses/{id}")]
-        public async Task<IActionResult> DeleteAddress(string id)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _authService.DeleteAddressAsync(userId, id);
-            return NoContent();
-        }
 
 
     }

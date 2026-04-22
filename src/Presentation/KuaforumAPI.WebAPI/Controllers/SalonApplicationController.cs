@@ -46,6 +46,14 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(applications);
         }
 
+        [HttpGet("rejected")]
+        [Authorize(Roles = Roles.Admin)]
+        public async Task<IActionResult> GetRejectedApplications()
+        {
+            var applications = await _salonApplicationService.GetRejectedApplicationsAsync();
+            return Ok(applications);
+        }
+
         [HttpPut("{id}/approve")]
         [Authorize(Roles = Roles.Admin)]
         public async Task<IActionResult> ApproveApplication(Guid id)

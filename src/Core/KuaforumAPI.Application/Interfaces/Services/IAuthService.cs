@@ -12,9 +12,6 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task ChangePasswordAsync(string userId, ChangePasswordDto request);
         Task DeleteAccountAsync(string userId);
         
-        // Address Management
-        Task<List<AddressDto>> GetAddressesAsync(string userId);
-        Task<AddressDto> AddAddressAsync(string userId, CreateAddressDto request);
-        Task DeleteAddressAsync(string userId, string addressId);
+
     }
 }

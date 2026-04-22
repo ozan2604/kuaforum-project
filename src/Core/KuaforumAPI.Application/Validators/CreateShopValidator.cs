@@ -23,8 +23,8 @@ namespace KuaforumAPI.Application.Validators
                 .MaximumLength(50).WithMessage("District must not exceed 50 characters.");
 
             RuleFor(x => x.PhoneNumber)
-                .NotEmpty().WithMessage("Phone number is required.")
-                .MaximumLength(20).WithMessage("Phone number must not exceed 20 characters.");
+                .NotEmpty().WithMessage("Telefon numarası zorunludur.")
+                .Matches(@"^05\d{9}$").WithMessage("Telefon numarası 05XXXXXXXXX formatında olmalıdır. (Örn: 05321234567)");
         }
     }
 }

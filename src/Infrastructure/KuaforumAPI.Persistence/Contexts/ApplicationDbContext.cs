@@ -178,19 +178,7 @@ namespace KuaforumAPI.Persistence.Contexts
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // UserAddress Configuration
-            builder.Entity<UserAddress>(entity =>
-            {
-                entity.Property(e => e.Title).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.City).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.District).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.OpenAddress).IsRequired().HasMaxLength(200);
 
-                entity.HasOne(ua => ua.User)
-                    .WithMany(u => u.Addresses)
-                    .HasForeignKey(ua => ua.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
 
 
             // UserFavoriteShop Configuration

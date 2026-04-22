@@ -45,6 +45,24 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> UpdateEmployee(Guid id, [FromBody] UpdateEmployeeOwnerDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.UpdateEmployeeAsync(userId, id, request);
+            return Ok(new { Message = "Employee updated successfully." });
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> DeleteEmployee(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.DeleteEmployeeAsync(userId, id);
+            return Ok(new { Message = "Employee deleted successfully." });
+        }
+
         [HttpGet("{id}/services")]
         [Authorize(Roles = Roles.SalonOwner)]
         public async Task<IActionResult> GetServices(Guid id)

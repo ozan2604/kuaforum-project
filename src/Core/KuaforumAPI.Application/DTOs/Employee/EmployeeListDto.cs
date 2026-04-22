@@ -13,6 +13,7 @@ namespace KuaforumAPI.Application.DTOs.Employee
         public double AverageRating { get; set; }
         public int ReviewCount { get; set; }
         public bool IsActive { get; set; }
+        public bool IsDeleted { get; set; }
         public List<Guid> ServiceIds { get; set; } = new List<Guid>();
     }
 }

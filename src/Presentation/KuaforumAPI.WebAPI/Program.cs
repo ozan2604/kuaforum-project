@@ -31,7 +31,7 @@ builder.Services.AddPersistenceServices(builder.Configuration);
 // Identity & JWT
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
-        options.User.RequireUniqueEmail = true;
+        options.User.RequireUniqueEmail = false;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();

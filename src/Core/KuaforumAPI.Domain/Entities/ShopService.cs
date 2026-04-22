@@ -16,5 +16,6 @@ namespace KuaforumAPI.Domain.Entities
         public decimal Price { get; set; }
         public int Duration { get; set; } = 15; // In minutes, default 15
         public bool IsActive { get; set; } = true;
+        public bool IsDeleted { get; set; } = false;
     }
 }
