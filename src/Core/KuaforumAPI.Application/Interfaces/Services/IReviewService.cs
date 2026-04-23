@@ -12,5 +12,6 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<IEnumerable<Review>> GetShopReviewsAsync(Guid shopId, string? currentUserId = null);
         Task<Review> UpdateReviewAsync(UpdateReviewDto updateReviewDto, string userId);
         Task DeleteReviewAsync(Guid reviewId, string userId);
+        Task<IEnumerable<Review>> GetMyReviewsAsync(string userId);
     }
 }

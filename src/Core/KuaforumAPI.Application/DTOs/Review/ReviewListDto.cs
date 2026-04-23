@@ -13,6 +13,9 @@ namespace KuaforumAPI.Application.DTOs.Review
         public Guid ShopId { get; set; }
         public Guid ShopEmployeeId { get; set; }
         public string EmployeeName { get; set; } // ShopEmployee.User.FirstName + LastName OR Title
+        public string ShopName { get; set; }
+        public string ServiceName { get; set; }
+        public DateTime AppointmentDate { get; set; }
         public int Rating { get; set; }
         public string? Comment { get; set; }
         public DateTime CreatedAt { get; set; }

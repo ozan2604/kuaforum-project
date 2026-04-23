@@ -11,7 +11,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<AuthResponse> UpdateProfileAsync(string userId, UpdateProfileDto request);
         Task ChangePasswordAsync(string userId, ChangePasswordDto request);
         Task DeleteAccountAsync(string userId);
-        
+        Task<string> UpdateProfileImageAsync(string userId, Microsoft.AspNetCore.Http.IFormFile image);
+        Task DeleteProfileImageAsync(string userId);
 
     }
 }

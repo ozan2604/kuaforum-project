@@ -42,13 +42,13 @@ namespace KuaforumAPI.WebAPI.Controllers
                     Id = review.Id,
                     AppointmentId = review.AppointmentId,
                     UserId = review.UserId,
-                    UserName = User.Identity.Name, // Or fetch from claim if available, or review.User?.FirstName... logic
-                    // User might be null in review entity if not included. 
-                    // But we know the user who posted it.
+                    UserName = User.Identity.Name, 
                     ShopId = review.ShopId,
+                    ShopName = review.Shop?.Name ?? "Unknown Shop",
                     ShopEmployeeId = review.ShopEmployeeId,
-                    // EmployeeName might be missing if not included.
-                    // Let's keep it simple or allow nulls.
+                    EmployeeName = review.ShopEmployee?.User != null ? $"{review.ShopEmployee.User.FirstName} {review.ShopEmployee.User.LastName}" : "Unknown Employee",
+                    ServiceName = review.Appointment?.ShopService?.Name ?? "Unknown Service",
+                    AppointmentDate = review.Appointment?.StartTime ?? review.CreatedAt,
                     Rating = review.Rating,
                     Comment = review.Comment,
                     CreatedAt = review.CreatedAt,
@@ -82,6 +82,9 @@ namespace KuaforumAPI.WebAPI.Controllers
                 EmployeeName = r.ShopEmployee != null && r.ShopEmployee.User != null 
                     ? $"{r.ShopEmployee.User.FirstName} {r.ShopEmployee.User.LastName}" 
                     : "Unknown Employee", 
+                ShopName = r.Shop?.Name ?? "Unknown Shop",
+                ServiceName = r.Appointment?.ShopService?.Name ?? "Unknown Service",
+                AppointmentDate = r.Appointment?.StartTime ?? r.CreatedAt,
                 Rating = r.Rating,
                 Comment = r.Comment,
                 CreatedAt = r.CreatedAt,
@@ -114,7 +117,11 @@ namespace KuaforumAPI.WebAPI.Controllers
                     UserId = updatedReview.UserId,
                     UserName = User.Identity.Name, // Or null if not critical
                     ShopId = updatedReview.ShopId,
+                    ShopName = updatedReview.Shop?.Name ?? "Unknown Shop",
                     ShopEmployeeId = updatedReview.ShopEmployeeId,
+                    EmployeeName = updatedReview.ShopEmployee?.User != null ? $"{updatedReview.ShopEmployee.User.FirstName} {updatedReview.ShopEmployee.User.LastName}" : "Unknown Employee",
+                    ServiceName = updatedReview.Appointment?.ShopService?.Name ?? "Unknown Service",
+                    AppointmentDate = updatedReview.Appointment?.StartTime ?? updatedReview.CreatedAt,
                     Rating = updatedReview.Rating,
                     Comment = updatedReview.Comment,
                     CreatedAt = updatedReview.CreatedAt,
@@ -142,6 +149,43 @@ namespace KuaforumAPI.WebAPI.Controllers
 
                 await _reviewService.DeleteReviewAsync(id, userId);
                 return Ok(new { message = "Review deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("my-reviews")]
+        [Authorize]
+        public async Task<IActionResult> GetMyReviews()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var reviews = await _reviewService.GetMyReviewsAsync(userId);
+                
+                var dtos = reviews.Select(r => new ReviewListDto
+                {
+                    Id = r.Id,
+                    AppointmentId = r.AppointmentId,
+                    UserId = r.UserId,
+                    UserName = r.User != null ? $"{r.User.FirstName} {r.User.LastName}" : "Me",
+                    ShopId = r.ShopId,
+                    ShopName = r.Shop?.Name ?? "Unknown Shop",
+                    ShopEmployeeId = r.ShopEmployeeId,
+                    EmployeeName = r.ShopEmployee != null && r.ShopEmployee.User != null 
+                        ? $"{r.ShopEmployee.User.FirstName} {r.ShopEmployee.User.LastName}" 
+                        : "Unknown Employee",
+                    ServiceName = r.Appointment?.ShopService?.Name ?? "Unknown Service",
+                    AppointmentDate = r.Appointment?.StartTime ?? r.CreatedAt,
+                    Rating = r.Rating,
+                    Comment = r.Comment,
+                    CreatedAt = r.CreatedAt,
+                    ImageUrls = r.Images?.Select(i => i.Url).ToList() ?? new List<string>()
+                });
+
+                return Ok(dtos);
             }
             catch (Exception ex)
             {

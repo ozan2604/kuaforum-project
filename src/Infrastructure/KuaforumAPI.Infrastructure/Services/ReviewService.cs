@@ -95,7 +95,15 @@ namespace KuaforumAPI.Infrastructure.Services
             // 5. Update Shop Rating
             await UpdateShopRating(appointment.ShopId);
 
-            return review;
+            // Re-fetch to get all navigation properties for the DTO mapping in controller
+            return await _context.Reviews
+                .Include(r => r.Images)
+                .Include(r => r.Shop)
+                .Include(r => r.ShopEmployee)
+                .ThenInclude(se => se.User)
+                .Include(r => r.Appointment)
+                .ThenInclude(a => a.ShopService)
+                .FirstOrDefaultAsync(r => r.Id == review.Id);
         }
 
         public async Task<IEnumerable<Review>> GetShopReviewsAsync(Guid shopId, string? currentUserId = null)
@@ -211,7 +219,15 @@ namespace KuaforumAPI.Infrastructure.Services
             await UpdateEmployeeRating(review.ShopEmployeeId);
             await UpdateShopRating(review.ShopId);
 
-            return review;
+            // Re-fetch to get all navigation properties for the DTO mapping in controller
+            return await _context.Reviews
+                .Include(r => r.Images)
+                .Include(r => r.Shop)
+                .Include(r => r.ShopEmployee)
+                .ThenInclude(se => se.User)
+                .Include(r => r.Appointment)
+                .ThenInclude(a => a.ShopService)
+                .FirstOrDefaultAsync(r => r.Id == review.Id);
         }
 
         public async Task DeleteReviewAsync(Guid reviewId, string userId)
@@ -239,6 +255,20 @@ namespace KuaforumAPI.Infrastructure.Services
             // Recalculate Ratings
             await UpdateEmployeeRating(review.ShopEmployeeId);
             await UpdateShopRating(review.ShopId);
+        }
+
+        public async Task<IEnumerable<Review>> GetMyReviewsAsync(string userId)
+        {
+            return await _context.Reviews
+                .Include(r => r.Images)
+                .Include(r => r.Shop)
+                .Include(r => r.ShopEmployee)
+                .ThenInclude(se => se.User)
+                .Include(r => r.Appointment)
+                .ThenInclude(a => a.ShopService)
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
         }
 
         private async Task UpdateEmployeeRating(Guid employeeId)

@@ -23,18 +23,19 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IConfiguration _configuration;
 
         private readonly IDateTimeService _dateTimeService;
+        private readonly IImageService _imageService;
 
         public AuthService(UserManager<ApplicationUser> userManager, 
                            SignInManager<ApplicationUser> signInManager,
                            IConfiguration configuration,
-
-                           IDateTimeService dateTimeService)
+                           IDateTimeService dateTimeService,
+                           IImageService imageService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
-
             _dateTimeService = dateTimeService;
+            _imageService = imageService;
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -91,6 +92,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 PhoneNumber = user.PhoneNumber, // Map PhoneNumber
+                ProfileImageUrl = user.ProfileImageUrl,
                 Token = await GenerateJwtToken(user)
             };
         }
@@ -140,6 +142,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 PhoneNumber = user.PhoneNumber,
+                ProfileImageUrl = user.ProfileImageUrl,
                 Token = await GenerateJwtToken(user)
             };
         }
@@ -223,6 +226,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 PhoneNumber = user.PhoneNumber,
+                ProfileImageUrl = user.ProfileImageUrl,
                 Token = await GenerateJwtToken(user)
             };
         }
@@ -247,11 +251,50 @@ namespace KuaforumAPI.Infrastructure.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) throw new Exception("User not found");
 
+            // Delete profile image if exists
+            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+            {
+                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
+            }
+
             var result = await _userManager.DeleteAsync(user);
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 throw new Exception($"Account deletion failed: {errors}");
+            }
+        }
+
+        public async Task<string> UpdateProfileImageAsync(string userId, Microsoft.AspNetCore.Http.IFormFile image)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) throw new Exception("User not found");
+
+            // Delete old image if exists
+            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+            {
+                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
+            }
+
+            var imageUrl = await _imageService.UploadImageAsync(image, "profile_images");
+            user.ProfileImageUrl = imageUrl;
+            
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded) throw new Exception("Failed to update profile image");
+
+            return imageUrl;
+        }
+
+        public async Task DeleteProfileImageAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) throw new Exception("User not found");
+
+            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+            {
+                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
+                user.ProfileImageUrl = null;
+                await _userManager.UpdateAsync(user);
             }
         }
     }

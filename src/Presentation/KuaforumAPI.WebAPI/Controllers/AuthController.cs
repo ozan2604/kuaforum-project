@@ -59,8 +59,23 @@ namespace KuaforumAPI.WebAPI.Controllers
             return NoContent();
         }
 
+        [Authorize]
+        [HttpPut("profile-image")]
+        public async Task<IActionResult> UpdateProfileImage(IFormFile image)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var imageUrl = await _authService.UpdateProfileImageAsync(userId, image);
+            return Ok(new { imageUrl });
+        }
 
-
+        [Authorize]
+        [HttpDelete("profile-image")]
+        public async Task<IActionResult> DeleteProfileImage()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _authService.DeleteProfileImageAsync(userId);
+            return NoContent();
+        }
 
     }
 }
