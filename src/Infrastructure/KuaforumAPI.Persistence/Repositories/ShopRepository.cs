@@ -19,21 +19,43 @@ namespace KuaforumAPI.Persistence.Repositories
 
         public async Task<Shop> GetByOwnerIdAsync(string ownerId)
         {
-            return await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
+            return await _context.Shops
+                .Include(s => s.Categories)
+                .FirstOrDefaultAsync(s => s.OwnerId == ownerId);
+        }
+
+        public override async Task<Shop> GetByIdAsync(Guid id)
+        {
+            return await _context.Shops
+                .Include(s => s.Categories)
+                .FirstOrDefaultAsync(s => s.Id == id);
+        }
+
+        public async Task UpdateShopCategoriesAsync(Guid shopId, List<int> categoryValues)
+        {
+            var existing = await _context.ShopCategoryAssignments
+                .Where(c => c.ShopId == shopId)
+                .ToListAsync();
+            _context.ShopCategoryAssignments.RemoveRange(existing);
+
+            foreach (var val in categoryValues)
+                _context.ShopCategoryAssignments.Add(new ShopCategoryAssignment { ShopId = shopId, CategoryValue = val });
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<Shop>> GetAllWithDetailsAsync(string? city = null, string? district = null, string? neighborhood = null)
         {
-            var query = _context.Shops.Include(s => s.Owner).AsQueryable();
+            var query = _context.Shops.Include(s => s.Owner).Include(s => s.Categories).AsQueryable();
 
             if (!string.IsNullOrEmpty(city))
-                query = query.Where(s => s.City == city);
+                query = query.Where(s => s.City.ToLower() == city.ToLower());
             
             if (!string.IsNullOrEmpty(district))
-                query = query.Where(s => s.District == district);
+                query = query.Where(s => s.District.ToLower() == district.ToLower());
 
             if (!string.IsNullOrEmpty(neighborhood))
-                query = query.Where(s => s.Neighborhood == neighborhood);
+                query = query.Where(s => s.Neighborhood.ToLower() == neighborhood.ToLower());
 
             return await query.ToListAsync();
         }

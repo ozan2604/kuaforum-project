@@ -55,7 +55,7 @@ namespace KuaforumAPI.WebAPI.Controllers
             [FromQuery] int page = 1, 
             [FromQuery] int pageSize = 10)
         {
-            var query = context.Shops.Include(s => s.Owner).AsQueryable();
+            var query = context.Shops.Include(s => s.Owner).Include(s => s.Categories).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -88,7 +88,7 @@ namespace KuaforumAPI.WebAPI.Controllers
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
-                Category = shop.Category,
+                Categories = shop.Categories.Select(c => c.CategoryValue).ToList(),
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,

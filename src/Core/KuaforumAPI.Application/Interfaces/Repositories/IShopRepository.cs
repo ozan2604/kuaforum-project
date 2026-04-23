@@ -1,4 +1,5 @@
 using KuaforumAPI.Domain.Entities;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace KuaforumAPI.Application.Interfaces.Repositories
@@ -8,5 +9,6 @@ namespace KuaforumAPI.Application.Interfaces.Repositories
         Task<Shop> GetByOwnerIdAsync(string ownerId);
         Task<IEnumerable<Shop>> GetAllWithDetailsAsync(string? city = null, string? district = null, string? neighborhood = null);
         Task<List<string>> DeleteShopWithDependenciesAsync(Guid shopId);
+        Task UpdateShopCategoriesAsync(Guid shopId, List<int> categoryValues);
     }
 }

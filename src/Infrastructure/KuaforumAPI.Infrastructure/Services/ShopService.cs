@@ -5,6 +5,7 @@ using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using Microsoft.AspNetCore.Http;
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -58,7 +59,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = request.PhoneNumber,
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
-                Category = request.Category,
+                Categories = request.CategoryIds.Select(id => new ShopCategoryAssignment { CategoryValue = id }).ToList(),
                 GenderPreference = request.GenderPreference,
                 IsActive = true
             };
@@ -87,7 +88,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
-                Category = shop.Category,
+                Categories = shop.Categories.Select(c => c.CategoryValue).ToList(),
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
@@ -125,10 +126,10 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.PhoneNumber = request.PhoneNumber;
             shop.Latitude = request.Latitude;
             shop.Longitude = request.Longitude;
-            shop.Category = request.Category;
             shop.GenderPreference = request.GenderPreference;
-            
+
             await _shopRepository.UpdateAsync(shop);
+            await _shopRepository.UpdateShopCategoriesAsync(shop.Id, request.CategoryIds);
         }
 
         public async Task<IEnumerable<ShopDto>> GetAllShopsAsync(string? city = null, string? district = null, string? neighborhood = null)
@@ -155,7 +156,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
-                Category = shop.Category,
+                Categories = shop.Categories.Select(c => c.CategoryValue).ToList(),
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
@@ -262,7 +263,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumber = shop.PhoneNumber,
                 Latitude = shop.Latitude,
                 Longitude = shop.Longitude,
-                Category = shop.Category,
+                Categories = shop.Categories.Select(c => c.CategoryValue).ToList(),
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,

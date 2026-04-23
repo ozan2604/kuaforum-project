@@ -18,6 +18,8 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<ReviewImage> ReviewImages { get; set; }
+        public DbSet<ShopCategoryAssignment> ShopCategoryAssignments { get; set; }
+        public DbSet<SalonApplicationCategoryItem> SalonApplicationCategoryItems { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
@@ -217,6 +219,26 @@ namespace KuaforumAPI.Persistence.Contexts
                     .WithMany()
                     .HasForeignKey(r => r.ShopEmployeeId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ShopCategoryAssignment Configuration
+            builder.Entity<ShopCategoryAssignment>(entity =>
+            {
+                entity.HasKey(x => new { x.ShopId, x.CategoryValue });
+                entity.HasOne(x => x.Shop)
+                    .WithMany(s => s.Categories)
+                    .HasForeignKey(x => x.ShopId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // SalonApplicationCategoryItem Configuration
+            builder.Entity<SalonApplicationCategoryItem>(entity =>
+            {
+                entity.HasKey(x => new { x.ApplicationId, x.CategoryValue });
+                entity.HasOne(x => x.Application)
+                    .WithMany(a => a.Categories)
+                    .HasForeignKey(x => x.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ReviewImage Configuration

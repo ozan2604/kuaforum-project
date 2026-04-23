@@ -1,4 +1,3 @@
-
 using KuaforumAPI.Domain.Enums;
 
 namespace KuaforumAPI.Application.DTOs.Shop
@@ -17,7 +16,7 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public string PhoneNumber { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
-        public ShopCategory Category { get; set; }
+        public List<int> Categories { get; set; } = new List<int>();
         public TargetGender GenderPreference { get; set; }
         
         public string SaturdayClosingTime { get; set; }

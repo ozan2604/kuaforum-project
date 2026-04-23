@@ -4,7 +4,7 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
-using KuaforumAPI.Application.Interfaces.Services;
+using System.Linq;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -38,10 +38,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 BuildingNumber = request.BuildingNumber,
                 PhoneNumber = request.PhoneNumber,
                 ContactEmail = request.ContactEmail,
-                Category = (ShopCategory)request.CategoryId,
+                Categories = request.CategoryIds.Select(id => new SalonApplicationCategoryItem { CategoryValue = id }).ToList(),
                 GenderPreference = request.GenderPreference,
                 Status = ApplicationStatus.Pending,
-                CreatedAt = _dateTimeService.Now // Ensure creation time
+                CreatedAt = _dateTimeService.Now
             };
 
             await _repository.AddAsync(application);
@@ -59,7 +59,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 ShopName = a.ShopName,
                 Description = a.Description,
                 ContactEmail = a.ContactEmail,
-                Category = a.Category,
+                Categories = a.Categories.Select(c => c.CategoryValue).ToList(),
                 GenderPreference = a.GenderPreference,
                 Status = a.Status,
                 CreatedAt = a.CreatedAt
@@ -78,7 +78,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 ShopName = a.ShopName,
                 Description = a.Description,
                 ContactEmail = a.ContactEmail,
-                Category = a.Category,
+                Categories = a.Categories.Select(c => c.CategoryValue).ToList(),
                 GenderPreference = a.GenderPreference,
                 Status = a.Status,
                 CreatedAt = a.CreatedAt
@@ -122,9 +122,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 BuildingNumber = application.BuildingNumber,
                 PhoneNumber = application.PhoneNumber ?? "0000000000",
                 ContactEmail = application.ContactEmail,
-                Category = application.Category,
+                Categories = application.Categories.Select(c => new ShopCategoryAssignment { CategoryValue = c.CategoryValue }).ToList(),
                 GenderPreference = application.GenderPreference,
-                CoverImagePath = string.Empty,  // Placeholder; owner can upload later from their panel
+                CoverImagePath = string.Empty,
                 CreatedAt = _dateTimeService.Now,
                 UpdatedAt = _dateTimeService.Now
             };

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using KuaforumAPI.Domain.Enums;
 
@@ -47,8 +48,8 @@ namespace KuaforumAPI.Application.DTOs.SalonApplication
         public string ContactEmail { get; set; }
 
         [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "Kategori seçimi zorunludur.")]
-        public int CategoryId { get; set; }
+        [MinLength(1, ErrorMessage = "En az bir kategori seçimi zorunludur.")]
+        public List<int> CategoryIds { get; set; } = new List<int>();
 
         [Required]
         public TargetGender GenderPreference { get; set; }

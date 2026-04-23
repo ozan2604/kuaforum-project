@@ -25,6 +25,9 @@ namespace KuaforumAPI.Application.Validators
             RuleFor(x => x.PhoneNumber)
                 .NotEmpty().WithMessage("Telefon numarası zorunludur.")
                 .Matches(@"^05\d{9}$").WithMessage("Telefon numarası 05XXXXXXXXX formatında olmalıdır. (Örn: 05321234567)");
+
+            RuleFor(x => x.CategoryIds)
+                .NotEmpty().WithMessage("En az bir kategori seçimi zorunludur.");
         }
     }
 }

@@ -1,6 +1,7 @@
 using KuaforumAPI.Domain.Common;
 using KuaforumAPI.Domain.Enums;
 using System;
+using System.Collections.Generic;
 
 namespace KuaforumAPI.Domain.Entities
 {
@@ -18,7 +19,7 @@ namespace KuaforumAPI.Domain.Entities
         public string BuildingNumber { get; set; } // Added
         public string PhoneNumber { get; set; }
         public string ContactEmail { get; set; } // Added
-        public ShopCategory Category { get; set; } // Added
+        public virtual ICollection<SalonApplicationCategoryItem> Categories { get; set; } = new List<SalonApplicationCategoryItem>();
         public TargetGender GenderPreference { get; set; } = TargetGender.Unisex;
         public ApplicationStatus Status { get; set; } = ApplicationStatus.Pending;
     }

@@ -18,10 +18,18 @@ namespace KuaforumAPI.Persistence.Repositories
             _context = context;
         }
 
+        public override async Task<SalonOwnerApplication> GetByIdAsync(Guid id)
+        {
+            return await _context.SalonOwnerApplications
+                .Include(a => a.Categories)
+                .FirstOrDefaultAsync(a => a.Id == id);
+        }
+
         public async Task<List<SalonOwnerApplication>> GetPendingApplicationsWithUserAsync()
         {
             return await _context.SalonOwnerApplications
                 .Include(a => a.User)
+                .Include(a => a.Categories)
                 .Where(a => a.Status == ApplicationStatus.Pending)
                 .ToListAsync();
         }
@@ -30,6 +38,7 @@ namespace KuaforumAPI.Persistence.Repositories
         {
             return await _context.SalonOwnerApplications
                 .Include(a => a.User)
+                .Include(a => a.Categories)
                 .Where(a => a.Status == ApplicationStatus.Rejected)
                 .ToListAsync();
         }
