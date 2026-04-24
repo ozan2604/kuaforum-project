@@ -23,8 +23,13 @@ namespace KuaforumAPI.WebAPI.Controllers
         public async Task<IActionResult> AddEmployee([FromBody] CreateEmployeeDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _employeeService.AddEmployeeAsync(userId, request);
-            return Ok(new { Message = "Employee added successfully." });
+            var result = await _employeeService.AddEmployeeAsync(userId, request);
+
+            string message = result.IsNewUser
+                ? $"{result.FirstName} {result.LastName} sisteme başarıyla kaydedildi ve çalışan olarak eklendi. Giriş bilgileri — Telefon: {result.PhoneNumber} | Şifre: Kuaforum123!"
+                : $"{result.FirstName} {result.LastName} zaten sistemde kayıtlıydı, çalışan rolü başarıyla eklendi.";
+
+            return Ok(new { Message = message });
         }
 
         [HttpPost("{id}/services")]
@@ -61,6 +66,15 @@ namespace KuaforumAPI.WebAPI.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             await _employeeService.DeleteEmployeeAsync(userId, id);
             return Ok(new { Message = "Employee deleted successfully." });
+        }
+
+        [HttpPatch("{id}/restore")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> RestoreEmployee(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.RestoreEmployeeAsync(userId, id);
+            return Ok(new { Message = "Çalışan başarıyla geri yüklendi." });
         }
 
         [HttpGet("{id}/services")]

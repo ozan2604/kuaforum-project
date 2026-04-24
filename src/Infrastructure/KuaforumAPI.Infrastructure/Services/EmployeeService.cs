@@ -42,7 +42,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _dateTimeService = dateTimeService;
         }
 
-        public async Task AddEmployeeAsync(string ownerId, CreateEmployeeDto request)
+        public async Task<AddEmployeeResult> AddEmployeeAsync(string ownerId, CreateEmployeeDto request)
         {
             var validationResult = await _validator.ValidateAsync(request);
             if (!validationResult.IsValid)
@@ -88,17 +88,39 @@ namespace KuaforumAPI.Infrastructure.Services
                     }
                 }
 
-                // 3. Assign Role if not already
+                // 3. Tek dükkan kuralı: başka aktif dükkanı var mı?
+                var activeInOtherShop = await _context.ShopEmployees
+                    .AnyAsync(se => se.UserId == user.Id && !se.IsDeleted && se.ShopId != shop.Id);
+                if (activeInOtherShop)
+                    throw new Exception("Bu kullanıcı başka bir dükkanın aktif çalışanıdır.");
+
+                // 4. Assign Role if not already
                 if (!await _userManager.IsInRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee))
                 {
                     await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee);
                 }
 
-                // 4. Ensure not already an employee in this shop
+                // 5. Ensure not already an employee in this shop
                 var existingEmployee = await _context.ShopEmployees.FirstOrDefaultAsync(se => se.ShopId == shop.Id && se.UserId == user.Id);
                 if (existingEmployee != null)
                 {
-                    throw new Exception("Bu kullanıcı zaten dükkanınızda çalışan olarak ekli.");
+                    if (!existingEmployee.IsDeleted)
+                        throw new Exception("Bu kullanıcı zaten dükkanınızda çalışan olarak ekli.");
+
+                    // Silinmiş kayıt varsa reaktive et
+                    existingEmployee.IsDeleted = false;
+                    existingEmployee.IsActive = true;
+                    existingEmployee.Title = request.Title;
+                    existingEmployee.StartDate = _dateTimeService.Now;
+                    await _shopEmployeeRepository.UpdateAsync(existingEmployee);
+                    await transaction.CommitAsync();
+                    return new AddEmployeeResult
+                    {
+                        IsNewUser = isNewUser,
+                        FirstName = user.FirstName,
+                        LastName = user.LastName,
+                        PhoneNumber = user.PhoneNumber
+                    };
                 }
 
                 // 4. Link to Shop
@@ -114,6 +136,14 @@ namespace KuaforumAPI.Infrastructure.Services
                 await _shopEmployeeRepository.AddAsync(shopEmployee);
 
                 await transaction.CommitAsync();
+
+                return new AddEmployeeResult
+                {
+                    IsNewUser = isNewUser,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    PhoneNumber = user.PhoneNumber
+                };
             }
             catch
             {
@@ -292,16 +322,41 @@ namespace KuaforumAPI.Infrastructure.Services
             var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
             if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
 
-            var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
-            if (employee == null || employee.ShopId != shop.Id)
-            {
+            var employee = await _context.ShopEmployees
+                .Include(se => se.User)
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
+            if (employee == null)
                 throw new FluentValidation.ValidationException("Employee not found in your shop.");
-            }
 
-            // Soft delete - completely remove from shop visibility
             employee.IsActive = false;
             employee.IsDeleted = true;
             await _shopEmployeeRepository.UpdateAsync(employee);
+
+            // Çalışan silininece Employee rolü kaldırılır
+            await _userManager.RemoveFromRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee);
+        }
+
+        public async Task RestoreEmployeeAsync(string ownerId, Guid shopEmployeeId)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+
+            var employee = await _context.ShopEmployees
+                .Include(se => se.User)
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
+            if (employee == null)
+                throw new FluentValidation.ValidationException("Employee not found in your shop.");
+
+            if (!employee.IsDeleted)
+                throw new Exception("Bu çalışan zaten aktif.");
+
+            employee.IsDeleted = false;
+            employee.IsActive = true;
+            await _shopEmployeeRepository.UpdateAsync(employee);
+
+            // Geri yüklenince Employee rolü yeniden atanır
+            if (!await _userManager.IsInRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee))
+                await _userManager.AddToRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee);
         }
 
         public async Task UpdateScheduleAsync(string ownerId, Guid shopEmployeeId, UpdateScheduleDto request)
