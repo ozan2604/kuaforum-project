@@ -18,5 +18,9 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files);
         Task DeleteGalleryImageAsync(Guid imageId);
         Task UpdateAutoProcessAsync(string ownerId, Guid shopId, bool isEnabled);
+
+        Task<List<ShopClosureDateDto>> GetClosureDatesAsync(Guid shopId);
+        Task AddClosureDateAsync(string ownerId, Guid shopId, DateTime date, string? reason);
+        Task RemoveClosureDateAsync(string ownerId, Guid closureDateId);
     }
 }

@@ -210,5 +210,33 @@ namespace KuaforumAPI.WebAPI.Controllers
             await _shopService.UpdateAutoProcessAsync(userId, id, isEnabled);
             return Ok(new { Message = "Auto process setting updated." });
         }
+
+        [HttpGet("{shopId}/closure-dates")]
+        [Authorize]
+        public async Task<IActionResult> GetClosureDates(Guid shopId)
+        {
+            var result = await _shopService.GetClosureDatesAsync(shopId);
+            return Ok(result);
+        }
+
+        [HttpPost("{shopId}/closure-dates")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> AddClosureDate(Guid shopId, [FromBody] AddClosureDateRequest request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _shopService.AddClosureDateAsync(userId, shopId, request.Date, request.Reason);
+            return Ok(new { Message = "Kapalı gün eklendi." });
+        }
+
+        [HttpDelete("closure-dates/{id}")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> RemoveClosureDate(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _shopService.RemoveClosureDateAsync(userId, id);
+            return Ok(new { Message = "Kapalı gün silindi." });
+        }
     }
+
+    public record AddClosureDateRequest(DateTime Date, string? Reason);
 }

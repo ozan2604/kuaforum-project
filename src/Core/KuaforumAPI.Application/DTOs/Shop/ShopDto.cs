@@ -30,6 +30,11 @@ namespace KuaforumAPI.Application.DTOs.Shop
 
         public bool IsActive { get; set; }
         public bool IsAutoProcessEnabled { get; set; }
+
+        public string? OpenTime { get; set; }
+        public string? CloseTime { get; set; }
+        public List<ShopClosureDateDto> ClosureDates { get; set; } = new List<ShopClosureDateDto>();
+
         public string OwnerName { get; set; }
         public string OwnerEmail { get; set; }
         public DateTime CreatedAt { get; set; }

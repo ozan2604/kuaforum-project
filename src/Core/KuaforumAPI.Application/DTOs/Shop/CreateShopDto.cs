@@ -17,5 +17,8 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public double? Longitude { get; set; }
         public List<int> CategoryIds { get; set; } = new List<int>();
         public TargetGender GenderPreference { get; set; }
+
+        public string? OpenTime { get; set; }
+        public string? CloseTime { get; set; }
     }
 }

@@ -44,7 +44,12 @@ namespace KuaforumAPI.Domain.Entities
         public TargetGender GenderPreference { get; set; } = TargetGender.Unisex;
 
         public bool IsActive { get; set; } = true;
-        
+
         public bool IsAutoProcessEnabled { get; set; } = false;
+
+        public TimeSpan? OpenTime { get; set; }
+        public TimeSpan? CloseTime { get; set; }
+
+        public virtual ICollection<ShopClosureDate> ClosureDates { get; set; } = new List<ShopClosureDate>();
     }
 }

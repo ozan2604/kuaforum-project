@@ -20,6 +20,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<ReviewImage> ReviewImages { get; set; }
         public DbSet<ShopCategoryAssignment> ShopCategoryAssignments { get; set; }
         public DbSet<SalonApplicationCategoryItem> SalonApplicationCategoryItems { get; set; }
+        public DbSet<ShopClosureDate> ShopClosureDates { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
@@ -54,6 +55,15 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.HasOne(si => si.Shop)
                     .WithMany(s => s.Images)
                     .HasForeignKey(si => si.ShopId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ShopClosureDate Configuration
+            builder.Entity<ShopClosureDate>(entity =>
+            {
+                entity.HasOne(c => c.Shop)
+                    .WithMany(s => s.ClosureDates)
+                    .HasForeignKey(c => c.ShopId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

@@ -20,6 +20,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task UpdateScheduleAsync(string ownerId, Guid shopEmployeeId, UpdateScheduleDto request);
         Task<List<ScheduleDto>> GetScheduleAsync(string ownerId, Guid shopEmployeeId);
 
+        Task<List<PublicEmployeeScheduleDto>> GetPublicShopSchedulesAsync(Guid shopId);
+
         Task<EmployeeProfileDto> GetMyProfileAsync(string userId);
         Task UpdateMyProfileAsync(string userId, UpdateEmployeeProfileDto request);
     }

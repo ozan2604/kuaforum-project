@@ -477,6 +477,34 @@ namespace KuaforumAPI.Infrastructure.Services
             };
         }
 
+        public async Task<List<PublicEmployeeScheduleDto>> GetPublicShopSchedulesAsync(Guid shopId)
+        {
+            var employees = await _context.ShopEmployees
+                .Where(se => se.ShopId == shopId && se.IsActive && !se.IsDeleted)
+                .Include(se => se.User)
+                .Include(se => se.Schedules)
+                .ToListAsync();
+
+            return employees.Select(e => new PublicEmployeeScheduleDto
+            {
+                EmployeeId = e.Id,
+                FirstName = e.User.FirstName,
+                LastName = e.User.LastName,
+                Title = e.Title,
+                Schedule = e.Schedules
+                    .OrderBy(s => s.DayOfWeek)
+                    .Select(s => new ScheduleDto
+                    {
+                        DayOfWeek = (int)s.DayOfWeek,
+                        IsWorking = s.IsWorking,
+                        StartTime = s.StartTime.ToString(@"hh\:mm"),
+                        EndTime = s.EndTime.ToString(@"hh\:mm"),
+                        BreakStartTime = s.BreakStartTime?.ToString(@"hh\:mm"),
+                        BreakEndTime = s.BreakEndTime?.ToString(@"hh\:mm")
+                    }).ToList()
+            }).ToList();
+        }
+
         public async Task UpdateMyProfileAsync(string userId, UpdateEmployeeProfileDto request)
         {
             var employee = await _context.ShopEmployees

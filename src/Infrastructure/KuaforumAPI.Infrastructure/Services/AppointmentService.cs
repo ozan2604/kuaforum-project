@@ -58,6 +58,12 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new ValidationException("Geçmiş bir tarihe randevu oluşturamazsınız.");
             }
 
+            // 4b. Shop closure check
+            var isClosed = await _context.ShopClosureDates
+                .AnyAsync(c => c.ShopId == request.ShopId && c.ClosureDate.Date == appointmentStart.Date);
+            if (isClosed)
+                throw new ValidationException("Salon bu tarihte kapalıdır.");
+
             // 5. Schedule Check
             var dayOfWeek = appointmentStart.DayOfWeek;
             var schedule = await _context.EmployeeSchedules
@@ -230,6 +236,16 @@ namespace KuaforumAPI.Infrastructure.Services
         }
         public async Task<EmployeeAvailabilityDto> GetEmployeeAvailabilityAsync(Guid employeeId, DateTime date)
         {
+            // 0. Shop closure check
+            var employee = await _context.ShopEmployees.FindAsync(employeeId);
+            if (employee != null)
+            {
+                var isShopClosed = await _context.ShopClosureDates
+                    .AnyAsync(c => c.ShopId == employee.ShopId && c.ClosureDate.Date == date.Date);
+                if (isShopClosed)
+                    return new EmployeeAvailabilityDto { IsWorking = false, IsShopClosed = true };
+            }
+
             // 1. Get Schedule for the specific day
             var dayOfWeek = date.DayOfWeek;
             var schedule = await _context.EmployeeSchedules

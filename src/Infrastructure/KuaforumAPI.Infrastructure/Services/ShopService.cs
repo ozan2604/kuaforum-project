@@ -5,7 +5,8 @@ using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using Microsoft.AspNetCore.Http;
-using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using KuaforumAPI.Persistence.Contexts;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,14 +22,16 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IShopEmployeeRepository _shopEmployeeRepository;
         private readonly IImageService _imageService;
         private readonly IValidator<CreateShopDto> _validator;
+        private readonly ApplicationDbContext _context;
 
-        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator)
+        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context)
         {
             _shopRepository = shopRepository;
             _shopImageRepository = shopImageRepository;
             _shopEmployeeRepository = shopEmployeeRepository;
             _imageService = imageService;
             _validator = validator;
+            _context = context;
         }
 
         public async Task CreateShopAsync(string userId, CreateShopDto request)
@@ -61,6 +64,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 Longitude = request.Longitude,
                 Categories = request.CategoryIds.Select(id => new ShopCategoryAssignment { CategoryValue = id }).ToList(),
                 GenderPreference = request.GenderPreference,
+                OpenTime = ParseTime(request.OpenTime),
+                CloseTime = ParseTime(request.CloseTime),
                 IsActive = true
             };
 
@@ -92,6 +97,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                OpenTime = FormatTime(shop.OpenTime),
+                CloseTime = FormatTime(shop.CloseTime),
+                ClosureDates = shop.ClosureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
                 AverageRating = shop.AverageRating,
@@ -127,6 +135,8 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.Latitude = request.Latitude;
             shop.Longitude = request.Longitude;
             shop.GenderPreference = request.GenderPreference;
+            shop.OpenTime = ParseTime(request.OpenTime);
+            shop.CloseTime = ParseTime(request.CloseTime);
 
             await _shopRepository.UpdateAsync(shop);
             await _shopRepository.UpdateShopCategoriesAsync(shop.Id, request.CategoryIds);
@@ -163,6 +173,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 CoverImagePath = shop.CoverImagePath,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
+                OpenTime = FormatTime(shop.OpenTime),
+                CloseTime = FormatTime(shop.CloseTime),
                 OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
                 OwnerEmail = shop.Owner?.Email,
                 CreatedAt = shop.CreatedAt,
@@ -249,6 +261,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
             }
 
+            var closureDates = await _context.ShopClosureDates
+                .Where(c => c.ShopId == shop.Id)
+                .OrderBy(c => c.ClosureDate)
+                .ToListAsync();
+
             return new ShopDto
             {
                 Id = shop.Id,
@@ -267,6 +284,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                OpenTime = FormatTime(shop.OpenTime),
+                CloseTime = FormatTime(shop.CloseTime),
+                ClosureDates = closureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
                 AverageRating = shop.AverageRating,
@@ -339,5 +359,57 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.IsAutoProcessEnabled = isEnabled;
             await _shopRepository.UpdateAsync(shop);
         }
+
+        public async Task<List<ShopClosureDateDto>> GetClosureDatesAsync(Guid shopId)
+        {
+            return await _context.ShopClosureDates
+                .Where(c => c.ShopId == shopId)
+                .OrderBy(c => c.ClosureDate)
+                .Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason })
+                .ToListAsync();
+        }
+
+        public async Task AddClosureDateAsync(string ownerId, Guid shopId, DateTime date, string? reason)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null || shop.Id != shopId) throw new FluentValidation.ValidationException("Shop not found or unauthorized.");
+
+            var alreadyExists = await _context.ShopClosureDates
+                .AnyAsync(c => c.ShopId == shopId && c.ClosureDate.Date == date.Date);
+            if (alreadyExists) throw new FluentValidation.ValidationException("Bu tarih zaten kapalı olarak işaretlenmiş.");
+
+            _context.ShopClosureDates.Add(new ShopClosureDate
+            {
+                ShopId = shopId,
+                ClosureDate = date.Date,
+                Reason = reason
+            });
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveClosureDateAsync(string ownerId, Guid closureDateId)
+        {
+            var closure = await _context.ShopClosureDates
+                .Include(c => c.Shop)
+                .FirstOrDefaultAsync(c => c.Id == closureDateId);
+            if (closure == null) throw new NotFoundException("Kapalı gün bulunamadı.");
+
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null || shop.Id != closure.ShopId) throw new FluentValidation.ValidationException("Unauthorized.");
+
+            _context.ShopClosureDates.Remove(closure);
+            await _context.SaveChangesAsync();
+        }
+
+        private static TimeSpan? ParseTime(string? timeStr)
+        {
+            if (string.IsNullOrWhiteSpace(timeStr)) return null;
+            if (TimeSpan.TryParseExact(timeStr, @"hh\:mm", null, out var ts)) return ts;
+            if (TimeSpan.TryParse(timeStr, out var ts2)) return ts2;
+            return null;
+        }
+
+        private static string? FormatTime(TimeSpan? ts) =>
+            ts.HasValue ? ts.Value.ToString(@"hh\:mm") : null;
     }
 }

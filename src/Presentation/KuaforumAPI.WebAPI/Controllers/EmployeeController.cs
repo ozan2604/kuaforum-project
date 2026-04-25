@@ -111,6 +111,14 @@ namespace KuaforumAPI.WebAPI.Controllers
             var result = await _employeeService.GetEmployeesByShopIdAsync(shopId);
             return Ok(result);
         }
+
+        [HttpGet("public/shop/{shopId}/schedules")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicShopSchedules(Guid shopId)
+        {
+            var result = await _employeeService.GetPublicShopSchedulesAsync(shopId);
+            return Ok(result);
+        }
         [HttpGet("me")]
         [Authorize(Roles = Roles.Employee)]
         public async Task<IActionResult> GetMyProfile()
