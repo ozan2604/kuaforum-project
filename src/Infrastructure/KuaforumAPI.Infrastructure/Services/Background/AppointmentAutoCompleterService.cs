@@ -50,25 +50,39 @@ namespace KuaforumAPI.Infrastructure.Services.Background
 
                 var now = dateTimeService.Now;
 
-                // Find confirmed appointments that have ended and belong to shops with auto-process enabled
+                // Onaylanmış randevuları otomatik tamamla (IsAutoProcessEnabled olan salonlar için)
                 var appointmentsToComplete = await context.Appointments
                     .Include(a => a.Shop)
-                    .Where(a => a.Status == AppointmentStatus.Confirmed 
-                                && a.EndTime <= now 
+                    .Where(a => a.Status == AppointmentStatus.Confirmed
+                                && a.EndTime <= now
                                 && a.Shop.IsAutoProcessEnabled)
                     .ToListAsync(stoppingToken);
 
-                if (appointmentsToComplete.Any())
+                foreach (var appointment in appointmentsToComplete)
                 {
-                    foreach (var appointment in appointmentsToComplete)
-                    {
-                        appointment.Status = AppointmentStatus.Completed;
-                        appointment.UpdatedAt = now;
-                    }
-
-                    await context.SaveChangesAsync(stoppingToken);
-                    _logger.LogInformation($"Auto-completed {appointmentsToComplete.Count} appointments.");
+                    appointment.Status = AppointmentStatus.Completed;
+                    appointment.UpdatedAt = now;
                 }
+
+                if (appointmentsToComplete.Count > 0)
+                    _logger.LogInformation("Auto-completed {Count} appointments.", appointmentsToComplete.Count);
+
+                // Saati geçmiş Pending randevuları otomatik reddet (onaylanmamış kalmış)
+                var appointmentsToExpire = await context.Appointments
+                    .Where(a => a.Status == AppointmentStatus.Pending && a.EndTime <= now)
+                    .ToListAsync(stoppingToken);
+
+                foreach (var appointment in appointmentsToExpire)
+                {
+                    appointment.Status = AppointmentStatus.Rejected;
+                    appointment.UpdatedAt = now;
+                }
+
+                if (appointmentsToExpire.Count > 0)
+                    _logger.LogInformation("Auto-rejected {Count} expired pending appointments.", appointmentsToExpire.Count);
+
+                if (appointmentsToComplete.Count > 0 || appointmentsToExpire.Count > 0)
+                    await context.SaveChangesAsync(stoppingToken);
             }
         }
     }

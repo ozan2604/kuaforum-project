@@ -10,6 +10,7 @@ using KuaforumAPI.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using KuaforumAPI.Infrastructure.Services;
@@ -48,10 +49,16 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!hasSkill) throw new ValidationException("This employee cannot perform this service.");
 
             // 3. Time Calculations
-            var appointmentStart = _dateTimeService.ToTurkeyTime(request.StartTime); // Ensure Turkey Time for consistency
+            var appointmentStart = _dateTimeService.ToTurkeyTime(request.StartTime);
             var appointmentEnd = appointmentStart.AddMinutes(service.Duration);
 
-            // 4. Schedule Check
+            // 4. Past date check — geçmiş tarihe randevu alınamaz
+            if (appointmentStart < _dateTimeService.Now)
+            {
+                throw new ValidationException("Geçmiş bir tarihe randevu oluşturamazsınız.");
+            }
+
+            // 5. Schedule Check
             var dayOfWeek = appointmentStart.DayOfWeek;
             var schedule = await _context.EmployeeSchedules
                 .FirstOrDefaultAsync(es => es.ShopEmployeeId == request.ShopEmployeeId && es.DayOfWeek == dayOfWeek);
@@ -73,42 +80,50 @@ namespace KuaforumAPI.Infrastructure.Services
             // Break Time Check
             if (schedule.BreakStartTime.HasValue && schedule.BreakEndTime.HasValue)
             {
-                // Overlap logic: (Start1 < End2) && (End1 > Start2)
                 if (timeStart < schedule.BreakEndTime.Value && timeEnd > schedule.BreakStartTime.Value)
                 {
                     throw new ValidationException("Appointment conflicts with break time.");
                 }
             }
 
-            // 5. Conflict Check (Existing Appointments)
-            var hasConflict = await _context.Appointments
-                .AnyAsync(a => 
-                    a.ShopEmployeeId == request.ShopEmployeeId &&
-                    a.Status != AppointmentStatus.Cancelled &&
-                    a.Status != AppointmentStatus.Rejected &&
-                    a.StartTime < appointmentEnd && 
-                    a.EndTime > appointmentStart);
-
-            if (hasConflict)
+            // 6. Conflict Check + Create — Serializable transaction ile race condition önlenir
+            using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
             {
-                throw new ValidationException("The selected time slot is already booked.");
+                var hasConflict = await _context.Appointments
+                    .AnyAsync(a =>
+                        a.ShopEmployeeId == request.ShopEmployeeId &&
+                        a.Status != AppointmentStatus.Cancelled &&
+                        a.Status != AppointmentStatus.Rejected &&
+                        a.StartTime < appointmentEnd &&
+                        a.EndTime > appointmentStart);
+
+                if (hasConflict)
+                {
+                    throw new ValidationException("The selected time slot is already booked.");
+                }
+
+                var appointment = new Appointment
+                {
+                    ShopId = request.ShopId,
+                    ShopServiceId = request.ShopServiceId,
+                    ShopEmployeeId = request.ShopEmployeeId,
+                    UserId = userId,
+                    StartTime = appointmentStart,
+                    EndTime = appointmentEnd,
+                    Status = shop.IsAutoProcessEnabled ? AppointmentStatus.Confirmed : AppointmentStatus.Pending,
+                    Note = request.Note
+                };
+
+                await _context.Appointments.AddAsync(appointment);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
             }
-
-            // 6. Create Appointment
-            var appointment = new Appointment
+            catch
             {
-                ShopId = request.ShopId,
-                ShopServiceId = request.ShopServiceId,
-                ShopEmployeeId = request.ShopEmployeeId,
-                UserId = userId,
-                StartTime = appointmentStart,
-                EndTime = appointmentEnd,
-                Status = shop.IsAutoProcessEnabled ? AppointmentStatus.Confirmed : AppointmentStatus.Pending,
-                Note = request.Note
-            };
-
-            await _context.Appointments.AddAsync(appointment);
-            await _context.SaveChangesAsync();
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<List<AppointmentDto>> GetMyAppointmentsAsync(string userId)
@@ -166,20 +181,29 @@ namespace KuaforumAPI.Infrastructure.Services
             var appointment = await _context.Appointments
                 .Include(a => a.Shop)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
-            
+
             if (appointment == null) throw new ValidationException("Appointment not found.");
 
-            if (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.Rejected)
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null || shop.Id != appointment.ShopId) throw new ValidationException("Unauthorized.");
+
+            ValidateStatusTransition(appointment.Status, request.Status);
+
+            appointment.Status = request.Status;
+            await _context.SaveChangesAsync();
+        }
+
+        private static void ValidateStatusTransition(AppointmentStatus current, AppointmentStatus next)
+        {
+            var allowed = current switch
             {
-                throw new ValidationException("Cannot update status of a finalized appointment.");
-            }
+                AppointmentStatus.Pending    => new[] { AppointmentStatus.Confirmed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled },
+                AppointmentStatus.Confirmed  => new[] { AppointmentStatus.Completed, AppointmentStatus.Cancelled, AppointmentStatus.Rejected },
+                _ => Array.Empty<AppointmentStatus>() // Completed, Cancelled, Rejected terminal
+            };
 
-            // Verify Ownership
-             var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-             if (shop == null || shop.Id != appointment.ShopId) throw new ValidationException("Unauthorized.");
-
-             appointment.Status = request.Status;
-             await _context.SaveChangesAsync();
+            if (!allowed.Contains(next))
+                throw new ValidationException($"'{current}' durumundan '{next}' durumuna geçiş yapılamaz.");
         }
 
         private AppointmentDto MapToDto(Appointment a, bool hasReview = false)
@@ -338,18 +362,39 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (appointment == null) throw new ValidationException("Appointment not found.");
 
-            if (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.Rejected)
-            {
-                throw new ValidationException("Cannot update status of a finalized appointment.");
-            }
-
-            // Verify that the logged-in user is indeed the employee assigned to this appointment
             if (appointment.ShopEmployee.UserId != employeeUserId)
-            {
                 throw new ValidationException("You are not authorized to manage this appointment.");
-            }
+
+            ValidateStatusTransition(appointment.Status, request.Status);
 
             appointment.Status = request.Status;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task CancelByCustomerAsync(string userId, Guid appointmentId, string? reason = null)
+        {
+            var appointment = await _context.Appointments.FirstOrDefaultAsync(a => a.Id == appointmentId);
+
+            if (appointment == null) throw new ValidationException("Randevu bulunamadı.");
+
+            if (appointment.UserId != userId) throw new ValidationException("Bu randevuyu iptal etme yetkiniz yok.");
+
+            if (appointment.Status != AppointmentStatus.Pending && appointment.Status != AppointmentStatus.Confirmed)
+            {
+                throw new ValidationException("Yalnızca bekleyen veya onaylanmış randevular iptal edilebilir.");
+            }
+
+            var now = _dateTimeService.Now;
+            if ((appointment.StartTime - now).TotalHours < 2)
+            {
+                throw new ValidationException("Randevuya 2 saatten az kaldığı için iptal edilemez.");
+            }
+
+            appointment.Status = AppointmentStatus.Cancelled;
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                appointment.CancellationReason = reason;
+            }
             await _context.SaveChangesAsync();
         }
     }

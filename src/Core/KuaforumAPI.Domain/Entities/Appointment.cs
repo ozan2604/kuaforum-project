@@ -24,5 +24,7 @@ namespace KuaforumAPI.Domain.Entities
         public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
 
         public string? Note { get; set; }
+
+        public string? CancellationReason { get; set; }
     }
 }

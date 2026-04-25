@@ -21,7 +21,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = Roles.Customer)]
         public async Task<IActionResult> Create([FromBody] CreateAppointmentDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -73,7 +73,17 @@ namespace KuaforumAPI.WebAPI.Controllers
             await _appointmentService.UpdateStatusAsync(userId, id, request);
             return Ok(new { Message = "Appointment status updated." });
         }
+        [HttpDelete("{id}")]
+        [Authorize]
+        public async Task<IActionResult> CancelByCustomer(Guid id, [FromQuery] string? reason = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _appointmentService.CancelByCustomerAsync(userId, id, reason);
+            return Ok(new { Message = "Randevu iptal edildi." });
+        }
+
         [HttpGet("availability")]
+        [Authorize]
         public async Task<IActionResult> GetAvailability(Guid employeeId, DateTime date)
         {
             // The date comes from query string, likely as 'yyyy-MM-dd'. Model binder handles it.
