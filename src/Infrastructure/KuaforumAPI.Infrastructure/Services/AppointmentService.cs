@@ -161,7 +161,7 @@ namespace KuaforumAPI.Infrastructure.Services
             return items.Select(i => MapToDto(i.Appointment, i.HasReview)).ToList();
         }
 
-        public async Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10)
+        public async Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? employeeId = null, Guid? serviceId = null)
         {
              var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
              if (shop == null || shop.Id != shopId) throw new ValidationException("Unauthorized or Shop not found.");
@@ -177,6 +177,32 @@ namespace KuaforumAPI.Infrastructure.Services
             if (status.HasValue)
             {
                 query = query.Where(a => a.Status == status.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lowerTerm = searchTerm.ToLower();
+                query = query.Where(a => 
+                    (a.User != null && (a.User.FirstName + " " + a.User.LastName).ToLower().Contains(lowerTerm)) ||
+                    a.ShopService.Name.ToLower().Contains(lowerTerm) ||
+                    (a.ShopEmployee.Title + " " + (a.ShopEmployee.User != null ? a.ShopEmployee.User.FirstName : "")).ToLower().Contains(lowerTerm)
+                );
+            }
+
+            if (date.HasValue)
+            {
+                var targetDate = date.Value.Date;
+                query = query.Where(a => a.StartTime.Date == targetDate);
+            }
+
+            if (employeeId.HasValue)
+            {
+                query = query.Where(a => a.ShopEmployeeId == employeeId.Value);
+            }
+
+            if (serviceId.HasValue)
+            {
+                query = query.Where(a => a.ShopServiceId == serviceId.Value);
             }
 
             var totalCount = await query.CountAsync();
@@ -242,7 +268,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 Status = a.Status,
                 Note = a.Note,
                 GroupId = a.GroupId,
-                HasReview = hasReview
+                HasReview = hasReview,
+                CancellationReason = a.CancellationReason
             };
         }
         public async Task<EmployeeAvailabilityDto> GetEmployeeAvailabilityAsync(Guid employeeId, DateTime date)

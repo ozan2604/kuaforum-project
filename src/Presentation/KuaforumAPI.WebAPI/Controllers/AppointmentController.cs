@@ -58,10 +58,10 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpGet("shop/{shopId}")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> GetShopAppointments(Guid shopId, [FromQuery] AppointmentStatus? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetShopAppointments(Guid shopId, [FromQuery] AppointmentStatus? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null, [FromQuery] DateTime? date = null, [FromQuery] Guid? employeeId = null, [FromQuery] Guid? serviceId = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _appointmentService.GetShopAppointmentsAsync(userId, shopId, status, page, pageSize);
+            var result = await _appointmentService.GetShopAppointmentsAsync(userId, shopId, status, page, pageSize, searchTerm, date, employeeId, serviceId);
             return Ok(result);
         }
 

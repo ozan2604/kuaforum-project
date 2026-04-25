@@ -27,5 +27,6 @@ namespace KuaforumAPI.Application.DTOs.Appointment
         public string? Note { get; set; }
         public Guid? GroupId { get; set; }
         public bool HasReview { get; set; }
+        public string? CancellationReason { get; set; }
     }
 }
