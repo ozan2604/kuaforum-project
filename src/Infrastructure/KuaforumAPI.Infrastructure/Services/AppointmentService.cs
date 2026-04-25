@@ -37,22 +37,15 @@ namespace KuaforumAPI.Infrastructure.Services
             var shop = await _context.Shops.FindAsync(request.ShopId);
             if (shop == null || !shop.IsActive) throw new ValidationException("Shop not found or inactive.");
 
-            var service = await _context.ShopServices.FindAsync(request.ShopServiceId);
-            if (service == null || service.ShopId != request.ShopId || service.IsDeleted || !service.IsActive) throw new ValidationException("Service not found or inactive in this shop.");
-
             var employee = await _context.ShopEmployees.FindAsync(request.ShopEmployeeId);
             if (employee == null || employee.ShopId != request.ShopId || employee.IsDeleted || !employee.IsActive) throw new ValidationException("Employee not found or inactive in this shop.");
 
-            // 2. Skill Check
-            var hasSkill = await _context.ShopEmployeeServices
-                .AnyAsync(ses => ses.ShopEmployeeId == request.ShopEmployeeId && ses.ShopServiceId == request.ShopServiceId);
-            if (!hasSkill) throw new ValidationException("This employee cannot perform this service.");
+            if (request.ServiceIds == null || !request.ServiceIds.Any())
+                throw new ValidationException("En az bir hizmet seçilmelidir.");
 
-            // 3. Time Calculations
             var appointmentStart = _dateTimeService.ToTurkeyTime(request.StartTime);
-            var appointmentEnd = appointmentStart.AddMinutes(service.Duration);
 
-            // 4. Past date check — geçmiş tarihe randevu alınamaz
+            // 4. Past date check
             if (appointmentStart < _dateTimeService.Now)
             {
                 throw new ValidationException("Geçmiş bir tarihe randevu oluşturamazsınız.");
@@ -74,54 +67,71 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new ValidationException("Employee is not working on this day.");
             }
 
-            // Convert DateTime to TimeSpan for daily comparison
-            var timeStart = appointmentStart.TimeOfDay;
-            var timeEnd = appointmentEnd.TimeOfDay;
+            var groupId = Guid.NewGuid();
+            var currentStartTime = appointmentStart;
 
-            if (timeStart < schedule.StartTime || timeEnd > schedule.EndTime)
-            {
-                throw new ValidationException($"Appointment is outside working hours ({schedule.StartTime:hh\\:mm} - {schedule.EndTime:hh\\:mm}).");
-            }
-
-            // Break Time Check
-            if (schedule.BreakStartTime.HasValue && schedule.BreakEndTime.HasValue)
-            {
-                if (timeStart < schedule.BreakEndTime.Value && timeEnd > schedule.BreakStartTime.Value)
-                {
-                    throw new ValidationException("Appointment conflicts with break time.");
-                }
-            }
-
-            // 6. Conflict Check + Create — Serializable transaction ile race condition önlenir
             using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                var hasConflict = await _context.Appointments
-                    .AnyAsync(a =>
-                        a.ShopEmployeeId == request.ShopEmployeeId &&
-                        a.Status != AppointmentStatus.Cancelled &&
-                        a.Status != AppointmentStatus.Rejected &&
-                        a.StartTime < appointmentEnd &&
-                        a.EndTime > appointmentStart);
-
-                if (hasConflict)
+                foreach (var serviceId in request.ServiceIds)
                 {
-                    throw new ValidationException("The selected time slot is already booked.");
+                    var service = await _context.ShopServices.FindAsync(serviceId);
+                    if (service == null || service.ShopId != request.ShopId || service.IsDeleted || !service.IsActive)
+                        throw new ValidationException($"Hizmet bulunamadı veya pasif.");
+
+                    var hasSkill = await _context.ShopEmployeeServices
+                        .AnyAsync(ses => ses.ShopEmployeeId == request.ShopEmployeeId && ses.ShopServiceId == serviceId);
+                    if (!hasSkill) throw new ValidationException("Seçili personel bu hizmetlerden birini sağlayamıyor.");
+
+                    var currentEndTime = currentStartTime.AddMinutes(service.Duration);
+
+                    var timeStart = currentStartTime.TimeOfDay;
+                    var timeEnd = currentEndTime.TimeOfDay;
+
+                    if (timeStart < schedule.StartTime || timeEnd > schedule.EndTime)
+                    {
+                        throw new ValidationException($"Seçilen hizmetler mesai saatleri dışına taşıyor ({schedule.StartTime:hh\\:mm} - {schedule.EndTime:hh\\:mm}).");
+                    }
+
+                    if (schedule.BreakStartTime.HasValue && schedule.BreakEndTime.HasValue)
+                    {
+                        if (timeStart < schedule.BreakEndTime.Value && timeEnd > schedule.BreakStartTime.Value)
+                        {
+                            throw new ValidationException("Randevu mola saatleri ile çakışıyor.");
+                        }
+                    }
+
+                    var hasConflict = await _context.Appointments
+                        .AnyAsync(a =>
+                            a.ShopEmployeeId == request.ShopEmployeeId &&
+                            a.Status != AppointmentStatus.Cancelled &&
+                            a.Status != AppointmentStatus.Rejected &&
+                            a.StartTime < currentEndTime &&
+                            a.EndTime > currentStartTime);
+
+                    if (hasConflict)
+                    {
+                        throw new ValidationException("Seçili saat aralığı başka bir randevu ile çakışıyor.");
+                    }
+
+                    var appointment = new Appointment
+                    {
+                        ShopId = request.ShopId,
+                        ShopServiceId = serviceId,
+                        ShopEmployeeId = request.ShopEmployeeId,
+                        UserId = userId,
+                        StartTime = currentStartTime,
+                        EndTime = currentEndTime,
+                        Status = shop.IsAutoProcessEnabled ? AppointmentStatus.Confirmed : AppointmentStatus.Pending,
+                        Note = request.Note,
+                        GroupId = request.ServiceIds.Count > 1 ? groupId : null
+                    };
+
+                    await _context.Appointments.AddAsync(appointment);
+
+                    currentStartTime = currentEndTime;
                 }
 
-                var appointment = new Appointment
-                {
-                    ShopId = request.ShopId,
-                    ShopServiceId = request.ShopServiceId,
-                    ShopEmployeeId = request.ShopEmployeeId,
-                    UserId = userId,
-                    StartTime = appointmentStart,
-                    EndTime = appointmentEnd,
-                    Status = shop.IsAutoProcessEnabled ? AppointmentStatus.Confirmed : AppointmentStatus.Pending,
-                    Note = request.Note
-                };
-
-                await _context.Appointments.AddAsync(appointment);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
@@ -231,6 +241,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 EndTime = a.EndTime,
                 Status = a.Status,
                 Note = a.Note,
+                GroupId = a.GroupId,
                 HasReview = hasReview
             };
         }

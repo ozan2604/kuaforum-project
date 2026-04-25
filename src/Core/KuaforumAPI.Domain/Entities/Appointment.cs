@@ -25,6 +25,8 @@ namespace KuaforumAPI.Domain.Entities
 
         public string? Note { get; set; }
 
+        public Guid? GroupId { get; set; }
+
         public string? CancellationReason { get; set; }
     }
 }
