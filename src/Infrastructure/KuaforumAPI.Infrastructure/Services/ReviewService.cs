@@ -113,6 +113,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Include(r => r.Images)
                 .Include(r => r.ShopEmployee)
                 .ThenInclude(se => se.User)
+                .Include(r => r.Appointment)
+                .ThenInclude(a => a.ShopService)
                 .Where(r => r.ShopId == shopId);
 
             // Fetch list first to avoid complex EF translation for custom sorting if needed, 

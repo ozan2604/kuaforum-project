@@ -20,5 +20,6 @@ namespace KuaforumAPI.Application.DTOs.Review
         public string? Comment { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<string> ImageUrls { get; set; }
+        public decimal ServicePrice { get; set; }
     }
 }

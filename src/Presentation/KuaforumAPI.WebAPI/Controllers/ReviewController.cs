@@ -52,7 +52,8 @@ namespace KuaforumAPI.WebAPI.Controllers
                     Rating = review.Rating,
                     Comment = review.Comment,
                     CreatedAt = review.CreatedAt,
-                    ImageUrls = review.Images?.Select(i => i.Url).ToList() ?? new List<string>()
+                    ImageUrls = review.Images?.Select(i => i.Url).ToList() ?? new List<string>(),
+                    ServicePrice = review.Appointment?.ShopService?.Price ?? 0
                 };
 
                 return Ok(reviewDto);
@@ -88,7 +89,8 @@ namespace KuaforumAPI.WebAPI.Controllers
                 Rating = r.Rating,
                 Comment = r.Comment,
                 CreatedAt = r.CreatedAt,
-                ImageUrls = r.Images?.Select(i => i.Url).ToList() ?? new List<string>()
+                ImageUrls = r.Images?.Select(i => i.Url).ToList() ?? new List<string>(),
+                ServicePrice = r.Appointment?.ShopService?.Price ?? 0
             });
 
             return Ok(dtos);
@@ -125,7 +127,8 @@ namespace KuaforumAPI.WebAPI.Controllers
                     Rating = updatedReview.Rating,
                     Comment = updatedReview.Comment,
                     CreatedAt = updatedReview.CreatedAt,
-                    ImageUrls = updatedReview.Images?.Select(i => i.Url).ToList() ?? new List<string>()
+                    ImageUrls = updatedReview.Images?.Select(i => i.Url).ToList() ?? new List<string>(),
+                    ServicePrice = updatedReview.Appointment?.ShopService?.Price ?? 0
                 };
 
                 return Ok(reviewDto);
@@ -182,7 +185,8 @@ namespace KuaforumAPI.WebAPI.Controllers
                     Rating = r.Rating,
                     Comment = r.Comment,
                     CreatedAt = r.CreatedAt,
-                    ImageUrls = r.Images?.Select(i => i.Url).ToList() ?? new List<string>()
+                    ImageUrls = r.Images?.Select(i => i.Url).ToList() ?? new List<string>(),
+                    ServicePrice = r.Appointment?.ShopService?.Price ?? 0
                 });
 
                 return Ok(dtos);
