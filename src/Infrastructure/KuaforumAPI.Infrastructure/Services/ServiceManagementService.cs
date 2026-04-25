@@ -146,6 +146,17 @@ namespace KuaforumAPI.Infrastructure.Services
             service.IsDeleted = true;
             service.IsActive = false;
             await _serviceRepository.UpdateAsync(service);
+
+            // Clean up employee assignments for the deleted service
+            var employeeAssignments = await _context.ShopEmployeeServices
+                .Where(ses => ses.ShopServiceId == serviceId)
+                .ToListAsync();
+            
+            if (employeeAssignments.Any())
+            {
+                _context.ShopEmployeeServices.RemoveRange(employeeAssignments);
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task<List<ServiceCategoryDto>> GetShopServicesAsync(string userId)

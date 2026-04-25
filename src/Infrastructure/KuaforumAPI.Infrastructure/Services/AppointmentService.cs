@@ -34,13 +34,13 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             // 1. Basic Validations
             var shop = await _context.Shops.FindAsync(request.ShopId);
-            if (shop == null) throw new ValidationException("Shop not found.");
+            if (shop == null || !shop.IsActive) throw new ValidationException("Shop not found or inactive.");
 
             var service = await _context.ShopServices.FindAsync(request.ShopServiceId);
-            if (service == null || service.ShopId != request.ShopId) throw new ValidationException("Service not found in this shop.");
+            if (service == null || service.ShopId != request.ShopId || service.IsDeleted || !service.IsActive) throw new ValidationException("Service not found or inactive in this shop.");
 
             var employee = await _context.ShopEmployees.FindAsync(request.ShopEmployeeId);
-            if (employee == null || employee.ShopId != request.ShopId) throw new ValidationException("Employee not found in this shop.");
+            if (employee == null || employee.ShopId != request.ShopId || employee.IsDeleted || !employee.IsActive) throw new ValidationException("Employee not found or inactive in this shop.");
 
             // 2. Skill Check
             var hasSkill = await _context.ShopEmployeeServices
@@ -168,6 +168,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
             
             if (appointment == null) throw new ValidationException("Appointment not found.");
+
+            if (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.Rejected)
+            {
+                throw new ValidationException("Cannot update status of a finalized appointment.");
+            }
 
             // Verify Ownership
              var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
@@ -332,6 +337,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null) throw new ValidationException("Appointment not found.");
+
+            if (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.Rejected)
+            {
+                throw new ValidationException("Cannot update status of a finalized appointment.");
+            }
 
             // Verify that the logged-in user is indeed the employee assigned to this appointment
             if (appointment.ShopEmployee.UserId != employeeUserId)

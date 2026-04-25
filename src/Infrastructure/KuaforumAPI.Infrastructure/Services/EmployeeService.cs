@@ -113,6 +113,12 @@ namespace KuaforumAPI.Infrastructure.Services
                     existingEmployee.Title = request.Title;
                     existingEmployee.StartDate = _dateTimeService.Now;
                     await _shopEmployeeRepository.UpdateAsync(existingEmployee);
+                    
+                    if (!await _userManager.IsInRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee))
+                    {
+                        await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee);
+                    }
+
                     await transaction.CommitAsync();
                     return new AddEmployeeResult
                     {
