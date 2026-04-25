@@ -19,6 +19,8 @@ namespace KuaforumAPI.Domain.Entities
         public string BuildingNumber { get; set; } // Added
         public string PhoneNumber { get; set; }
         public string ContactEmail { get; set; } // Added
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
         public virtual ICollection<SalonApplicationCategoryItem> Categories { get; set; } = new List<SalonApplicationCategoryItem>();
         public TargetGender GenderPreference { get; set; } = TargetGender.Unisex;
         public ApplicationStatus Status { get; set; } = ApplicationStatus.Pending;

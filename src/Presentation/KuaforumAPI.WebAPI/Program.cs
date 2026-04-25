@@ -15,6 +15,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient("nominatim", c =>
+{
+    c.DefaultRequestHeaders.Add("User-Agent", "KuaforumApp/1.0 (contact@kuaforum.com)");
+    c.DefaultRequestHeaders.Add("Accept-Language", "tr");
+});
 
 // CORS
 builder.Services.AddCors(options =>

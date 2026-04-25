@@ -328,12 +328,18 @@ namespace KuaforumAPI.Infrastructure.Services
             if (employee == null)
                 throw new FluentValidation.ValidationException("Employee not found in your shop.");
 
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             employee.IsActive = false;
             employee.IsDeleted = true;
             await _shopEmployeeRepository.UpdateAsync(employee);
 
-            // Çalışan silininece Employee rolü kaldırılır
-            await _userManager.RemoveFromRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee);
+            // Çalışan silinince Employee rolü kaldırılır
+            var removeResult = await _userManager.RemoveFromRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee);
+            if (!removeResult.Succeeded)
+                throw new FluentValidation.ValidationException("Çalışan rolü kaldırılamadı.");
+
+            await transaction.CommitAsync();
         }
 
         public async Task RestoreEmployeeAsync(string ownerId, Guid shopEmployeeId)
@@ -350,13 +356,21 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!employee.IsDeleted)
                 throw new Exception("Bu çalışan zaten aktif.");
 
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             employee.IsDeleted = false;
             employee.IsActive = true;
             await _shopEmployeeRepository.UpdateAsync(employee);
 
             // Geri yüklenince Employee rolü yeniden atanır
             if (!await _userManager.IsInRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee))
-                await _userManager.AddToRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee);
+            {
+                var addResult = await _userManager.AddToRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee);
+                if (!addResult.Succeeded)
+                    throw new FluentValidation.ValidationException("Çalışan rolü atanamadı.");
+            }
+
+            await transaction.CommitAsync();
         }
 
         public async Task UpdateScheduleAsync(string ownerId, Guid shopEmployeeId, UpdateScheduleDto request)

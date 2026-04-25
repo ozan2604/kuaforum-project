@@ -3,7 +3,9 @@ using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
+using KuaforumAPI.Persistence.Contexts;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
 namespace KuaforumAPI.Infrastructure.Services
@@ -11,16 +13,18 @@ namespace KuaforumAPI.Infrastructure.Services
     public class SalonApplicationService : ISalonApplicationService
     {
         private readonly ISalonOwnerApplicationRepository _repository;
-        private readonly IShopRepository _shopRepository; // Added
+        private readonly IShopRepository _shopRepository;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IDateTimeService _dateTimeService;
+        private readonly ApplicationDbContext _context;
 
-        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager, IDateTimeService dateTimeService)
+        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager, IDateTimeService dateTimeService, ApplicationDbContext context)
         {
             _repository = repository;
-            _shopRepository = shopRepository; // Added
+            _shopRepository = shopRepository;
             _userManager = userManager;
             _dateTimeService = dateTimeService;
+            _context = context;
         }
 
         public async Task ApplyAsync(string userId, CreateSalonApplicationDto request)
@@ -40,11 +44,35 @@ namespace KuaforumAPI.Infrastructure.Services
                 ContactEmail = request.ContactEmail,
                 Categories = request.CategoryIds.Select(id => new SalonApplicationCategoryItem { CategoryValue = id }).ToList(),
                 GenderPreference = request.GenderPreference,
+                Latitude = request.Latitude,
+                Longitude = request.Longitude,
                 Status = ApplicationStatus.Pending,
                 CreatedAt = _dateTimeService.Now
             };
 
             await _repository.AddAsync(application);
+        }
+
+        public async Task<ContactEmailCheckResultDto> CheckContactEmailAsync(string email)
+        {
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
+            var isUsedByShop = await _context.Shops
+                .AnyAsync(s => s.ContactEmail.ToLower() == normalizedEmail);
+
+            var isUsedByApplication = await _context.SalonOwnerApplications
+                .AnyAsync(a => a.ContactEmail.ToLower() == normalizedEmail
+                            && (a.Status == ApplicationStatus.Pending || a.Status == ApplicationStatus.Approved));
+
+            var isRegisteredUser = await _userManager.FindByEmailAsync(email) != null;
+
+            return new ContactEmailCheckResultDto
+            {
+                IsUsedByShop = isUsedByShop,
+                IsUsedByApplication = isUsedByApplication,
+                IsRegisteredUser = isRegisteredUser,
+                IsAvailable = !isUsedByShop && !isUsedByApplication && !isRegisteredUser
+            };
         }
 
         public async Task<List<SalonApplicationListDto>> GetPendingApplicationsAsync()
@@ -124,6 +152,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 ContactEmail = application.ContactEmail,
                 Categories = application.Categories.Select(c => new ShopCategoryAssignment { CategoryValue = c.CategoryValue }).ToList(),
                 GenderPreference = application.GenderPreference,
+                Latitude = application.Latitude,
+                Longitude = application.Longitude,
                 CoverImagePath = string.Empty,
                 CreatedAt = _dateTimeService.Now,
                 UpdatedAt = _dateTimeService.Now

@@ -29,6 +29,17 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Application submitted successfully." });
         }
 
+        [HttpGet("check-contact-email")]
+        [Authorize]
+        public async Task<IActionResult> CheckContactEmail([FromQuery] string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return BadRequest(new { message = "E-posta adresi boş olamaz." });
+
+            var result = await _salonApplicationService.CheckContactEmailAsync(email);
+            return Ok(result);
+        }
+
         [HttpGet("my-application")]
         [Authorize]
         public async Task<IActionResult> GetMyApplication()
