@@ -342,10 +342,17 @@ namespace KuaforumAPI.Infrastructure.Services
             return uploadedUrls;
         }
 
-        public async Task DeleteGalleryImageAsync(Guid imageId)
+        public async Task DeleteGalleryImageAsync(Guid imageId, string userId, bool isAdmin)
         {
             var image = await _shopImageRepository.GetByIdAsync(imageId);
             if (image == null) throw new NotFoundException("Image not found");
+
+            if (!isAdmin)
+            {
+                var shop = await _shopRepository.GetByOwnerIdAsync(userId);
+                if (shop == null || shop.Id != image.ShopId)
+                    throw new UnauthorizedAccessException("Bu görseli silme yetkiniz yok.");
+            }
 
             await _imageService.DeleteImageAsync(image.Url);
             await _shopImageRepository.DeleteAsync(image);

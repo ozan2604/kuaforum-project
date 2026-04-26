@@ -21,6 +21,7 @@ namespace KuaforumAPI.Persistence.Repositories
         {
             return await _context.Shops
                 .Include(s => s.Categories)
+                .Include(s => s.ClosureDates)
                 .FirstOrDefaultAsync(s => s.OwnerId == ownerId);
         }
 

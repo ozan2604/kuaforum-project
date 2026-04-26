@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using KuaforumAPI.Application.Exceptions;
 
 namespace KuaforumAPI.WebAPI.Controllers
 {
@@ -230,15 +231,14 @@ namespace KuaforumAPI.WebAPI.Controllers
         public async Task<IActionResult> UploadCoverImage(Guid id, Microsoft.AspNetCore.Http.IFormFile file)
         {
             if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
+                return BadRequest(new { message = "Dosya seçilmedi." });
 
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            var userShop = await _shopService.GetShopByOwnerIdAsync(userId);
-            
-            // Basic ownership check
-            if (userShop == null || (userShop.Id != id && !User.IsInRole("Admin")))
+            if (!User.IsInRole("Admin"))
             {
-                return Forbid();
+                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var userShop = await _shopService.GetShopByOwnerIdAsync(userId);
+                if (userShop == null || userShop.Id != id)
+                    return Forbid();
             }
 
             try
@@ -246,9 +246,9 @@ namespace KuaforumAPI.WebAPI.Controllers
                 var imagePath = await _shopService.UploadCoverImageAsync(id, file);
                 return Ok(new { path = imagePath });
             }
-            catch (System.Exception ex)
+            catch (System.Exception)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(500, new { message = "Kapak fotoğrafı yüklenirken bir hata oluştu." });
             }
         }
 
@@ -257,14 +257,14 @@ namespace KuaforumAPI.WebAPI.Controllers
         public async Task<IActionResult> UploadGalleryImages(Guid id, System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile> files)
         {
             if (files == null || files.Count == 0)
-                return BadRequest("No files uploaded.");
+                return BadRequest(new { message = "Dosya seçilmedi." });
 
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            var userShop = await _shopService.GetShopByOwnerIdAsync(userId);
-            
-            if (userShop == null || (userShop.Id != id && !User.IsInRole("Admin")))
+            if (!User.IsInRole("Admin"))
             {
-                return Forbid();
+                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var userShop = await _shopService.GetShopByOwnerIdAsync(userId);
+                if (userShop == null || userShop.Id != id)
+                    return Forbid();
             }
 
             try
@@ -275,9 +275,9 @@ namespace KuaforumAPI.WebAPI.Controllers
                 var uploadedPaths = await _shopService.UploadGalleryImagesAsync(id, formCollection);
                 return Ok(uploadedPaths);
             }
-            catch (System.Exception ex)
+            catch (System.Exception)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(500, new { message = "Galeri fotoğrafları yüklenirken bir hata oluştu." });
             }
         }
 
@@ -285,14 +285,24 @@ namespace KuaforumAPI.WebAPI.Controllers
         [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> DeleteGalleryImage(Guid imageId)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var isAdmin = User.IsInRole("Admin");
             try
             {
-                await _shopService.DeleteGalleryImageAsync(imageId);
+                await _shopService.DeleteGalleryImageAsync(imageId, userId, isAdmin);
                 return Ok();
             }
-            catch (System.Exception ex)
+            catch (UnauthorizedAccessException)
             {
-                return BadRequest(ex.Message);
+                return Forbid();
+            }
+            catch (NotFoundException)
+            {
+                return NotFound(new { message = "Fotoğraf bulunamadı." });
+            }
+            catch (System.Exception)
+            {
+                return StatusCode(500, new { message = "Fotoğraf silinirken bir hata oluştu." });
             }
         }
 
