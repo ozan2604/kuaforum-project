@@ -13,6 +13,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<EmployeeAvailabilityDto> GetEmployeeAvailabilityAsync(Guid employeeId, DateTime date);
         Task<AppointmentDto> GetReviewableAppointmentAsync(string userId, Guid shopId);
         Task<List<AppointmentDto>> GetAssignedAppointmentsAsync(string employeeUserId);
+        Task<PagedResult<AppointmentDto>> GetAssignedAppointmentsPagedAsync(string employeeUserId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? serviceId = null);
         Task UpdateStatusByEmployeeAsync(string employeeUserId, Guid appointmentId, UpdateAppointmentStatusDto request);
         Task CancelByCustomerAsync(string userId, Guid appointmentId, string? reason = null);
     }

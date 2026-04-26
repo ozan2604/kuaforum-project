@@ -47,6 +47,15 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(result);
         }
 
+        [HttpGet("employee/my-appointments/paged")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> GetAssignedAppointmentsPaged([FromQuery] AppointmentStatus? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null, [FromQuery] DateTime? date = null, [FromQuery] Guid? serviceId = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _appointmentService.GetAssignedAppointmentsPagedAsync(userId, status, page, pageSize, searchTerm, date, serviceId);
+            return Ok(result);
+        }
+
         [HttpPut("employee/{id}/status")]
         [Authorize(Roles = Roles.Employee)]
         public async Task<IActionResult> UpdateStatusByEmployee(Guid id, [FromBody] UpdateAppointmentStatusDto request)

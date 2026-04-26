@@ -408,6 +408,46 @@ namespace KuaforumAPI.Infrastructure.Services
             return assignedAppointments.Select(a => MapToDto(a)).ToList();
         }
 
+        public async Task<PagedResult<AppointmentDto>> GetAssignedAppointmentsPagedAsync(string employeeUserId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? serviceId = null)
+        {
+            var query = _context.Appointments
+                .Include(a => a.Shop)
+                .Include(a => a.ShopService)
+                .Include(a => a.ShopEmployee)
+                    .ThenInclude(e => e.User)
+                .Include(a => a.User)
+                .Where(a => a.ShopEmployee.UserId == employeeUserId);
+
+            if (status.HasValue)
+                query = query.Where(a => a.Status == status.Value);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lower = searchTerm.ToLower();
+                query = query.Where(a =>
+                    (a.User != null && (a.User.FirstName + " " + a.User.LastName).ToLower().Contains(lower)) ||
+                    a.ShopService.Name.ToLower().Contains(lower));
+            }
+
+            if (date.HasValue)
+            {
+                var targetDate = date.Value.Date;
+                query = query.Where(a => a.StartTime.Date == targetDate);
+            }
+
+            if (serviceId.HasValue)
+                query = query.Where(a => a.ShopServiceId == serviceId.Value);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(a => a.StartTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<AppointmentDto>(items.Select(a => MapToDto(a)).ToList(), totalCount, page, pageSize);
+        }
+
         public async Task UpdateStatusByEmployeeAsync(string employeeUserId, Guid appointmentId, UpdateAppointmentStatusDto request)
         {
             var appointment = await _context.Appointments
