@@ -15,5 +15,6 @@ namespace KuaforumAPI.Application.DTOs.Employee
         public bool IsActive { get; set; }
         public bool IsDeleted { get; set; }
         public List<Guid> ServiceIds { get; set; } = new List<Guid>();
+        public string? ImageUrl { get; set; }
     }
 }

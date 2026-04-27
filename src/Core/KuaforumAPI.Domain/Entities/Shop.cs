@@ -47,6 +47,8 @@ namespace KuaforumAPI.Domain.Entities
 
         public bool IsAutoProcessEnabled { get; set; } = false;
 
+        public int BookingDaysAhead { get; set; } = 30;
+
         public TimeSpan? OpenTime { get; set; }
         public TimeSpan? CloseTime { get; set; }
 

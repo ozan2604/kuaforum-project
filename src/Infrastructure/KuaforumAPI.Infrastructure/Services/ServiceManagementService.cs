@@ -209,6 +209,7 @@ namespace KuaforumAPI.Infrastructure.Services
                                 FirstName = es.ShopEmployee.User.FirstName,
                                 LastName = es.ShopEmployee.User.LastName,
                                 Title = es.ShopEmployee.Title,
+                                ImageUrl = es.ShopEmployee.User.ProfileImageUrl,
                                 AverageRating = es.ShopEmployee.AverageRating,
                                 ReviewCount = es.ShopEmployee.ReviewCount
                             }).ToList()
@@ -262,6 +263,7 @@ namespace KuaforumAPI.Infrastructure.Services
                                 FirstName = es.ShopEmployee.User.FirstName,
                                 LastName = es.ShopEmployee.User.LastName,
                                 Title = es.ShopEmployee.Title,
+                                ImageUrl = es.ShopEmployee.User.ProfileImageUrl,
                                 AverageRating = es.ShopEmployee.AverageRating,
                                 ReviewCount = es.ShopEmployee.ReviewCount
                             }).ToList()

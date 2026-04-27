@@ -20,5 +20,6 @@ namespace KuaforumAPI.Application.DTOs.Shop
 
         public string? OpenTime { get; set; }
         public string? CloseTime { get; set; }
+        public int BookingDaysAhead { get; set; } = 30;
     }
 }

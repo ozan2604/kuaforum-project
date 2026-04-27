@@ -137,6 +137,7 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.GenderPreference = request.GenderPreference;
             shop.OpenTime = ParseTime(request.OpenTime);
             shop.CloseTime = ParseTime(request.CloseTime);
+            shop.BookingDaysAhead = request.BookingDaysAhead > 0 ? request.BookingDaysAhead : 30;
 
             await _shopRepository.UpdateAsync(shop);
             await _shopRepository.UpdateShopCategoriesAsync(shop.Id, request.CategoryIds);
@@ -284,6 +285,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                BookingDaysAhead = shop.BookingDaysAhead,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
                 ClosureDates = closureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),

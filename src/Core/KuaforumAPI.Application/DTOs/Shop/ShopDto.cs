@@ -30,6 +30,7 @@ namespace KuaforumAPI.Application.DTOs.Shop
 
         public bool IsActive { get; set; }
         public bool IsAutoProcessEnabled { get; set; }
+        public int BookingDaysAhead { get; set; }
 
         public string? OpenTime { get; set; }
         public string? CloseTime { get; set; }

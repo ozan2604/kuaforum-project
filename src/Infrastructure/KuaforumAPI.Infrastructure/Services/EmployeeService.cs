@@ -205,7 +205,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 ReviewCount = e.ReviewCount,
                 IsActive = e.IsActive,
                 IsDeleted = e.IsDeleted,
-                ServiceIds = services.Where(s => s.ShopEmployeeId == e.Id).Select(s => s.ShopServiceId).ToList()
+                ServiceIds = services.Where(s => s.ShopEmployeeId == e.Id).Select(s => s.ShopServiceId).ToList(),
+                ImageUrl = e.User.ProfileImageUrl
             }).ToList();
         }
 
