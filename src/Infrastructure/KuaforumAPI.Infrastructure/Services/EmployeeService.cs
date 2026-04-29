@@ -63,6 +63,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 // 2. Check if User Exists by Phone
                 var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
                 bool isNewUser = false;
+                string? tempPassword = null;
 
                 if (user == null)
                 {
@@ -70,8 +71,8 @@ namespace KuaforumAPI.Infrastructure.Services
                     // Create New User
                     user = new ApplicationUser
                     {
-                        UserName = request.PhoneNumber, // Use phone number as username
-                        Email = $"{request.PhoneNumber}@kuaforum.dummy", // Dummy email
+                        UserName = request.PhoneNumber,
+                        Email = $"{request.PhoneNumber}@kuaforum.dummy",
                         PhoneNumber = request.PhoneNumber,
                         FirstName = request.FirstName,
                         LastName = request.LastName,
@@ -79,8 +80,8 @@ namespace KuaforumAPI.Infrastructure.Services
                         PhoneNumberConfirmed = true
                     };
 
-                    // Default password for newly created employees
-                    var result = await _userManager.CreateAsync(user, "Kuaforum123!");
+                    tempPassword = GenerateTemporaryPassword();
+                    var result = await _userManager.CreateAsync(user, tempPassword);
                     if (!result.Succeeded)
                     {
                         var errors = string.Join(", ", result.Errors.Select(e => e.Description));
@@ -148,7 +149,8 @@ namespace KuaforumAPI.Infrastructure.Services
                     IsNewUser = isNewUser,
                     FirstName = user.FirstName,
                     LastName = user.LastName,
-                    PhoneNumber = user.PhoneNumber
+                    PhoneNumber = user.PhoneNumber,
+                    TemporaryPassword = isNewUser ? tempPassword : null
                 };
             }
             catch
@@ -156,6 +158,32 @@ namespace KuaforumAPI.Infrastructure.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private static string GenerateTemporaryPassword()
+        {
+            const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+            const string lower = "abcdefghjkmnpqrstuvwxyz";
+            const string digits = "23456789";
+            const string special = "!@#$";
+
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+            char Pick(string s) { var b = new byte[1]; rng.GetBytes(b); return s[b[0] % s.Length]; }
+
+            var chars = new[]
+            {
+                Pick(upper), Pick(upper),
+                Pick(lower), Pick(lower), Pick(lower),
+                Pick(digits), Pick(digits),
+                Pick(special)
+            };
+
+            var orderBytes = new byte[chars.Length * 4];
+            rng.GetBytes(orderBytes);
+            return new string(chars.Select((c, i) => (c, BitConverter.ToInt32(orderBytes, i * 4)))
+                                   .OrderBy(x => x.Item2)
+                                   .Select(x => x.c)
+                                   .ToArray());
         }
 
         public async Task<List<EmployeeListDto>> GetEmployeesAsync(string ownerId)
@@ -199,7 +227,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 UserId = e.UserId,
                 FirstName = e.User.FirstName,
                 LastName = e.User.LastName,
-                Email = e.User.Email, // Maybe hide email for public?
+                Email = null,
                 Title = e.Title,
                 AverageRating = e.AverageRating,
                 ReviewCount = e.ReviewCount,

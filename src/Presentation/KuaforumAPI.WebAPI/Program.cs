@@ -8,6 +8,8 @@ using KuaforumAPI.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Application.Interfaces.Services;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,12 +24,26 @@ builder.Services.AddHttpClient("nominatim", c =>
 });
 
 // CORS
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
-        builder => builder.AllowAnyOrigin()
-                          .AllowAnyMethod()
-                          .AllowAnyHeader());
+    options.AddPolicy("AllowFrontend",
+        policy => policy.WithOrigins(allowedOrigins)
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+});
+
+// Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("auth", o =>
+    {
+        o.PermitLimit = 10;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        o.QueueLimit = 0;
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
 // Persistence
@@ -94,7 +110,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionMiddleware>();
 
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
+
+app.UseRateLimiter();
 
 app.UseHttpsRedirection();
 

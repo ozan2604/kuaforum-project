@@ -187,6 +187,7 @@ namespace KuaforumAPI.WebAPI.Controllers
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                BookingDaysAhead = shop.BookingDaysAhead,
                 CoverImagePath = shop.CoverImagePath,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,

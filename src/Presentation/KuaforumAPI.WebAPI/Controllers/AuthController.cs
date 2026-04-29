@@ -2,6 +2,7 @@ using KuaforumAPI.Application.DTOs.Auth;
 using KuaforumAPI.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Collections.Generic;
 using System.Security.Claims;
 
@@ -19,6 +20,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting("auth")]
         public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
         {
             var result = await _authService.RegisterAsync(request);
@@ -26,6 +28,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("auth")]
         public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
         {
             var result = await _authService.LoginAsync(request);

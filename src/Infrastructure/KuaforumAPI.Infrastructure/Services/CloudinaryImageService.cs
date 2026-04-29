@@ -5,6 +5,7 @@ using KuaforumAPI.Application.Settings;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -25,10 +26,23 @@ namespace KuaforumAPI.Infrastructure.Services
             _cloudinary = new Cloudinary(account);
         }
 
+        private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "image/jpeg", "image/jpg", "image/png", "image/webp"
+        };
+
+        private const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
+
         public async Task<string> UploadImageAsync(IFormFile file, string folderName, int? width = null, int? height = null)
         {
             if (file == null || file.Length == 0)
                 return null;
+
+            if (!AllowedMimeTypes.Contains(file.ContentType))
+                throw new ArgumentException("Yalnızca JPEG, PNG veya WebP formatında görsel yüklenebilir.");
+
+            if (file.Length > MaxFileSizeBytes)
+                throw new ArgumentException("Dosya boyutu 5 MB'ı geçemez.");
 
             using var stream = file.OpenReadStream();
             

@@ -97,6 +97,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                BookingDaysAhead = shop.BookingDaysAhead,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
                 ClosureDates = shop.ClosureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
@@ -171,13 +172,14 @@ namespace KuaforumAPI.Infrastructure.Services
                 GenderPreference = shop.GenderPreference,
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                BookingDaysAhead = shop.BookingDaysAhead,
                 CoverImagePath = shop.CoverImagePath,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
                 OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
-                OwnerEmail = shop.Owner?.Email,
+                OwnerEmail = null,
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             });

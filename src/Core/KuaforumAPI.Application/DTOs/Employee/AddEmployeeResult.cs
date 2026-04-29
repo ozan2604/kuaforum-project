@@ -6,5 +6,6 @@ namespace KuaforumAPI.Application.DTOs.Employee
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string PhoneNumber { get; set; }
+        public string? TemporaryPassword { get; set; }
     }
 }

@@ -26,10 +26,15 @@ namespace KuaforumAPI.WebAPI.Controllers
             var result = await _employeeService.AddEmployeeAsync(userId, request);
 
             string message = result.IsNewUser
-                ? $"{result.FirstName} {result.LastName} sisteme başarıyla kaydedildi ve çalışan olarak eklendi. Giriş bilgileri — Telefon: {result.PhoneNumber} | Şifre: Kuaforum123!"
+                ? $"{result.FirstName} {result.LastName} sisteme başarıyla kaydedildi ve çalışan olarak eklendi. Giriş bilgileri — Telefon: {result.PhoneNumber} | Geçici Şifre: {result.TemporaryPassword}"
                 : $"{result.FirstName} {result.LastName} zaten sistemde kayıtlıydı, çalışan rolü başarıyla eklendi.";
 
-            return Ok(new { Message = message });
+            return Ok(new 
+            { 
+                message = message,
+                temporaryPassword = result.TemporaryPassword,
+                isNewUser = result.IsNewUser
+            });
         }
 
         [HttpPost("{id}/services")]
