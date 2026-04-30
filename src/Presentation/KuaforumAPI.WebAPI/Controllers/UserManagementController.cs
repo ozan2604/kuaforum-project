@@ -57,35 +57,40 @@ namespace KuaforumAPI.WebAPI.Controllers
                 .Take(pageSize)
                 .ToListAsync();
 
-            var usersWithRoles = new System.Collections.Generic.List<object>();
-            foreach (var u in users)
+            var userIds = users.Select(u => u.Id).ToList();
+
+            // Tek sorguda tüm roller
+            var userRoles = await (
+                from ur in _context.UserRoles
+                join r in _context.Roles on ur.RoleId equals r.Id
+                where userIds.Contains(ur.UserId)
+                select new { ur.UserId, RoleName = r.Name }
+            ).ToListAsync();
+
+            // Tek sorguda sahip olunan salonlar
+            var ownedShopsAll = await _context.Shops
+                .Where(s => userIds.Contains(s.OwnerId))
+                .Select(s => new { s.OwnerId, s.Name })
+                .ToListAsync();
+
+            // Tek sorguda çalışan olunan salonlar
+            var employedShopsAll = await _context.ShopEmployees
+                .Where(se => userIds.Contains(se.UserId))
+                .Select(se => new { se.UserId, ShopName = se.Shop.Name })
+                .ToListAsync();
+
+            var usersWithRoles = users.Select(u => new
             {
-                var roles = await _userManager.GetRolesAsync(u);
-                
-                var ownedShops = await _context.Shops
-                    .Where(s => s.OwnerId == u.Id)
-                    .Select(s => s.Name)
-                    .ToListAsync();
-
-                var employedShops = await _context.ShopEmployees
-                    .Include(se => se.Shop)
-                    .Where(se => se.UserId == u.Id && se.Shop != null)
-                    .Select(se => se.Shop.Name)
-                    .ToListAsync();
-
-                usersWithRoles.Add(new 
-                {
-                    u.Id,
-                    u.FirstName,
-                    u.LastName,
-                    u.Email,
-                    u.PhoneNumber,
-                    u.UserName,
-                    Roles = roles,
-                    OwnedShops = ownedShops,
-                    EmployedShops = employedShops
-                });
-            }
+                u.Id,
+                u.FirstName,
+                u.LastName,
+                u.Email,
+                u.PhoneNumber,
+                u.UserName,
+                Roles = userRoles.Where(r => r.UserId == u.Id).Select(r => r.RoleName).ToList(),
+                OwnedShops = ownedShopsAll.Where(s => s.OwnerId == u.Id).Select(s => s.Name).ToList(),
+                EmployedShops = employedShopsAll.Where(e => e.UserId == u.Id).Select(e => e.ShopName).ToList()
+            }).ToList();
 
             return Ok(new { TotalCount = totalCount, Users = usersWithRoles });
         }

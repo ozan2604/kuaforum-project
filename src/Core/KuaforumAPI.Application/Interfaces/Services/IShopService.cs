@@ -22,5 +22,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<List<ShopClosureDateDto>> GetClosureDatesAsync(Guid shopId);
         Task AddClosureDateAsync(string ownerId, Guid shopId, DateTime date, string? reason);
         Task RemoveClosureDateAsync(string ownerId, Guid closureDateId);
+
+        Task<ShopDashboardStatsDto> GetDashboardStatsAsync(string ownerId);
+        Task<(int TotalCount, IEnumerable<ShopDto> Shops)> GetAllShopsAdminAsync(string? search, int page, int pageSize);
     }
 }

@@ -85,7 +85,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     if (!result.Succeeded)
                     {
                         var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                        throw new Exception($"User creation failed: {errors}");
+                        throw new KuaforumAPI.Application.Exceptions.ValidationException($"Kullanıcı oluşturulamadı: {errors}");
                     }
                 }
 
@@ -93,7 +93,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 var activeInOtherShop = await _context.ShopEmployees
                     .AnyAsync(se => se.UserId == user.Id && !se.IsDeleted && se.ShopId != shop.Id);
                 if (activeInOtherShop)
-                    throw new Exception("Bu kullanıcı başka bir dükkanın aktif çalışanıdır.");
+                    throw new KuaforumAPI.Application.Exceptions.ValidationException("Bu kullanıcı başka bir dükkanın aktif çalışanıdır.");
 
                 // 4. Assign Role if not already
                 if (!await _userManager.IsInRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee))
@@ -106,7 +106,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 if (existingEmployee != null)
                 {
                     if (!existingEmployee.IsDeleted)
-                        throw new Exception("Bu kullanıcı zaten dükkanınızda çalışan olarak ekli.");
+                        throw new KuaforumAPI.Application.Exceptions.ValidationException("Bu kullanıcı zaten dükkanınızda çalışan olarak ekli.");
 
                     // Silinmiş kayıt varsa reaktive et
                     existingEmployee.IsDeleted = false;
@@ -256,7 +256,7 @@ namespace KuaforumAPI.Infrastructure.Services
             // 2. Validate Services (Brief check: ensure they belong to shop)
             // Ideally we should check strict validity. 
             // We can fetch all services of the shop and compare IDs.
-            var shopServicesCursor = _context.ShopServices.Where(s => s.ShopId == shop.Id && s.IsActive).Select(s => s.Id);
+            var shopServicesCursor = _context.ShopServices.Where(s => s.ShopId == shop.Id && s.IsActive && !s.IsDeleted).Select(s => s.Id);
             // Verify all requested IDs exist in shop's services
             // If list is empty, we are clearing assignments, which is valid.
             if (serviceIds != null && serviceIds.Any())
@@ -389,7 +389,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new FluentValidation.ValidationException("Employee not found in your shop.");
 
             if (!employee.IsDeleted)
-                throw new Exception("Bu çalışan zaten aktif.");
+                throw new KuaforumAPI.Application.Exceptions.ValidationException("Bu çalışan zaten aktif.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -567,6 +567,63 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             // Save changes to ShopEmployee
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<ScheduleDto>> GetMyScheduleAsync(string userId)
+        {
+            var employee = await _context.ShopEmployees
+                .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
+
+            if (employee == null)
+                throw new NotFoundException("Çalışan kaydı bulunamadı.");
+
+            var schedules = await _context.EmployeeSchedules
+                .Where(es => es.ShopEmployeeId == employee.Id)
+                .OrderBy(es => es.DayOfWeek)
+                .ToListAsync();
+
+            return schedules.Select(s => new ScheduleDto
+            {
+                DayOfWeek = (int)s.DayOfWeek,
+                IsWorking = s.IsWorking,
+                StartTime = s.StartTime.ToString(@"hh\:mm"),
+                EndTime = s.EndTime.ToString(@"hh\:mm"),
+                BreakStartTime = s.BreakStartTime?.ToString(@"hh\:mm"),
+                BreakEndTime = s.BreakEndTime?.ToString(@"hh\:mm")
+            }).ToList();
+        }
+
+        public async Task UpdateMyScheduleAsync(string userId, UpdateScheduleDto request)
+        {
+            var employee = await _context.ShopEmployees
+                .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
+
+            if (employee == null)
+                throw new NotFoundException("Çalışan kaydı bulunamadı.");
+
+            var existing = await _context.EmployeeSchedules
+                .Where(es => es.ShopEmployeeId == employee.Id)
+                .ToListAsync();
+
+            _context.EmployeeSchedules.RemoveRange(existing);
+
+            if (request.Schedules != null)
+            {
+                var newSchedules = request.Schedules.Select(s => new EmployeeSchedule
+                {
+                    ShopEmployeeId = employee.Id,
+                    DayOfWeek = (DayOfWeek)s.DayOfWeek,
+                    IsWorking = s.IsWorking,
+                    StartTime = TimeSpan.Parse(s.StartTime ?? "09:00"),
+                    EndTime = TimeSpan.Parse(s.EndTime ?? "18:00"),
+                    BreakStartTime = string.IsNullOrEmpty(s.BreakStartTime) ? null : TimeSpan.Parse(s.BreakStartTime),
+                    BreakEndTime = string.IsNullOrEmpty(s.BreakEndTime) ? null : TimeSpan.Parse(s.BreakEndTime)
+                }).ToList();
+
+                await _context.EmployeeSchedules.AddRangeAsync(newSchedules);
+            }
+
             await _context.SaveChangesAsync();
         }
     }

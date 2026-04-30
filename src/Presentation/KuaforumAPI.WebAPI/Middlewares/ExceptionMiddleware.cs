@@ -10,11 +10,13 @@ namespace KuaforumAPI.WebAPI.Middlewares
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionMiddleware> _logger;
+        private readonly IHostEnvironment _env;
 
-        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger, IHostEnvironment env)
         {
             _next = next;
             _logger = logger;
+            _env = env;
         }
 
         public async Task InvokeAsync(HttpContext httpContext)
@@ -56,9 +58,8 @@ namespace KuaforumAPI.WebAPI.Middlewares
                     statusCode = (int)HttpStatusCode.Unauthorized;
                     message = "Invalid credentials";
                     break;
-                // Add more custom exceptions here
                 default:
-                    message = exception.Message; // In production, might want to hide this
+                    message = _env.IsProduction() ? "Internal Server Error" : exception.Message;
                     break;
             }
 

@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using System.Linq;
 using KuaforumAPI.Application.Exceptions;
 
 namespace KuaforumAPI.WebAPI.Controllers
@@ -51,152 +49,20 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpGet("my-shop/dashboard-stats")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> GetDashboardStats(
-            [FromServices] KuaforumAPI.Persistence.Contexts.ApplicationDbContext context,
-            [FromServices] KuaforumAPI.Application.Interfaces.Services.IDateTimeService dateTimeService)
+        public async Task<IActionResult> GetDashboardStats()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var shop = await _shopService.GetShopByOwnerIdAsync(userId);
-            if (shop == null) return NotFound(new { Message = "You don't have a shop yet." });
-
-            var now = dateTimeService.Now;
-            var today = now.Date;
-            var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
-            if (today.DayOfWeek == DayOfWeek.Sunday) startOfWeek = startOfWeek.AddDays(-7);
-            var startOfMonth = new DateTime(today.Year, today.Month, 1);
-            var startOfYear = new DateTime(today.Year, 1, 1);
-
-            var appointments = await context.Appointments
-                .Where(a => a.ShopId == shop.Id)
-                .Select(a => new { a.StartTime, a.Status, Price = a.ShopService.Price })
-                .ToListAsync();
-
-            var todayApps = appointments.Where(a => a.StartTime.Date == today).ToList();
-            var weekApps = appointments.Where(a => a.StartTime.Date >= startOfWeek).ToList();
-            var monthApps = appointments.Where(a => a.StartTime.Date >= startOfMonth).ToList();
-            var yearApps = appointments.Where(a => a.StartTime.Date >= startOfYear).ToList();
-
-            var services = await context.ShopServices.Where(s => s.ShopId == shop.Id && !s.IsDeleted).ToListAsync();
-            var employees = await context.ShopEmployees.Where(e => e.ShopId == shop.Id && !e.IsDeleted).ToListAsync();
-
-            var unconfirmedApps = appointments.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Pending);
-            var missingInfo = new System.Collections.Generic.List<string>();
-            if (string.IsNullOrWhiteSpace(shop.Description)) missingInfo.Add("Açıklama");
-            if (string.IsNullOrWhiteSpace(shop.CoverImagePath)) missingInfo.Add("Kapak Fotoğrafı");
-            if (shop.Categories == null || !shop.Categories.Any()) missingInfo.Add("Kategori");
-
-            var notifications = new System.Collections.Generic.List<string>();
-            if (unconfirmedApps > 0) notifications.Add($"{unconfirmedApps} adet onay/yanıt bekleyen randevunuz var.");
-            if (missingInfo.Any()) notifications.Add($"Dükkan profilinizde eksikler var: {string.Join(", ", missingInfo)}.");
-
-            return Ok(new
-            {
-                ShopId = shop.Id,
-                Notifications = notifications,
-                Appointments = new
-                {
-                    Today = new
-                    {
-                        Total = todayApps.Count(),
-                        Completed = todayApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed),
-                        Cancelled = todayApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Cancelled),
-                        Rejected = todayApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Rejected),
-                        Revenue = todayApps.Where(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed).Sum(a => (decimal)a.Price)
-                    },
-                    ThisWeek = new
-                    {
-                        Total = weekApps.Count(),
-                        Completed = weekApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed),
-                        Cancelled = weekApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Cancelled),
-                        Rejected = weekApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Rejected),
-                        Revenue = weekApps.Where(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed).Sum(a => (decimal)a.Price)
-                    },
-                    ThisMonth = new
-                    {
-                        Total = monthApps.Count(),
-                        Completed = monthApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed),
-                        Cancelled = monthApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Cancelled),
-                        Rejected = monthApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Rejected),
-                        Revenue = monthApps.Where(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed).Sum(a => (decimal)a.Price)
-                    },
-                    ThisYear = new
-                    {
-                        Total = yearApps.Count(),
-                        Completed = yearApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed),
-                        Cancelled = yearApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Cancelled),
-                        Rejected = yearApps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Rejected),
-                        Revenue = yearApps.Where(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed).Sum(a => (decimal)a.Price)
-                    }
-                },
-                Services = new
-                {
-                    Total = services.Count,
-                    Active = services.Count(s => s.IsActive),
-                    Passive = services.Count(s => !s.IsActive)
-                },
-                Employees = new
-                {
-                    Total = employees.Count,
-                    Active = employees.Count(e => e.IsActive),
-                    Passive = employees.Count(e => !e.IsActive)
-                }
-            });
+            var stats = await _shopService.GetDashboardStatsAsync(userId);
+            return Ok(stats);
         }
         [HttpGet("admin/all")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.Admin)]
         public async Task<IActionResult> GetAllShops(
-            [FromServices] KuaforumAPI.Persistence.Contexts.ApplicationDbContext context, 
-            [FromQuery] string search = "", 
-            [FromQuery] int page = 1, 
+            [FromQuery] string search = "",
+            [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
-            var query = context.Shops.Include(s => s.Owner).Include(s => s.Categories).AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var lowerSearch = search.ToLower();
-                query = query.Where(s => 
-                    s.Name.ToLower().Contains(lowerSearch) || 
-                    (s.Owner != null && (s.Owner.FirstName.ToLower().Contains(lowerSearch) || s.Owner.LastName.ToLower().Contains(lowerSearch) || s.Owner.Email.ToLower().Contains(lowerSearch))) ||
-                    (s.City != null && s.City.ToLower().Contains(lowerSearch)) ||
-                    (s.PhoneNumber != null && s.PhoneNumber.Contains(search))
-                );
-            }
-
-            var totalCount = await EntityFrameworkQueryableExtensions.CountAsync(query);
-
-            var pagedShops = await EntityFrameworkQueryableExtensions.ToListAsync(
-                query
-                .OrderByDescending(s => s.CreatedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-            );
-
-            var shops = pagedShops.Select(shop => new KuaforumAPI.Application.DTOs.Shop.ShopDto
-            {
-                Id = shop.Id,
-                Name = shop.Name,
-                Description = shop.Description,
-                Address = shop.Address,
-                City = shop.City,
-                District = shop.District,
-                PhoneNumber = shop.PhoneNumber,
-                Latitude = shop.Latitude,
-                Longitude = shop.Longitude,
-                Categories = shop.Categories.Select(c => c.CategoryValue).ToList(),
-                GenderPreference = shop.GenderPreference,
-                IsActive = shop.IsActive,
-                IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
-                BookingDaysAhead = shop.BookingDaysAhead,
-                CoverImagePath = shop.CoverImagePath,
-                AverageRating = shop.AverageRating,
-                ReviewCount = shop.ReviewCount,
-                OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
-                OwnerEmail = shop.Owner != null ? shop.Owner.Email : null,
-                CreatedAt = shop.CreatedAt,
-                UpdatedAt = shop.UpdatedAt
-            }).ToList();
-
+            var (totalCount, shops) = await _shopService.GetAllShopsAdminAsync(search, page, pageSize);
             return Ok(new { TotalCount = totalCount, Shops = shops });
         }
 

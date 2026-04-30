@@ -2,7 +2,6 @@ using FluentValidation;
 using KuaforumAPI.Application.DTOs.Appointment;
 using KuaforumAPI.Application.DTOs.Common;
 using KuaforumAPI.Application.DTOs.Service;
-using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
@@ -21,13 +20,11 @@ namespace KuaforumAPI.Infrastructure.Services
     public class AppointmentService : IAppointmentService
     {
         private readonly ApplicationDbContext _context;
-        private readonly IShopRepository _shopRepository;
         private readonly IDateTimeService _dateTimeService;
 
-        public AppointmentService(ApplicationDbContext context, IShopRepository shopRepository, IDateTimeService dateTimeService)
+        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService)
         {
             _context = context;
-            _shopRepository = shopRepository;
             _dateTimeService = dateTimeService;
         }
 
@@ -163,8 +160,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? employeeId = null, Guid? serviceId = null)
         {
-             var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-             if (shop == null || shop.Id != shopId) throw new ValidationException("Unauthorized or Shop not found.");
+             var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
+             if (shop == null || shop.Id != shopId) throw new ValidationException("Yetkisiz erişim veya salon bulunamadı.");
 
              var query = _context.Appointments
                 .Include(a => a.Shop)
@@ -226,8 +223,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (appointment == null) throw new ValidationException("Appointment not found.");
 
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null || shop.Id != appointment.ShopId) throw new ValidationException("Unauthorized.");
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
+            if (shop == null || shop.Id != appointment.ShopId) throw new ValidationException("Yetkisiz erişim.");
 
             ValidateStatusTransition(appointment.Status, request.Status);
 

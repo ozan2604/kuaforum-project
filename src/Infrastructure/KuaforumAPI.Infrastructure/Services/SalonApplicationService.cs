@@ -1,4 +1,5 @@
 using KuaforumAPI.Application.DTOs.SalonApplication;
+using KuaforumAPI.Application.Exceptions;
 using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
@@ -123,13 +124,13 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task ApproveApplicationAsync(Guid applicationId)
         {
             var application = await _repository.GetByIdAsync(applicationId);
-            if (application == null) throw new Exception("Application not found");
+            if (application == null) throw new NotFoundException("Başvuru bulunamadı.");
 
             // Check if user already has a shop to prevent duplicates (optional but good safety)
             var existingShop = await _shopRepository.GetByOwnerIdAsync(application.UserId);
             if (existingShop != null)
             {
-                throw new Exception("User already has a shop.");
+                throw new ValidationException("Bu kullanıcının zaten bir salonu var.");
             }
 
             var fullAddress = !string.IsNullOrWhiteSpace(application.Address) 
@@ -178,7 +179,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task RejectApplicationAsync(Guid applicationId)
         {
             var application = await _repository.GetByIdAsync(applicationId);
-            if (application == null) throw new Exception("Application not found");
+            if (application == null) throw new NotFoundException("Başvuru bulunamadı.");
 
             application.Status = ApplicationStatus.Rejected;
             await _repository.UpdateAsync(application);

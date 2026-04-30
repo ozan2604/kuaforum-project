@@ -594,3 +594,5 @@ FodyWeavers.xsd
 # Additional files built by Visual Studio
 
 # End of https://www.toptal.com/developers/gitignore/api/csharp,visualstudio,visualstudiocode
+# Local secrets — do not commit
+**/appsettings.Development.json

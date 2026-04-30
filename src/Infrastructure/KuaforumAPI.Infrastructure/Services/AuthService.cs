@@ -1,4 +1,7 @@
+using FluentValidation;
 using KuaforumAPI.Application.DTOs.Auth;
+using KuaforumAPI.Application.Exceptions;
+using AppValidationException = KuaforumAPI.Application.Exceptions.ValidationException;
 using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
@@ -21,21 +24,26 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
-
         private readonly IDateTimeService _dateTimeService;
         private readonly IImageService _imageService;
+        private readonly IValidator<UpdateProfileDto> _updateProfileValidator;
+        private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
 
-        public AuthService(UserManager<ApplicationUser> userManager, 
+        public AuthService(UserManager<ApplicationUser> userManager,
                            SignInManager<ApplicationUser> signInManager,
                            IConfiguration configuration,
                            IDateTimeService dateTimeService,
-                           IImageService imageService)
+                           IImageService imageService,
+                           IValidator<UpdateProfileDto> updateProfileValidator,
+                           IValidator<ChangePasswordDto> changePasswordValidator)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _dateTimeService = dateTimeService;
             _imageService = imageService;
+            _updateProfileValidator = updateProfileValidator;
+            _changePasswordValidator = changePasswordValidator;
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -103,14 +111,14 @@ namespace KuaforumAPI.Infrastructure.Services
             var existingUserWithPhone = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
             if (existingUserWithPhone != null)
             {
-                throw new Exception("Phone number is already taken.");
+                throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
             }
 
             var isSalonOwner = !string.IsNullOrEmpty(request.Role) && request.Role == KuaforumAPI.Application.Constants.Roles.SalonOwner;
 
             if (isSalonOwner && string.IsNullOrWhiteSpace(request.Email))
             {
-                throw new Exception("Email is required for Salon Owners.");
+                throw new AppValidationException("Salon sahipleri için e-posta zorunludur.");
             }
 
             var user = new ApplicationUser
@@ -127,7 +135,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new Exception($"Registration failed: {errors}");
+                throw new AppValidationException($"Kayıt başarısız: {errors}");
             }
 
             // Assign Role
@@ -182,8 +190,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<AuthResponse> UpdateProfileAsync(string userId, UpdateProfileDto request)
         {
+            var validation = await _updateProfileValidator.ValidateAsync(request);
+            if (!validation.IsValid) throw new FluentValidation.ValidationException(validation.Errors);
+
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new Exception("User not found");
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
 
             // Email uniqueness check (only if email is provided and changed)
             if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
@@ -191,7 +202,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 var userWithEmail = await _userManager.FindByEmailAsync(request.Email);
                 if (userWithEmail != null && userWithEmail.Id != userId)
                 {
-                    throw new Exception("Email is already taken.");
+                    throw new AppValidationException("Bu e-posta adresi zaten kullanımda.");
                 }
             }
 
@@ -201,7 +212,7 @@ namespace KuaforumAPI.Infrastructure.Services
                  var userWithPhone = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber && u.Id != userId);
                  if (userWithPhone != null)
                  {
-                     throw new Exception("Phone number is already taken.");
+                     throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
                  }
             }
 
@@ -215,7 +226,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new Exception($"Profile update failed: {errors}");
+                throw new AppValidationException($"Profil güncellenemedi: {errors}");
             }
 
             return new AuthResponse
@@ -233,14 +244,17 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task ChangePasswordAsync(string userId, ChangePasswordDto request)
         {
+            var validation = await _changePasswordValidator.ValidateAsync(request);
+            if (!validation.IsValid) throw new FluentValidation.ValidationException(validation.Errors);
+
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new Exception("User not found");
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
 
             var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new Exception($"Password change failed: {errors}");
+                throw new AppValidationException($"Şifre değiştirilemedi: {errors}");
             }
         }
 
@@ -249,7 +263,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task DeleteAccountAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new Exception("User not found");
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
 
             // Delete profile image if exists
             if (!string.IsNullOrEmpty(user.ProfileImageUrl))
@@ -261,14 +275,14 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new Exception($"Account deletion failed: {errors}");
+                throw new AppValidationException($"Hesap silinemedi: {errors}");
             }
         }
 
         public async Task<string> UpdateProfileImageAsync(string userId, Microsoft.AspNetCore.Http.IFormFile image)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new Exception("User not found");
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
 
             // Delete old image if exists
             if (!string.IsNullOrEmpty(user.ProfileImageUrl))
@@ -280,7 +294,7 @@ namespace KuaforumAPI.Infrastructure.Services
             user.ProfileImageUrl = imageUrl;
             
             var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded) throw new Exception("Failed to update profile image");
+            if (!result.Succeeded) throw new AppValidationException("Profil fotoğrafı güncellenemedi.");
 
             return imageUrl;
         }
@@ -288,7 +302,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task DeleteProfileImageAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new Exception("User not found");
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
 
             if (!string.IsNullOrEmpty(user.ProfileImageUrl))
             {

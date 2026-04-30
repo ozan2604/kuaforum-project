@@ -24,5 +24,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
 
         Task<EmployeeProfileDto> GetMyProfileAsync(string userId);
         Task UpdateMyProfileAsync(string userId, UpdateEmployeeProfileDto request);
+
+        Task<List<ScheduleDto>> GetMyScheduleAsync(string userId);
+        Task UpdateMyScheduleAsync(string userId, UpdateScheduleDto request);
     }
 }

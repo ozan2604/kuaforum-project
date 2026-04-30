@@ -23,8 +23,9 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IImageService _imageService;
         private readonly IValidator<CreateShopDto> _validator;
         private readonly ApplicationDbContext _context;
+        private readonly IDateTimeService _dateTimeService;
 
-        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context)
+        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService)
         {
             _shopRepository = shopRepository;
             _shopImageRepository = shopImageRepository;
@@ -32,6 +33,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _imageService = imageService;
             _validator = validator;
             _context = context;
+            _dateTimeService = dateTimeService;
         }
 
         public async Task CreateShopAsync(string userId, CreateShopDto request)
@@ -146,13 +148,14 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<IEnumerable<ShopDto>> GetAllShopsAsync(string? city = null, string? district = null, string? neighborhood = null)
         {
-            var shops = await _shopRepository.GetAllWithDetailsAsync(city, district, neighborhood);
-            // Note: GetAllWithDetailsAsync should ideally include Images, but for now we might lazy load or separate queries.
-            // Assuming GetAllWithDetailsAsync includes Owner.
-            // If Images are not included in the repository method, we might need to fetch them.
-            // But doing N+1 queries here is bad.
-            // Let's assume for 'GetAll' (list view), we only need CoverImage which is on Shop entity.
-            // We won't load gallery images for the list view to performance.
+            var shops = (await _shopRepository.GetAllWithDetailsAsync(city, district, neighborhood)).ToList();
+
+            var shopIds = shops.Select(s => s.Id).ToList();
+            var minPrices = await _context.ShopServices
+                .Where(ss => shopIds.Contains(ss.ShopId) && !ss.IsDeleted && ss.IsActive)
+                .GroupBy(ss => ss.ShopId)
+                .Select(g => new { ShopId = g.Key, MinPrice = g.Min(x => x.Price) })
+                .ToDictionaryAsync(x => x.ShopId, x => x.MinPrice);
 
             return shops.Select(shop => new ShopDto
             {
@@ -176,6 +179,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 CoverImagePath = shop.CoverImagePath,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
+                MinServicePrice = minPrices.TryGetValue(shop.Id, out var mp) ? mp : null,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
                 OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
@@ -410,6 +414,124 @@ namespace KuaforumAPI.Infrastructure.Services
 
             _context.ShopClosureDates.Remove(closure);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<ShopDashboardStatsDto> GetDashboardStatsAsync(string ownerId)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+
+            var now = _dateTimeService.Now;
+            var today = now.Date;
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+            if (today.DayOfWeek == DayOfWeek.Sunday) startOfWeek = startOfWeek.AddDays(-7);
+            var startOfMonth = new DateTime(today.Year, today.Month, 1);
+            var startOfYear = new DateTime(today.Year, 1, 1);
+
+            var appointments = await _context.Appointments
+                .Where(a => a.ShopId == shop.Id)
+                .Select(a => new AppointmentSlim { StartTime = a.StartTime, Status = a.Status, Price = a.ShopService != null ? a.ShopService.Price : 0 })
+                .ToListAsync();
+
+            var services = await _context.ShopServices.Where(s => s.ShopId == shop.Id && !s.IsDeleted).ToListAsync();
+            var employees = await _context.ShopEmployees.Where(e => e.ShopId == shop.Id && !e.IsDeleted).ToListAsync();
+
+            static AppointmentPeriodStats Summarize(List<AppointmentSlim> apps) => new()
+            {
+                Total = apps.Count,
+                Completed = apps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed),
+                Cancelled = apps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Cancelled),
+                Rejected = apps.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Rejected),
+                Revenue = apps.Where(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed).Sum(a => a.Price)
+            };
+
+            var unconfirmedApps = appointments.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Pending);
+            var missingInfo = new List<string>();
+            if (string.IsNullOrWhiteSpace(shop.Description)) missingInfo.Add("Açıklama");
+            if (string.IsNullOrWhiteSpace(shop.CoverImagePath)) missingInfo.Add("Kapak Fotoğrafı");
+            if (shop.Categories == null || !shop.Categories.Any()) missingInfo.Add("Kategori");
+
+            var notifications = new List<string>();
+            if (unconfirmedApps > 0) notifications.Add($"{unconfirmedApps} adet onay/yanıt bekleyen randevunuz var.");
+            if (missingInfo.Any()) notifications.Add($"Dükkan profilinizde eksikler var: {string.Join(", ", missingInfo)}.");
+
+            return new ShopDashboardStatsDto
+            {
+                ShopId = shop.Id,
+                Notifications = notifications,
+                Appointments = new AppointmentStats
+                {
+                    Today = Summarize(appointments.Where(a => a.StartTime.Date == today).ToList()),
+                    ThisWeek = Summarize(appointments.Where(a => a.StartTime.Date >= startOfWeek).ToList()),
+                    ThisMonth = Summarize(appointments.Where(a => a.StartTime.Date >= startOfMonth).ToList()),
+                    ThisYear = Summarize(appointments.Where(a => a.StartTime.Date >= startOfYear).ToList()),
+                },
+                Services = new ServiceStats
+                {
+                    Total = services.Count,
+                    Active = services.Count(s => s.IsActive),
+                    Passive = services.Count(s => !s.IsActive)
+                },
+                Employees = new EmployeeStats
+                {
+                    Total = employees.Count,
+                    Active = employees.Count(e => e.IsActive),
+                    Passive = employees.Count(e => !e.IsActive)
+                }
+            };
+        }
+
+        private class AppointmentSlim
+        {
+            public DateTime StartTime { get; set; }
+            public KuaforumAPI.Domain.Enums.AppointmentStatus Status { get; set; }
+            public decimal Price { get; set; }
+        }
+
+        public async Task<(int TotalCount, IEnumerable<ShopDto> Shops)> GetAllShopsAdminAsync(string? search, int page, int pageSize)
+        {
+            var query = _context.Shops.Include(s => s.Owner).Include(s => s.Categories).AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+                query = query.Where(s =>
+                    s.Name.ToLower().Contains(lowerSearch) ||
+                    (s.Owner != null && (s.Owner.FirstName.ToLower().Contains(lowerSearch) || s.Owner.LastName.ToLower().Contains(lowerSearch) || s.Owner.Email.ToLower().Contains(lowerSearch))) ||
+                    (s.City != null && s.City.ToLower().Contains(lowerSearch)) ||
+                    (s.PhoneNumber != null && s.PhoneNumber.Contains(search))
+                );
+            }
+
+            var totalCount = await query.CountAsync();
+            var pagedShops = await query.OrderByDescending(s => s.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            var shops = pagedShops.Select(shop => new ShopDto
+            {
+                Id = shop.Id,
+                Name = shop.Name,
+                Description = shop.Description,
+                Address = shop.Address,
+                City = shop.City,
+                District = shop.District,
+                PhoneNumber = shop.PhoneNumber,
+                Latitude = shop.Latitude,
+                Longitude = shop.Longitude,
+                Categories = shop.Categories.Select(c => c.CategoryValue).ToList(),
+                GenderPreference = shop.GenderPreference,
+                IsActive = shop.IsActive,
+                IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                BookingDaysAhead = shop.BookingDaysAhead,
+                CoverImagePath = shop.CoverImagePath,
+                AverageRating = shop.AverageRating,
+                ReviewCount = shop.ReviewCount,
+                OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
+                OwnerEmail = shop.Owner != null ? shop.Owner.Email : null,
+                CreatedAt = shop.CreatedAt,
+                UpdatedAt = shop.UpdatedAt
+            });
+
+            return (totalCount, shops);
         }
 
         private static TimeSpan? ParseTime(string? timeStr)

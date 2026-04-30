@@ -9,18 +9,22 @@ namespace KuaforumAPI.Application.Validators
         {
             RuleFor(x => x.Name)
                 .NotEmpty().WithMessage("Shop name is required.")
-                .MaximumLength(150).WithMessage("Shop name must not exceed 150 characters.");
+                .MaximumLength(150).WithMessage("Shop name must not exceed 150 characters.")
+                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.Address)
-                .NotEmpty().WithMessage("Address is required.");
+                .NotEmpty().WithMessage("Address is required.")
+                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.City)
                 .NotEmpty().WithMessage("City is required.")
-                .MaximumLength(50).WithMessage("City must not exceed 50 characters.");
+                .MaximumLength(50).WithMessage("City must not exceed 50 characters.")
+                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.District)
                 .NotEmpty().WithMessage("District is required.")
-                .MaximumLength(50).WithMessage("District must not exceed 50 characters.");
+                .MaximumLength(50).WithMessage("District must not exceed 50 characters.")
+                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.PhoneNumber)
                 .NotEmpty().WithMessage("Telefon numarası zorunludur.")

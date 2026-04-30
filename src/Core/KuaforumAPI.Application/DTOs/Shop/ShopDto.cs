@@ -27,6 +27,7 @@ namespace KuaforumAPI.Application.DTOs.Shop
 
         public double AverageRating { get; set; }
         public int ReviewCount { get; set; }
+        public decimal? MinServicePrice { get; set; }
 
         public bool IsActive { get; set; }
         public bool IsAutoProcessEnabled { get; set; }

@@ -1,4 +1,5 @@
 using KuaforumAPI.Application.DTOs.Review;
+using KuaforumAPI.Application.Exceptions;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using KuaforumAPI.Application.Interfaces.Services;
+using ValidationException = KuaforumAPI.Application.Exceptions.ValidationException;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -33,22 +34,19 @@ namespace KuaforumAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(a => a.Id == dto.AppointmentId);
 
             if (appointment == null)
-                throw new Exception("Appointment not found.");
+                throw new NotFoundException("Randevu bulunamadı.");
 
             if (appointment.UserId != userId)
-                throw new Exception("You can only review your own appointments.");
+                throw new ValidationException("Yalnızca kendi randevunuzu değerlendirebilirsiniz.");
 
             if (appointment.Status != AppointmentStatus.Completed)
-            {
-                throw new Exception("You can only review completed appointments.");
-            }
+                throw new ValidationException("Yalnızca tamamlanmış randevular için değerlendirme yapılabilir.");
 
-            // 2. Check if already reviewed
             var existingReview = await _context.Reviews
                 .AnyAsync(r => r.AppointmentId == dto.AppointmentId);
 
             if (existingReview)
-                throw new Exception("You have already reviewed this appointment.");
+                throw new ValidationException("Bu randevu için zaten değerlendirme yapılmış.");
 
             // 3. Create Review
             var review = new Review
@@ -142,10 +140,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(r => r.Id == dto.Id);
 
             if (review == null)
-                throw new Exception("Review not found.");
+                throw new NotFoundException("Değerlendirme bulunamadı.");
 
             if (review.UserId != userId)
-                throw new Exception("You can only edit your own reviews.");
+                throw new ValidationException("Yalnızca kendi değerlendirmelerinizi düzenleyebilirsiniz.");
 
             // Update Fields
             review.Rating = dto.Rating;
@@ -239,10 +237,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(r => r.Id == reviewId);
 
             if (review == null)
-                throw new Exception("Review not found.");
+                throw new NotFoundException("Değerlendirme bulunamadı.");
 
             if (review.UserId != userId)
-                throw new Exception("You can only delete your own reviews.");
+                throw new ValidationException("Yalnızca kendi değerlendirmelerinizi silebilirsiniz.");
 
             // Delete Images from Cloudinary
             foreach (var img in review.Images)

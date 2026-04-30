@@ -141,5 +141,23 @@ namespace KuaforumAPI.WebAPI.Controllers
             await _employeeService.UpdateMyProfileAsync(userId, request);
             return Ok(new { Message = "Profile updated successfully." });
         }
+
+        [HttpGet("me/schedule")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> GetMySchedule()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _employeeService.GetMyScheduleAsync(userId);
+            return Ok(result);
+        }
+
+        [HttpPut("me/schedule")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> UpdateMySchedule([FromBody] UpdateScheduleDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.UpdateMyScheduleAsync(userId, request);
+            return Ok(new { Message = "Çalışma saatleri başarıyla güncellendi." });
+        }
     }
 }

@@ -9,11 +9,13 @@ namespace KuaforumAPI.Application.Validators
         {
             RuleFor(x => x.FirstName)
                 .NotEmpty().WithMessage("First name is required.")
-                .MaximumLength(50).WithMessage("First name must not exceed 50 characters.");
+                .MaximumLength(50).WithMessage("First name must not exceed 50 characters.")
+                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.LastName)
                 .NotEmpty().WithMessage("Last name is required.")
-                .MaximumLength(50).WithMessage("Last name must not exceed 50 characters.");
+                .MaximumLength(50).WithMessage("Last name must not exceed 50 characters.")
+                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.PhoneNumber)
                 .NotEmpty().WithMessage("Telefon numarası zorunludur.")
@@ -21,7 +23,8 @@ namespace KuaforumAPI.Application.Validators
 
             RuleFor(x => x.Title)
                 .NotEmpty().WithMessage("Title is required.")
-                .MaximumLength(100).WithMessage("Title must not exceed 100 characters.");
+                .MaximumLength(100).WithMessage("Title must not exceed 100 characters.")
+                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
         }
     }
 }
