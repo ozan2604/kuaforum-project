@@ -257,6 +257,23 @@ namespace KuaforumAPI.Infrastructure.Services
             await UpdateShopRating(review.ShopId);
         }
 
+        public async Task<IEnumerable<Review>> GetMyShopReviewsAsync(string ownerId)
+        {
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
+            if (shop == null) return Enumerable.Empty<Review>();
+
+            return await _context.Reviews
+                .Include(r => r.User)
+                .Include(r => r.Images)
+                .Include(r => r.ShopEmployee)
+                .ThenInclude(se => se.User)
+                .Include(r => r.Appointment)
+                .ThenInclude(a => a.ShopService)
+                .Where(r => r.ShopId == shop.Id)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Review>> GetMyReviewsAsync(string userId)
         {
             return await _context.Reviews

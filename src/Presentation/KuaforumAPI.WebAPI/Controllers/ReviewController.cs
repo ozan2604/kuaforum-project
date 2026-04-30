@@ -123,6 +123,37 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { message = "Değerlendirme silindi." });
         }
 
+        [HttpGet("my-shop")]
+        [Authorize]
+        public async Task<IActionResult> GetMyShopReviews()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var reviews = await _reviewService.GetMyShopReviewsAsync(userId);
+
+            var dtos = reviews.Select(r => new ReviewListDto
+            {
+                Id = r.Id,
+                AppointmentId = r.AppointmentId,
+                UserId = r.UserId,
+                UserName = r.User != null ? $"{r.User.FirstName} {r.User.LastName}" : "Unknown User",
+                ShopId = r.ShopId,
+                ShopEmployeeId = r.ShopEmployeeId,
+                EmployeeName = r.ShopEmployee != null && r.ShopEmployee.User != null
+                    ? $"{r.ShopEmployee.User.FirstName} {r.ShopEmployee.User.LastName}"
+                    : "Unknown Employee",
+                ShopName = r.Shop?.Name ?? "Unknown Shop",
+                ServiceName = r.Appointment?.ShopService?.Name ?? "Unknown Service",
+                AppointmentDate = r.Appointment?.StartTime ?? r.CreatedAt,
+                Rating = r.Rating,
+                Comment = r.Comment,
+                CreatedAt = r.CreatedAt,
+                ImageUrls = r.Images?.Select(i => i.Url).ToList() ?? new List<string>(),
+                ServicePrice = r.Appointment?.ShopService?.Price ?? 0
+            });
+
+            return Ok(dtos);
+        }
+
         [HttpGet("my-reviews")]
         [Authorize]
         public async Task<IActionResult> GetMyReviews()

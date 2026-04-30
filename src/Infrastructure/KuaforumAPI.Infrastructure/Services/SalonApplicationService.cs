@@ -30,6 +30,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task ApplyAsync(string userId, CreateSalonApplicationDto request)
         {
+            var existingShop = await _shopRepository.GetByOwnerIdAsync(userId);
+            if (existingShop != null)
+            {
+                throw new ValidationException("Zaten kayıtlı bir salonunuz bulunmaktadır. Yeni bir başvuru yapamazsınız.");
+            }
             var application = new SalonOwnerApplication
             {
                 UserId = userId,

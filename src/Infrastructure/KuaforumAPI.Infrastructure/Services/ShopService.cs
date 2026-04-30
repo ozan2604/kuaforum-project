@@ -429,7 +429,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var startOfYear = new DateTime(today.Year, 1, 1);
 
             var appointments = await _context.Appointments
-                .Where(a => a.ShopId == shop.Id)
+                .Where(a => a.ShopId == shop.Id && a.StartTime >= startOfYear)
                 .Select(a => new AppointmentSlim { StartTime = a.StartTime, Status = a.Status, Price = a.ShopService != null ? a.ShopService.Price : 0 })
                 .ToListAsync();
 
