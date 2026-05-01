@@ -22,6 +22,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<SalonApplicationCategoryItem> SalonApplicationCategoryItems { get; set; }
         public DbSet<ShopClosureDate> ShopClosureDates { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<OtpCode> OtpCodes { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
@@ -262,6 +263,15 @@ namespace KuaforumAPI.Persistence.Contexts
                     .WithMany()
                     .HasForeignKey(rt => rt.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // OtpCode Configuration
+            builder.Entity<OtpCode>(entity =>
+            {
+                entity.HasKey(o => o.Id);
+                entity.Property(o => o.PhoneNumber).IsRequired().HasMaxLength(15);
+                entity.Property(o => o.CodeHash).IsRequired().HasMaxLength(64);
+                entity.HasIndex(o => new { o.PhoneNumber, o.Purpose });
             });
 
             // ReviewImage Configuration

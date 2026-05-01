@@ -3,6 +3,7 @@ using KuaforumAPI.Application.DTOs.Employee;
 using KuaforumAPI.Application.DTOs.Service;
 using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
+using KuaforumAPI.Application.Settings;
 using KuaforumAPI.Application.Validators;
 using KuaforumAPI.Infrastructure.Services;
 using KuaforumAPI.Persistence.Contexts;
@@ -21,6 +22,9 @@ namespace KuaforumAPI.Infrastructure
     {
         public static void AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
         {
+            // NetGSM SMS servisi
+            services.Configure<NetGsmSettings>(configuration.GetSection("NetGsm"));
+            services.AddScoped<ISmsService, NetGsmSmsService>();
 
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ISalonApplicationService, SalonApplicationService>();

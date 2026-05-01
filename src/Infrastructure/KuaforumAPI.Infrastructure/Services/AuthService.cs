@@ -5,6 +5,7 @@ using AppValidationException = KuaforumAPI.Application.Exceptions.ValidationExce
 using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
+using KuaforumAPI.Domain.Enums;
 using KuaforumAPI.Persistence.Contexts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -17,8 +18,6 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using KuaforumAPI.Infrastructure.Services;
-using KuaforumAPI.Application.Interfaces.Services;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -32,6 +31,12 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IValidator<UpdateProfileDto> _updateProfileValidator;
         private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
         private readonly ApplicationDbContext _context;
+        private readonly ISmsService _smsService;
+
+        private const int OtpExpiryMinutes = 3;
+        private const int OtpMaxAttempts = 5;
+        private const int OtpRateLimitCount = 3;
+        private const int OtpRateLimitWindowMinutes = 10;
 
         public AuthService(UserManager<ApplicationUser> userManager,
                            SignInManager<ApplicationUser> signInManager,
@@ -40,7 +45,8 @@ namespace KuaforumAPI.Infrastructure.Services
                            IImageService imageService,
                            IValidator<UpdateProfileDto> updateProfileValidator,
                            IValidator<ChangePasswordDto> changePasswordValidator,
-                           ApplicationDbContext context)
+                           ApplicationDbContext context,
+                           ISmsService smsService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -50,6 +56,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _updateProfileValidator = updateProfileValidator;
             _changePasswordValidator = changePasswordValidator;
             _context = context;
+            _smsService = smsService;
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -375,5 +382,247 @@ namespace KuaforumAPI.Infrastructure.Services
                 await _userManager.UpdateAsync(user);
             }
         }
+
+        // ─── OTP: Login ───────────────────────────────────────────────────────────
+
+        public async Task<SendOtpResponse> SendLoginOtpAsync(SendLoginOtpRequest request)
+        {
+            // Önce kimlik bilgilerini doğrula (telefon/şifre yanlışsa OTP bile gönderme)
+            var user = await FindUserByPhoneAsync(request.PhoneNumber);
+            if (user == null)
+                throw new UnauthorizedAccessException("Telefon numarası veya şifre hatalı.");
+
+            var passwordValid = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
+            if (!passwordValid.Succeeded)
+                throw new UnauthorizedAccessException("Telefon numarası veya şifre hatalı.");
+
+            await CheckOtpRateLimitAsync(request.PhoneNumber, OtpPurpose.Login);
+            await InvalidateExistingOtpsAsync(request.PhoneNumber, OtpPurpose.Login);
+
+            var code = GenerateOtpCode();
+            var otpEntry = new OtpCode
+            {
+                PhoneNumber = request.PhoneNumber,
+                CodeHash = HashOtp(code),
+                Purpose = OtpPurpose.Login,
+                ExpiresAt = _dateTimeService.Now.AddMinutes(OtpExpiryMinutes)
+            };
+            _context.OtpCodes.Add(otpEntry);
+            await _context.SaveChangesAsync();
+
+            await _smsService.SendSmsAsync(request.PhoneNumber,
+                $"Kuaforum giriş kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
+
+            return new SendOtpResponse
+            {
+                Message = $"Doğrulama kodu {MaskPhone(request.PhoneNumber)} numarasına gönderildi.",
+                ExpiresInSeconds = OtpExpiryMinutes * 60
+            };
+        }
+
+        public async Task<AuthResponse> VerifyLoginOtpAsync(VerifyLoginOtpRequest request)
+        {
+            // Kimlik bilgilerini yeniden doğrula
+            var user = await FindUserByPhoneAsync(request.PhoneNumber);
+            if (user == null)
+                throw new UnauthorizedAccessException("Telefon numarası veya şifre hatalı.");
+
+            var passwordValid = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
+            if (!passwordValid.Succeeded)
+                throw new UnauthorizedAccessException("Telefon numarası veya şifre hatalı.");
+
+            await ValidateAndConsumeOtpAsync(request.PhoneNumber, request.OtpCode, OtpPurpose.Login);
+
+            var refreshToken = await CreateRefreshTokenAsync(user.Id);
+            return BuildAuthResponse(user, await GenerateJwtToken(user), refreshToken);
+        }
+
+        // ─── OTP: Register ────────────────────────────────────────────────────────
+
+        public async Task<SendOtpResponse> SendRegisterOtpAsync(SendRegisterOtpRequest request)
+        {
+            // Telefon zaten kayıtlıysa hata ver
+            var existing = await FindUserByPhoneAsync(request.PhoneNumber);
+            if (existing != null)
+                throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
+
+            var isSalonOwner = !string.IsNullOrEmpty(request.Role) &&
+                               request.Role == KuaforumAPI.Application.Constants.Roles.SalonOwner;
+            if (isSalonOwner && string.IsNullOrWhiteSpace(request.Email))
+                throw new AppValidationException("Salon sahipleri için e-posta zorunludur.");
+
+            // Şifre gücü ön kontrolü (Identity kuralları çerçevesinde)
+            var tempUser = new ApplicationUser { UserName = request.PhoneNumber };
+            foreach (var validator in _userManager.PasswordValidators)
+            {
+                var result = await validator.ValidateAsync(_userManager, tempUser, request.Password);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    throw new AppValidationException($"Şifre gereksinimleri karşılanmıyor: {errors}");
+                }
+            }
+
+            await CheckOtpRateLimitAsync(request.PhoneNumber, OtpPurpose.Register);
+            await InvalidateExistingOtpsAsync(request.PhoneNumber, OtpPurpose.Register);
+
+            var code = GenerateOtpCode();
+            var otpEntry = new OtpCode
+            {
+                PhoneNumber = request.PhoneNumber,
+                CodeHash = HashOtp(code),
+                Purpose = OtpPurpose.Register,
+                ExpiresAt = _dateTimeService.Now.AddMinutes(OtpExpiryMinutes)
+            };
+            _context.OtpCodes.Add(otpEntry);
+            await _context.SaveChangesAsync();
+
+            await _smsService.SendSmsAsync(request.PhoneNumber,
+                $"Kuaforum kayıt kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
+
+            return new SendOtpResponse
+            {
+                Message = $"Doğrulama kodu {MaskPhone(request.PhoneNumber)} numarasına gönderildi.",
+                ExpiresInSeconds = OtpExpiryMinutes * 60
+            };
+        }
+
+        public async Task<AuthResponse> VerifyRegisterOtpAsync(VerifyRegisterOtpRequest request)
+        {
+            // Telefon hâlâ boşta mı kontrol et (race condition güvenliği)
+            var existing = await FindUserByPhoneAsync(request.PhoneNumber);
+            if (existing != null)
+                throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
+
+            await ValidateAndConsumeOtpAsync(request.PhoneNumber, request.OtpCode, OtpPurpose.Register);
+
+            // Kullanıcıyı oluştur
+            var isSalonOwner = !string.IsNullOrEmpty(request.Role) &&
+                               request.Role == KuaforumAPI.Application.Constants.Roles.SalonOwner;
+            var user = new ApplicationUser
+            {
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Email = request.Email,
+                UserName = request.PhoneNumber,
+                PhoneNumber = request.PhoneNumber,
+                PhoneNumberConfirmed = true
+            };
+
+            var createResult = await _userManager.CreateAsync(user, request.Password);
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                throw new AppValidationException($"Kayıt başarısız: {errors}");
+            }
+
+            var roleToAssign = isSalonOwner
+                ? KuaforumAPI.Application.Constants.Roles.SalonOwner
+                : KuaforumAPI.Application.Constants.Roles.Customer;
+            await _userManager.AddToRoleAsync(user, roleToAssign);
+
+            var refreshToken = await CreateRefreshTokenAsync(user.Id);
+            return BuildAuthResponse(user, await GenerateJwtToken(user), refreshToken);
+        }
+
+        // ─── OTP Yardımcı Metodlar ────────────────────────────────────────────────
+
+        private static string GenerateOtpCode()
+            => Random.Shared.Next(100000, 1000000).ToString("D6");
+
+        private static string HashOtp(string code)
+            => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(code)));
+
+        private static string MaskPhone(string phone)
+        {
+            if (phone.Length < 7) return phone;
+            return phone[..4] + "***" + phone[^4..];
+        }
+
+        private async Task<ApplicationUser?> FindUserByPhoneAsync(string phoneNumber)
+        {
+            var potentialPhones = new List<string> { phoneNumber };
+            if (phoneNumber.Length == 10 && !phoneNumber.StartsWith("0"))
+                potentialPhones.Add("0" + phoneNumber);
+            if (phoneNumber.Length == 12 && phoneNumber.StartsWith("90"))
+                potentialPhones.Add("0" + phoneNumber[2..]);
+
+            return _userManager.Users.FirstOrDefault(u => potentialPhones.Contains(u.PhoneNumber));
+        }
+
+        private async Task CheckOtpRateLimitAsync(string phoneNumber, OtpPurpose purpose)
+        {
+            var windowStart = _dateTimeService.Now.AddMinutes(-OtpRateLimitWindowMinutes);
+            var recentCount = await _context.OtpCodes
+                .CountAsync(o => o.PhoneNumber == phoneNumber
+                              && o.Purpose == purpose
+                              && o.CreatedAt >= windowStart);
+
+            if (recentCount >= OtpRateLimitCount)
+                throw new AppValidationException(
+                    $"Çok fazla OTP isteği. {OtpRateLimitWindowMinutes} dakika sonra tekrar deneyin.");
+        }
+
+        private async Task InvalidateExistingOtpsAsync(string phoneNumber, OtpPurpose purpose)
+        {
+            var active = await _context.OtpCodes
+                .Where(o => o.PhoneNumber == phoneNumber
+                         && o.Purpose == purpose
+                         && !o.IsUsed
+                         && o.ExpiresAt > _dateTimeService.Now)
+                .ToListAsync();
+            foreach (var otp in active) otp.IsUsed = true;
+        }
+
+        private async Task ValidateAndConsumeOtpAsync(string phoneNumber, string code, OtpPurpose purpose)
+        {
+            var otpEntry = await _context.OtpCodes
+                .Where(o => o.PhoneNumber == phoneNumber
+                         && o.Purpose == purpose
+                         && !o.IsUsed
+                         && o.ExpiresAt > _dateTimeService.Now)
+                .OrderByDescending(o => o.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (otpEntry == null)
+                throw new AppValidationException("Geçerli bir doğrulama kodu bulunamadı. Lütfen yeni kod isteyin.");
+
+            otpEntry.AttemptCount++;
+
+            if (otpEntry.AttemptCount > OtpMaxAttempts)
+            {
+                otpEntry.IsUsed = true;
+                await _context.SaveChangesAsync();
+                throw new AppValidationException("Çok fazla hatalı deneme. Lütfen yeni kod isteyin.");
+            }
+
+            if (otpEntry.CodeHash != HashOtp(code))
+            {
+                await _context.SaveChangesAsync();
+                var remaining = OtpMaxAttempts - otpEntry.AttemptCount;
+                throw new AppValidationException(
+                    remaining > 0
+                        ? $"Doğrulama kodu hatalı. {remaining} deneme hakkınız kaldı."
+                        : "Çok fazla hatalı deneme. Lütfen yeni kod isteyin.");
+            }
+
+            // Başarılı — kodu kullanıldı olarak işaretle
+            otpEntry.IsUsed = true;
+            await _context.SaveChangesAsync();
+        }
+
+        private static AuthResponse BuildAuthResponse(ApplicationUser user, string jwt, string refreshToken)
+            => new AuthResponse
+            {
+                Id = user.Id,
+                Email = user.Email,
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                PhoneNumber = user.PhoneNumber,
+                ProfileImageUrl = user.ProfileImageUrl,
+                Token = jwt,
+                RefreshToken = refreshToken
+            };
     }
 }

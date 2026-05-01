@@ -35,6 +35,42 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(result);
         }
 
+        // ─── OTP: Login ───────────────────────────────────────────────────────────
+
+        [HttpPost("login/send-otp")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<SendOtpResponse>> SendLoginOtp(SendLoginOtpRequest request)
+        {
+            var result = await _authService.SendLoginOtpAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("login/verify-otp")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<AuthResponse>> VerifyLoginOtp(VerifyLoginOtpRequest request)
+        {
+            var result = await _authService.VerifyLoginOtpAsync(request);
+            return Ok(result);
+        }
+
+        // ─── OTP: Register ────────────────────────────────────────────────────────
+
+        [HttpPost("register/send-otp")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<SendOtpResponse>> SendRegisterOtp(SendRegisterOtpRequest request)
+        {
+            var result = await _authService.SendRegisterOtpAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("register/verify-otp")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<AuthResponse>> VerifyRegisterOtp(VerifyRegisterOtpRequest request)
+        {
+            var result = await _authService.VerifyRegisterOtpAsync(request);
+            return Ok(result);
+        }
+
         [HttpPost("refresh")]
         public async Task<ActionResult<AuthResponse>> Refresh([FromBody] RefreshTokenRequest request)
         {

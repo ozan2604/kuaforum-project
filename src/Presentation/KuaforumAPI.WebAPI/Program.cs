@@ -23,6 +23,12 @@ builder.Services.AddHttpClient("nominatim", c =>
     c.DefaultRequestHeaders.Add("Accept-Language", "tr");
 });
 
+builder.Services.AddHttpClient("netgsm", c =>
+{
+    c.BaseAddress = new Uri("https://api.netgsm.com.tr");
+    c.Timeout = TimeSpan.FromSeconds(15);
+});
+
 // CORS
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>

@@ -15,5 +15,10 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<string> UpdateProfileImageAsync(string userId, Microsoft.AspNetCore.Http.IFormFile image);
         Task DeleteProfileImageAsync(string userId);
 
+        // OTP (SMS doğrulama) akışları
+        Task<SendOtpResponse> SendLoginOtpAsync(SendLoginOtpRequest request);
+        Task<AuthResponse> VerifyLoginOtpAsync(VerifyLoginOtpRequest request);
+        Task<SendOtpResponse> SendRegisterOtpAsync(SendRegisterOtpRequest request);
+        Task<AuthResponse> VerifyRegisterOtpAsync(VerifyRegisterOtpRequest request);
     }
 }
