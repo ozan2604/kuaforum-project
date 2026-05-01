@@ -5,13 +5,16 @@ using AppValidationException = KuaforumAPI.Application.Exceptions.ValidationExce
 using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
+using KuaforumAPI.Persistence.Contexts;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using KuaforumAPI.Infrastructure.Services;
@@ -28,6 +31,7 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IImageService _imageService;
         private readonly IValidator<UpdateProfileDto> _updateProfileValidator;
         private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
+        private readonly ApplicationDbContext _context;
 
         public AuthService(UserManager<ApplicationUser> userManager,
                            SignInManager<ApplicationUser> signInManager,
@@ -35,7 +39,8 @@ namespace KuaforumAPI.Infrastructure.Services
                            IDateTimeService dateTimeService,
                            IImageService imageService,
                            IValidator<UpdateProfileDto> updateProfileValidator,
-                           IValidator<ChangePasswordDto> changePasswordValidator)
+                           IValidator<ChangePasswordDto> changePasswordValidator,
+                           ApplicationDbContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -44,6 +49,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _imageService = imageService;
             _updateProfileValidator = updateProfileValidator;
             _changePasswordValidator = changePasswordValidator;
+            _context = context;
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -92,6 +98,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new UnauthorizedAccessException("Invalid credentials");
             }
 
+            var refreshToken = await CreateRefreshTokenAsync(user.Id);
+
             return new AuthResponse
             {
                 Id = user.Id,
@@ -99,9 +107,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 UserName = user.UserName,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                PhoneNumber = user.PhoneNumber, // Map PhoneNumber
+                PhoneNumber = user.PhoneNumber,
                 ProfileImageUrl = user.ProfileImageUrl,
-                Token = await GenerateJwtToken(user)
+                Token = await GenerateJwtToken(user),
+                RefreshToken = refreshToken
             };
         }
 
@@ -142,6 +151,8 @@ namespace KuaforumAPI.Infrastructure.Services
             var roleToAssign = isSalonOwner ? KuaforumAPI.Application.Constants.Roles.SalonOwner : KuaforumAPI.Application.Constants.Roles.Customer;
             await _userManager.AddToRoleAsync(user, roleToAssign);
 
+            var refreshToken = await CreateRefreshTokenAsync(user.Id);
+
             return new AuthResponse
             {
                 Id = user.Id,
@@ -151,8 +162,61 @@ namespace KuaforumAPI.Infrastructure.Services
                 LastName = user.LastName,
                 PhoneNumber = user.PhoneNumber,
                 ProfileImageUrl = user.ProfileImageUrl,
-                Token = await GenerateJwtToken(user)
+                Token = await GenerateJwtToken(user),
+                RefreshToken = refreshToken
             };
+        }
+
+        public async Task<AuthResponse> RefreshAsync(string refreshToken)
+        {
+            var token = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+            if (token == null || token.IsRevoked || token.ExpiresAt <= _dateTimeService.Now)
+                throw new UnauthorizedAccessException("Geçersiz veya süresi dolmuş oturum. Lütfen tekrar giriş yapın.");
+
+            // Rotate: eski token'ı iptal et, yenisini oluştur
+            token.IsRevoked = true;
+            var newRefreshToken = await CreateRefreshTokenAsync(token.UserId);
+            await _context.SaveChangesAsync();
+
+            return new AuthResponse
+            {
+                Id = token.User.Id,
+                Email = token.User.Email,
+                UserName = token.User.UserName,
+                FirstName = token.User.FirstName,
+                LastName = token.User.LastName,
+                PhoneNumber = token.User.PhoneNumber,
+                ProfileImageUrl = token.User.ProfileImageUrl,
+                Token = await GenerateJwtToken(token.User),
+                RefreshToken = newRefreshToken
+            };
+        }
+
+        private async Task<string> CreateRefreshTokenAsync(string userId)
+        {
+            // Kullanıcının eski aktif token'larını iptal et
+            var existingTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+                .ToListAsync();
+            foreach (var t in existingTokens) t.IsRevoked = true;
+
+            var tokenValue = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+            var refreshTokenDays = Convert.ToDouble(_configuration["Jwt:RefreshTokenDurationInDays"] ?? "30");
+
+            var newToken = new RefreshToken
+            {
+                Token = tokenValue,
+                UserId = userId,
+                ExpiresAt = _dateTimeService.Now.AddDays(refreshTokenDays),
+                CreatedAt = _dateTimeService.Now
+            };
+
+            _context.RefreshTokens.Add(newToken);
+            await _context.SaveChangesAsync();
+            return tokenValue;
         }
 
         private async Task<string> GenerateJwtToken(ApplicationUser user)

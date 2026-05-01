@@ -8,6 +8,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
     {
         Task<AuthResponse> LoginAsync(LoginRequest request);
         Task<AuthResponse> RegisterAsync(RegisterRequest request);
+        Task<AuthResponse> RefreshAsync(string refreshToken);
         Task<AuthResponse> UpdateProfileAsync(string userId, UpdateProfileDto request);
         Task ChangePasswordAsync(string userId, ChangePasswordDto request);
         Task DeleteAccountAsync(string userId);

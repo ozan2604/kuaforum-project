@@ -21,6 +21,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<ShopCategoryAssignment> ShopCategoryAssignments { get; set; }
         public DbSet<SalonApplicationCategoryItem> SalonApplicationCategoryItems { get; set; }
         public DbSet<ShopClosureDate> ShopClosureDates { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
@@ -248,6 +249,18 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.HasOne(x => x.Application)
                     .WithMany(a => a.Categories)
                     .HasForeignKey(x => x.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // RefreshToken Configuration
+            builder.Entity<RefreshToken>(entity =>
+            {
+                entity.HasKey(rt => rt.Id);
+                entity.Property(rt => rt.Token).IsRequired().HasMaxLength(256);
+                entity.HasIndex(rt => rt.Token).IsUnique();
+                entity.HasOne(rt => rt.User)
+                    .WithMany()
+                    .HasForeignKey(rt => rt.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

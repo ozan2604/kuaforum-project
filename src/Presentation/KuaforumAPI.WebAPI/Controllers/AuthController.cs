@@ -35,6 +35,13 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(result);
         }
 
+        [HttpPost("refresh")]
+        public async Task<ActionResult<AuthResponse>> Refresh([FromBody] RefreshTokenRequest request)
+        {
+            var result = await _authService.RefreshAsync(request.RefreshToken);
+            return Ok(result);
+        }
+
         [Authorize]
         [HttpPut("profile")]
         public async Task<ActionResult<AuthResponse>> UpdateProfile(UpdateProfileDto request)

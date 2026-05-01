@@ -12,5 +12,6 @@ namespace KuaforumAPI.Application.DTOs.Auth
         public string PhoneNumber { get; set; } = string.Empty; // Added PhoneNumber
         public string? ProfileImageUrl { get; set; }
         public string Token { get; set; } = string.Empty;
+        public string RefreshToken { get; set; } = string.Empty;
     }
 }
