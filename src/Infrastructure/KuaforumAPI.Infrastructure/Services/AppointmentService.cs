@@ -228,6 +228,9 @@ namespace KuaforumAPI.Infrastructure.Services
 
             ValidateStatusTransition(appointment.Status, request.Status);
 
+            if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)
+                throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
+
             appointment.Status = request.Status;
             await _context.SaveChangesAsync();
         }
@@ -457,6 +460,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new ValidationException("You are not authorized to manage this appointment.");
 
             ValidateStatusTransition(appointment.Status, request.Status);
+
+            if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)
+                throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
 
             appointment.Status = request.Status;
             await _context.SaveChangesAsync();

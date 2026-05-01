@@ -49,8 +49,26 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 var dateTimeService = scope.ServiceProvider.GetRequiredService<KuaforumAPI.Application.Interfaces.Services.IDateTimeService>();
 
                 var now = dateTimeService.Now;
+                _logger.LogDebug("Auto-process running at {Now} (Turkey time).", now);
 
-                // Onaylanmış randevuları otomatik tamamla (IsAutoProcessEnabled olan salonlar için)
+                // 1. Bekleyen (Pending) randevuları otomatik onayla (IsAutoProcessEnabled olan salonlar için, henüz süresi dolmamış)
+                var appointmentsToApprove = await context.Appointments
+                    .Include(a => a.Shop)
+                    .Where(a => a.Status == AppointmentStatus.Pending
+                                && a.StartTime > now
+                                && a.Shop.IsAutoProcessEnabled)
+                    .ToListAsync(stoppingToken);
+
+                foreach (var appointment in appointmentsToApprove)
+                {
+                    appointment.Status = AppointmentStatus.Confirmed;
+                    appointment.UpdatedAt = now;
+                }
+
+                if (appointmentsToApprove.Count > 0)
+                    _logger.LogInformation("Auto-approved {Count} pending appointments.", appointmentsToApprove.Count);
+
+                // 2. Onaylanmış randevuları otomatik tamamla (IsAutoProcessEnabled olan salonlar için, süresi dolmuş)
                 var appointmentsToComplete = await context.Appointments
                     .Include(a => a.Shop)
                     .Where(a => a.Status == AppointmentStatus.Confirmed
@@ -67,7 +85,8 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 if (appointmentsToComplete.Count > 0)
                     _logger.LogInformation("Auto-completed {Count} appointments.", appointmentsToComplete.Count);
 
-                // Saati geçmiş Pending randevuları otomatik reddet (onaylanmamış kalmış)
+                // 3. Saati geçmiş Pending randevuları otomatik reddet (onaylanmamış kalmış)
+                // IsAutoProcessEnabled olan salonlar için zaten 1. adımda onaylandıklarından bu sorgu onları etkilemez
                 var appointmentsToExpire = await context.Appointments
                     .Where(a => a.Status == AppointmentStatus.Pending && a.EndTime <= now)
                     .ToListAsync(stoppingToken);
@@ -81,7 +100,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 if (appointmentsToExpire.Count > 0)
                     _logger.LogInformation("Auto-rejected {Count} expired pending appointments.", appointmentsToExpire.Count);
 
-                if (appointmentsToComplete.Count > 0 || appointmentsToExpire.Count > 0)
+                if (appointmentsToApprove.Count > 0 || appointmentsToComplete.Count > 0 || appointmentsToExpire.Count > 0)
                     await context.SaveChangesAsync(stoppingToken);
             }
         }
