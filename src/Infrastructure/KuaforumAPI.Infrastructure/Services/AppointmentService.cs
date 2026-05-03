@@ -32,20 +32,29 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             // 1. Basic Validations
             var shop = await _context.Shops.FindAsync(request.ShopId);
-            if (shop == null || !shop.IsActive) throw new ValidationException("Shop not found or inactive.");
+            if (shop == null || !shop.IsActive) throw new ValidationException("Salon bulunamadı veya aktif değil.");
 
             var employee = await _context.ShopEmployees.FindAsync(request.ShopEmployeeId);
-            if (employee == null || employee.ShopId != request.ShopId || employee.IsDeleted || !employee.IsActive) throw new ValidationException("Employee not found or inactive in this shop.");
+            if (employee == null || employee.ShopId != request.ShopId || employee.IsDeleted || !employee.IsActive) throw new ValidationException("Personel bu salonda bulunamadı veya aktif değil.");
 
             if (request.ServiceIds == null || !request.ServiceIds.Any())
                 throw new ValidationException("En az bir hizmet seçilmelidir.");
 
-            var appointmentStart = _dateTimeService.ToTurkeyTime(request.StartTime);
+            var rawStart = _dateTimeService.ToTurkeyTime(request.StartTime);
+            // Saniye ve milisaniyeleri temizleyerek dakikaya normalize et (Çakışma kontrolü için kritik)
+            var appointmentStart = new DateTime(rawStart.Year, rawStart.Month, rawStart.Day, rawStart.Hour, rawStart.Minute, 0, DateTimeKind.Unspecified);
 
             // 4. Past date check
             if (appointmentStart < _dateTimeService.Now)
             {
                 throw new ValidationException("Geçmiş bir tarihe randevu oluşturamazsınız.");
+            }
+
+            // 4a. Booking days ahead check
+            var maxBookingDate = _dateTimeService.Now.Date.AddDays(shop.BookingDaysAhead);
+            if (appointmentStart.Date > maxBookingDate)
+            {
+                throw new ValidationException($"Bu salon en fazla {shop.BookingDaysAhead} gün öncesinden randevu kabul etmektedir.");
             }
 
             // 4b. Shop closure check
@@ -54,6 +63,14 @@ namespace KuaforumAPI.Infrastructure.Services
             if (isClosed)
                 throw new ValidationException("Salon bu tarihte kapalıdır.");
 
+            // 4c. Weekly off day check
+            if (!string.IsNullOrWhiteSpace(shop.WeeklyOffDays))
+            {
+                var offDays = shop.WeeklyOffDays.Split(',').Select(int.Parse);
+                if (offDays.Contains((int)appointmentStart.DayOfWeek))
+                    throw new ValidationException("Salon bu günde haftalık tatildir.");
+            }
+
             // 5. Schedule Check
             var dayOfWeek = appointmentStart.DayOfWeek;
             var schedule = await _context.EmployeeSchedules
@@ -61,7 +78,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (schedule == null || !schedule.IsWorking)
             {
-                throw new ValidationException("Employee is not working on this day.");
+                throw new ValidationException("Seçili personel bu gün çalışmıyor.");
             }
 
             var groupId = Guid.NewGuid();
@@ -108,7 +125,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
                     if (hasConflict)
                     {
-                        throw new ValidationException("Seçili saat aralığı başka bir randevu ile çakışıyor.");
+                        throw new ValidationException("Bu saat dilimi az önce başka bir müşteri tarafından alındı. Lütfen farklı bir saat seçin.");
                     }
 
                     var appointment = new Appointment
@@ -121,7 +138,7 @@ namespace KuaforumAPI.Infrastructure.Services
                         EndTime = currentEndTime,
                         Status = shop.IsAutoProcessEnabled ? AppointmentStatus.Confirmed : AppointmentStatus.Pending,
                         Note = request.Note,
-                        GroupId = request.ServiceIds.Count > 1 ? groupId : null
+                        GroupId = groupId
                     };
 
                     await _context.Appointments.AddAsync(appointment);
@@ -232,6 +249,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
 
             appointment.Status = request.Status;
+            if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
+                && !string.IsNullOrWhiteSpace(request.Reason))
+            {
+                appointment.CancellationReason = request.Reason;
+            }
             await _context.SaveChangesAsync();
         }
 
@@ -263,6 +285,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 EmployeeName = a.ShopEmployee.Title + " " + (a.ShopEmployee.User != null ? a.ShopEmployee.User.FirstName : ""), 
                 UserId = a.UserId,
                 CustomerName = (a.User != null ? a.User.FirstName + " " + a.User.LastName : ""),
+                CustomerPhone = a.User?.PhoneNumber,
                 StartTime = a.StartTime,
                 EndTime = a.EndTime,
                 Status = a.Status,
@@ -282,6 +305,21 @@ namespace KuaforumAPI.Infrastructure.Services
                     .AnyAsync(c => c.ShopId == employee.ShopId && c.ClosureDate.Date == date.Date);
                 if (isShopClosed)
                     return new EmployeeAvailabilityDto { IsWorking = false, IsShopClosed = true };
+
+                // Weekly off day check
+                var shopForOffDays = await _context.Shops.FindAsync(employee.ShopId);
+                if (shopForOffDays != null && !string.IsNullOrWhiteSpace(shopForOffDays.WeeklyOffDays))
+                {
+                    var offDays = shopForOffDays.WeeklyOffDays.Split(',').Select(int.Parse);
+                    if (offDays.Contains((int)date.DayOfWeek))
+                        return new EmployeeAvailabilityDto { IsWorking = false, IsShopClosed = true };
+                }
+
+                // Employee leave date check
+                var isOnLeave = await _context.EmployeeLeaveDates
+                    .AnyAsync(l => l.ShopEmployeeId == employeeId && l.LeaveDate.Date == date.Date);
+                if (isOnLeave)
+                    return new EmployeeAvailabilityDto { IsWorking = false, IsOnLeave = true };
             }
 
             // 1. Get Schedule for the specific day
@@ -308,20 +346,23 @@ namespace KuaforumAPI.Infrastructure.Services
             // If we save this to Postgres 'timestamp without time zone', it saves those ticks. 
             // So queries should straightforwardly match the date components.
 
-            var startOfDay = date.Date;
-            var endOfDay = startOfDay.AddDays(1);
+            // DB'de Turkey time saklanır (DateTimeKind.Unspecified).
+            // Gelen 'date' parametresinin sadece tarih kısmını alıp gün sınırlarını belirliyoruz.
+            var startOfDay = new DateTime(date.Year, date.Month, date.Day, 0, 0, 0, DateTimeKind.Unspecified);
+            var endOfDay   = startOfDay.AddDays(1);
 
+            // O gün içinde BAŞLAYAN veya o güne UZANAN randevuları getir
             var appointments = await _context.Appointments
-                .Where(a => 
+                .Where(a =>
                     a.ShopEmployeeId == employeeId &&
                     a.Status != AppointmentStatus.Cancelled &&
                     a.Status != AppointmentStatus.Rejected &&
-                    a.StartTime >= startOfDay &&
-                    a.StartTime < endOfDay)
+                    a.StartTime < endOfDay &&
+                    a.EndTime   > startOfDay)
                 .Select(a => new TimeSlotDto
                 {
                     StartTime = a.StartTime,
-                    EndTime = a.EndTime
+                    EndTime   = a.EndTime
                 })
                 .ToListAsync();
 
@@ -465,6 +506,59 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
 
             appointment.Status = request.Status;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task CancelGroupAsync(string userId, Guid groupId, string? reason = null)
+        {
+            var appointments = await _context.Appointments
+                .Where(a => a.GroupId == groupId && a.UserId == userId)
+                .ToListAsync();
+
+            if (!appointments.Any()) throw new ValidationException("Grup randevusu bulunamadı.");
+
+            var now = _dateTimeService.Now;
+            var first = appointments.OrderBy(a => a.StartTime).First();
+
+            if ((first.StartTime - now).TotalHours < 2)
+                throw new ValidationException("Randevuya 2 saatten az kaldığı için iptal edilemez.");
+
+            foreach (var apt in appointments)
+            {
+                if (apt.Status != AppointmentStatus.Pending && apt.Status != AppointmentStatus.Confirmed)
+                    continue;
+                apt.Status = AppointmentStatus.Cancelled;
+                if (!string.IsNullOrWhiteSpace(reason))
+                    apt.CancellationReason = reason;
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateGroupStatusAsync(string ownerId, Guid groupId, UpdateAppointmentStatusDto request)
+        {
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
+            if (shop == null) throw new ValidationException("Yetkisiz erişim.");
+
+            var appointments = await _context.Appointments
+                .Where(a => a.GroupId == groupId && a.ShopId == shop.Id)
+                .ToListAsync();
+
+            if (!appointments.Any()) throw new ValidationException("Grup randevusu bulunamadı.");
+
+            foreach (var apt in appointments)
+            {
+                ValidateStatusTransition(apt.Status, request.Status);
+                if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now)
+                    throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
+                apt.Status = request.Status;
+                if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
+                    && !string.IsNullOrWhiteSpace(request.Reason))
+                {
+                    apt.CancellationReason = request.Reason;
+                }
+            }
+
             await _context.SaveChangesAsync();
         }
 

@@ -7,6 +7,7 @@ namespace KuaforumAPI.Application.DTOs.Appointment
     {
         public bool IsWorking { get; set; }
         public bool IsShopClosed { get; set; }
+        public bool IsOnLeave { get; set; }
         public TimeSpan? WorkStartTime { get; set; }
         public TimeSpan? WorkEndTime { get; set; }
         public TimeSpan? BreakStartTime { get; set; }

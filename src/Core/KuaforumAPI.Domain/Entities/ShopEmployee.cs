@@ -31,5 +31,6 @@ namespace KuaforumAPI.Domain.Entities
         public bool IsDeleted { get; set; } = false;
 
         public virtual ICollection<EmployeeSchedule> Schedules { get; set; }
+        public virtual ICollection<EmployeeLeaveDate> LeaveDates { get; set; }
     }
 }

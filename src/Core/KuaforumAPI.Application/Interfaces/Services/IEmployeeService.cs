@@ -27,5 +27,11 @@ namespace KuaforumAPI.Application.Interfaces.Services
 
         Task<List<ScheduleDto>> GetMyScheduleAsync(string userId);
         Task UpdateMyScheduleAsync(string userId, UpdateScheduleDto request);
+
+        // Leave dates
+        Task<List<EmployeeLeaveDateDto>> GetLeaveDatesAsync(string ownerId, Guid shopEmployeeId);
+        Task AddLeaveDateAsync(string ownerId, Guid shopEmployeeId, string leaveDate, string? reason);
+        Task RemoveLeaveDateAsync(string ownerId, Guid leaveDateId);
+        Task<List<EmployeeLeaveDateDto>> GetPublicEmployeeLeaveDatesAsync(Guid shopEmployeeId);
     }
 }

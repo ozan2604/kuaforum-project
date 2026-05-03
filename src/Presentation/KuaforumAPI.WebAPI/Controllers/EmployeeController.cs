@@ -159,5 +159,48 @@ namespace KuaforumAPI.WebAPI.Controllers
             await _employeeService.UpdateMyScheduleAsync(userId, request);
             return Ok(new { Message = "Çalışma saatleri başarıyla güncellendi." });
         }
+
+        // ─── Leave Dates ──────────────────────────────────────────────────────────
+
+        [HttpGet("{id}/leave-dates")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> GetLeaveDates(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _employeeService.GetLeaveDatesAsync(userId, id);
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/leave-dates")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> AddLeaveDate(Guid id, [FromBody] AddLeaveDateRequest request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.AddLeaveDateAsync(userId, id, request.LeaveDate, request.Reason);
+            return Ok(new { Message = "İzin günü eklendi." });
+        }
+
+        [HttpDelete("leave-dates/{leaveDateId}")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> RemoveLeaveDate(Guid leaveDateId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.RemoveLeaveDateAsync(userId, leaveDateId);
+            return Ok(new { Message = "İzin günü silindi." });
+        }
+
+        [HttpGet("{id}/leave-dates/public")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicLeaveDates(Guid id)
+        {
+            var result = await _employeeService.GetPublicEmployeeLeaveDatesAsync(id);
+            return Ok(result);
+        }
+    }
+
+    public class AddLeaveDateRequest
+    {
+        public string LeaveDate { get; set; }
+        public string? Reason { get; set; }
     }
 }

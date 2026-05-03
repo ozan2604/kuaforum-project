@@ -93,13 +93,37 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpGet("availability")]
         [Authorize]
-        public async Task<IActionResult> GetAvailability(Guid employeeId, DateTime date)
+        public async Task<IActionResult> GetAvailability([FromQuery] Guid employeeId, [FromQuery] string date)
         {
-            // The date comes from query string, likely as 'yyyy-MM-dd'. Model binder handles it.
-            // We might need to ensure it's treated as the correct date part.
-            var result = await _appointmentService.GetEmployeeAvailabilityAsync(employeeId, date);
+            // Kültür bağımsız parse: "yyyy-MM-dd" formatı zorunlu
+            if (!DateTime.TryParseExact(date, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out var parsedDate))
+            {
+                return BadRequest(new { Message = "Geçersiz tarih formatı. Beklenen: yyyy-MM-dd" });
+            }
+            var result = await _appointmentService.GetEmployeeAvailabilityAsync(employeeId, parsedDate);
             return Ok(result);
         }
+        [HttpDelete("group/{groupId}")]
+        [Authorize]
+        public async Task<IActionResult> CancelGroup(Guid groupId, [FromQuery] string? reason = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _appointmentService.CancelGroupAsync(userId, groupId, reason);
+            return Ok(new { Message = "Grup randevusu iptal edildi." });
+        }
+
+        [HttpPut("group/{groupId}/status")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> UpdateGroupStatus(Guid groupId, [FromBody] UpdateAppointmentStatusDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _appointmentService.UpdateGroupStatusAsync(userId, groupId, request);
+            return Ok(new { Message = "Grup randevu durumu güncellendi." });
+        }
+
         [HttpGet("reviewable")]
         [Authorize]
         public async Task<IActionResult> GetReviewable(Guid shopId)

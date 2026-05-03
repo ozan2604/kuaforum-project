@@ -23,6 +23,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<ShopClosureDate> ShopClosureDates { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<OtpCode> OtpCodes { get; set; }
+        public DbSet<EmployeeLeaveDate> EmployeeLeaveDates { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
@@ -168,7 +169,15 @@ namespace KuaforumAPI.Persistence.Contexts
                 // But BaseEntity has Id, so it's fine. Application logic should ensure uniqueness.
             });
 
-            // Appointment Configuration
+            // EmployeeLeaveDate Configuration
+            builder.Entity<EmployeeLeaveDate>(entity =>
+            {
+                entity.HasOne(el => el.ShopEmployee)
+                    .WithMany(se => se.LeaveDates)
+                    .HasForeignKey(el => el.ShopEmployeeId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             builder.Entity<Appointment>(entity =>
             {
                 entity.HasOne(a => a.Shop)

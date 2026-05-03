@@ -52,6 +52,9 @@ namespace KuaforumAPI.Domain.Entities
         public TimeSpan? OpenTime { get; set; }
         public TimeSpan? CloseTime { get; set; }
 
+        // Comma-separated DayOfWeek ints (0=Sunday … 6=Saturday), e.g. "0" or "0,6"
+        public string? WeeklyOffDays { get; set; }
+
         public virtual ICollection<ShopClosureDate> ClosureDates { get; set; } = new List<ShopClosureDate>();
     }
 }

@@ -35,6 +35,7 @@ namespace KuaforumAPI.Application.DTOs.Shop
 
         public string? OpenTime { get; set; }
         public string? CloseTime { get; set; }
+        public List<int> WeeklyOffDays { get; set; } = new List<int>();
         public List<ShopClosureDateDto> ClosureDates { get; set; } = new List<ShopClosureDateDto>();
 
         public string OwnerName { get; set; }

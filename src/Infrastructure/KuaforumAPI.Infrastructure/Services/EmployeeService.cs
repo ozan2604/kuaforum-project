@@ -626,5 +626,99 @@ namespace KuaforumAPI.Infrastructure.Services
 
             await _context.SaveChangesAsync();
         }
+
+        // ─── LEAVE DATES ─────────────────────────────────────────────────────────
+
+        public async Task<List<EmployeeLeaveDateDto>> GetLeaveDatesAsync(string ownerId, Guid shopEmployeeId)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+
+            var employee = await _context.ShopEmployees
+                .Include(se => se.User)
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
+            if (employee == null) throw new FluentValidation.ValidationException("Employee not found in your shop.");
+
+            var leaveDates = await _context.EmployeeLeaveDates
+                .Where(l => l.ShopEmployeeId == shopEmployeeId)
+                .OrderBy(l => l.LeaveDate)
+                .ToListAsync();
+
+            return leaveDates.Select(l => new EmployeeLeaveDateDto
+            {
+                Id = l.Id,
+                ShopEmployeeId = l.ShopEmployeeId,
+                EmployeeName = $"{employee.User.FirstName} {employee.User.LastName}",
+                LeaveDate = l.LeaveDate.ToString("yyyy-MM-dd"),
+                Reason = l.Reason
+            }).ToList();
+        }
+
+        public async Task AddLeaveDateAsync(string ownerId, Guid shopEmployeeId, string leaveDate, string? reason)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+
+            var employee = await _context.ShopEmployees
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
+            if (employee == null) throw new FluentValidation.ValidationException("Employee not found in your shop.");
+
+            if (!DateTime.TryParseExact(leaveDate, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var parsedDate))
+                throw new FluentValidation.ValidationException("Geçersiz tarih formatı. Beklenen: yyyy-MM-dd");
+
+            var alreadyExists = await _context.EmployeeLeaveDates
+                .AnyAsync(l => l.ShopEmployeeId == shopEmployeeId && l.LeaveDate.Date == parsedDate.Date);
+            if (alreadyExists) throw new FluentValidation.ValidationException("Bu çalışan için bu tarihte zaten izin tanımlanmış.");
+
+            var leave = new EmployeeLeaveDate
+            {
+                ShopEmployeeId = shopEmployeeId,
+                LeaveDate = parsedDate,
+                Reason = reason
+            };
+
+            await _context.EmployeeLeaveDates.AddAsync(leave);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveLeaveDateAsync(string ownerId, Guid leaveDateId)
+        {
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+
+            var leave = await _context.EmployeeLeaveDates
+                .Include(l => l.ShopEmployee)
+                .FirstOrDefaultAsync(l => l.Id == leaveDateId);
+
+            if (leave == null) throw new FluentValidation.ValidationException("İzin günü bulunamadı.");
+            if (leave.ShopEmployee.ShopId != shop.Id) throw new FluentValidation.ValidationException("Yetkisiz erişim.");
+
+            _context.EmployeeLeaveDates.Remove(leave);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<EmployeeLeaveDateDto>> GetPublicEmployeeLeaveDatesAsync(Guid shopEmployeeId)
+        {
+            var employee = await _context.ShopEmployees
+                .Include(se => se.User)
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.IsActive && !se.IsDeleted);
+            if (employee == null) return new List<EmployeeLeaveDateDto>();
+
+            var leaveDates = await _context.EmployeeLeaveDates
+                .Where(l => l.ShopEmployeeId == shopEmployeeId && l.LeaveDate >= DateTime.Today)
+                .OrderBy(l => l.LeaveDate)
+                .ToListAsync();
+
+            return leaveDates.Select(l => new EmployeeLeaveDateDto
+            {
+                Id = l.Id,
+                ShopEmployeeId = l.ShopEmployeeId,
+                EmployeeName = $"{employee.User.FirstName} {employee.User.LastName}",
+                LeaveDate = l.LeaveDate.ToString("yyyy-MM-dd"),
+                Reason = l.Reason
+            }).ToList();
+        }
     }
 }

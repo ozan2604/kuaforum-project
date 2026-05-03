@@ -102,6 +102,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 BookingDaysAhead = shop.BookingDaysAhead,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
+                WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = shop.ClosureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
@@ -141,6 +142,9 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.OpenTime = ParseTime(request.OpenTime);
             shop.CloseTime = ParseTime(request.CloseTime);
             shop.BookingDaysAhead = request.BookingDaysAhead > 0 ? request.BookingDaysAhead : 30;
+            shop.WeeklyOffDays = request.WeeklyOffDays != null && request.WeeklyOffDays.Any()
+                ? string.Join(",", request.WeeklyOffDays.Distinct().OrderBy(d => d))
+                : null;
 
             await _shopRepository.UpdateAsync(shop);
             await _shopRepository.UpdateShopCategoriesAsync(shop.Id, request.CategoryIds);
@@ -294,6 +298,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 BookingDaysAhead = shop.BookingDaysAhead,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
+                WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = closureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
@@ -544,5 +549,10 @@ namespace KuaforumAPI.Infrastructure.Services
 
         private static string? FormatTime(TimeSpan? ts) =>
             ts.HasValue ? ts.Value.ToString(@"hh\:mm") : null;
+
+        private static List<int> ParseWeeklyOffDays(string? raw) =>
+            string.IsNullOrWhiteSpace(raw)
+                ? new List<int>()
+                : raw.Split(',').Select(int.Parse).ToList();
     }
 }
