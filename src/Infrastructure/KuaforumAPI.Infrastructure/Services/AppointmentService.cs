@@ -257,16 +257,20 @@ namespace KuaforumAPI.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        private static void ValidateStatusTransition(AppointmentStatus current, AppointmentStatus next)
+        private static bool IsValidTransition(AppointmentStatus current, AppointmentStatus next)
         {
             var allowed = current switch
             {
-                AppointmentStatus.Pending    => new[] { AppointmentStatus.Confirmed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled },
-                AppointmentStatus.Confirmed  => new[] { AppointmentStatus.Completed, AppointmentStatus.Cancelled, AppointmentStatus.Rejected },
-                _ => Array.Empty<AppointmentStatus>() // Completed, Cancelled, Rejected terminal
+                AppointmentStatus.Pending   => new[] { AppointmentStatus.Confirmed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled },
+                AppointmentStatus.Confirmed => new[] { AppointmentStatus.Completed, AppointmentStatus.Cancelled, AppointmentStatus.Rejected },
+                _ => Array.Empty<AppointmentStatus>()
             };
+            return allowed.Contains(next);
+        }
 
-            if (!allowed.Contains(next))
+        private static void ValidateStatusTransition(AppointmentStatus current, AppointmentStatus next)
+        {
+            if (!IsValidTransition(current, next))
                 throw new ValidationException($"'{current}' durumundan '{next}' durumuna geçiş yapılamaz.");
         }
 
@@ -292,7 +296,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 Note = a.Note,
                 GroupId = a.GroupId,
                 HasReview = hasReview,
-                CancellationReason = a.CancellationReason
+                CancellationReason = a.CancellationReason,
+                ShopCancellationHours = a.Shop?.CancellationHours ?? 2
             };
         }
         public async Task<EmployeeAvailabilityDto> GetEmployeeAvailabilityAsync(Guid employeeId, DateTime date)
@@ -505,7 +510,27 @@ namespace KuaforumAPI.Infrastructure.Services
             if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)
                 throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
 
-            appointment.Status = request.Status;
+            // Grup randevusuysa gruptaki tüm uyumlu randevuları da güncelle (ya hep ya hiç)
+            if (appointment.GroupId.HasValue)
+            {
+                var groupAppointments = await _context.Appointments
+                    .Include(a => a.ShopEmployee)
+                    .Where(a => a.GroupId == appointment.GroupId && a.ShopEmployee.UserId == employeeUserId)
+                    .ToListAsync();
+
+                foreach (var apt in groupAppointments)
+                {
+                    if (apt.Status == request.Status) continue;
+                    if (!IsValidTransition(apt.Status, request.Status)) continue;
+                    if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
+                    apt.Status = request.Status;
+                }
+            }
+            else
+            {
+                appointment.Status = request.Status;
+            }
+
             await _context.SaveChangesAsync();
         }
 
@@ -520,8 +545,11 @@ namespace KuaforumAPI.Infrastructure.Services
             var now = _dateTimeService.Now;
             var first = appointments.OrderBy(a => a.StartTime).First();
 
-            if ((first.StartTime - now).TotalHours < 2)
-                throw new ValidationException("Randevuya 2 saatten az kaldığı için iptal edilemez.");
+            var shop = await _context.Shops.FindAsync(first.ShopId);
+            var cancellationHours = shop?.CancellationHours ?? 2;
+
+            if ((first.StartTime - now).TotalHours < cancellationHours)
+                throw new ValidationException($"Randevuya {cancellationHours} saatten az kaldığı için iptal edilemez.");
 
             foreach (var apt in appointments)
             {
@@ -548,9 +576,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
             foreach (var apt in appointments)
             {
-                ValidateStatusTransition(apt.Status, request.Status);
-                if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now)
-                    throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
+                // Zaten hedef statüdeyse veya terminal statüdeyse sessizce atla
+                if (apt.Status == request.Status) continue;
+                if (!IsValidTransition(apt.Status, request.Status)) continue;
+                if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
+
                 apt.Status = request.Status;
                 if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
                     && !string.IsNullOrWhiteSpace(request.Reason))
@@ -575,10 +605,13 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new ValidationException("Yalnızca bekleyen veya onaylanmış randevular iptal edilebilir.");
             }
 
+            var shop = await _context.Shops.FindAsync(appointment.ShopId);
+            var cancellationHours = shop?.CancellationHours ?? 2;
+
             var now = _dateTimeService.Now;
-            if ((appointment.StartTime - now).TotalHours < 2)
+            if ((appointment.StartTime - now).TotalHours < cancellationHours)
             {
-                throw new ValidationException("Randevuya 2 saatten az kaldığı için iptal edilemez.");
+                throw new ValidationException($"Randevuya {cancellationHours} saatten az kaldığı için iptal edilemez.");
             }
 
             appointment.Status = AppointmentStatus.Cancelled;

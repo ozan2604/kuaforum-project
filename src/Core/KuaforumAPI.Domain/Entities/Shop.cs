@@ -49,6 +49,9 @@ namespace KuaforumAPI.Domain.Entities
 
         public int BookingDaysAhead { get; set; } = 30;
 
+        // Müşteri iptal için minimum kalan süre (saat). Varsayılan: 2
+        public int CancellationHours { get; set; } = 2;
+
         public TimeSpan? OpenTime { get; set; }
         public TimeSpan? CloseTime { get; set; }
 

@@ -6,9 +6,33 @@ namespace KuaforumAPI.Application.DTOs.Shop
     {
         public Guid ShopId { get; set; }
         public List<string> Notifications { get; set; } = new();
+        public List<NotificationItemDto> NotificationItems { get; set; } = new();
+        public SetupStatusDto SetupStatus { get; set; } = new();
         public AppointmentStats Appointments { get; set; } = new();
         public ServiceStats Services { get; set; } = new();
         public EmployeeStats Employees { get; set; } = new();
+    }
+
+    public class NotificationItemDto
+    {
+        public string Type { get; set; } = "info"; // "setup" | "action" | "warning"
+        public string Message { get; set; } = "";
+        public string? Link { get; set; }
+    }
+
+    public class SetupStatusDto
+    {
+        public bool HasName { get; set; }
+        public bool HasDescription { get; set; }
+        public bool HasCoverImage { get; set; }
+        public bool HasCategories { get; set; }
+        public bool HasLocation { get; set; }
+        public bool HasOpeningHours { get; set; }
+        public bool HasActiveServices { get; set; }
+        public bool HasActiveEmployees { get; set; }
+        public bool HasEmployeeServices { get; set; }
+        public bool HasEmployeeSchedules { get; set; }
+        public int CompletionPercentage { get; set; }
     }
 
     public class AppointmentStats

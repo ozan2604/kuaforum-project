@@ -100,6 +100,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
                 BookingDaysAhead = shop.BookingDaysAhead,
+                CancellationHours = shop.CancellationHours,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
@@ -142,6 +143,7 @@ namespace KuaforumAPI.Infrastructure.Services
             shop.OpenTime = ParseTime(request.OpenTime);
             shop.CloseTime = ParseTime(request.CloseTime);
             shop.BookingDaysAhead = request.BookingDaysAhead > 0 ? request.BookingDaysAhead : 30;
+            shop.CancellationHours = Math.Clamp(request.CancellationHours, 0, 72);
             shop.WeeklyOffDays = request.WeeklyOffDays != null && request.WeeklyOffDays.Any()
                 ? string.Join(",", request.WeeklyOffDays.Distinct().OrderBy(d => d))
                 : null;
@@ -180,6 +182,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
                 BookingDaysAhead = shop.BookingDaysAhead,
+                CancellationHours = shop.CancellationHours,
                 CoverImagePath = shop.CoverImagePath,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
@@ -296,6 +299,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
                 BookingDaysAhead = shop.BookingDaysAhead,
+                CancellationHours = shop.CancellationHours,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
@@ -450,20 +454,83 @@ namespace KuaforumAPI.Infrastructure.Services
                 Revenue = apps.Where(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed).Sum(a => a.Price)
             };
 
+            var activeEmployeeIds = employees.Where(e => e.IsActive && !e.IsDeleted).Select(e => e.Id).ToList();
+            var activeServices = services.Count(s => s.IsActive);
+            var activeEmployees = activeEmployeeIds.Count;
             var unconfirmedApps = appointments.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Pending);
-            var missingInfo = new List<string>();
-            if (string.IsNullOrWhiteSpace(shop.Description)) missingInfo.Add("Açıklama");
-            if (string.IsNullOrWhiteSpace(shop.CoverImagePath)) missingInfo.Add("Kapak Fotoğrafı");
-            if (shop.Categories == null || !shop.Categories.Any()) missingInfo.Add("Kategori");
 
+            // Aktif çalışanlardan en az birinin hizmet ataması var mı?
+            var hasEmployeeServices = activeEmployeeIds.Any() && await _context.ShopEmployeeServices
+                .AnyAsync(ses => activeEmployeeIds.Contains(ses.ShopEmployeeId));
+
+            // Aktif çalışanlardan en az birinin çalışma saati ayarlanmış mı? (IsWorking=true olan en az 1 gün)
+            var hasEmployeeSchedules = activeEmployeeIds.Any() && await _context.EmployeeSchedules
+                .AnyAsync(es => activeEmployeeIds.Contains(es.ShopEmployeeId) && es.IsWorking);
+
+            var hasName = !string.IsNullOrWhiteSpace(shop.Name);
+            var hasDescription = !string.IsNullOrWhiteSpace(shop.Description);
+            var hasCoverImage = !string.IsNullOrWhiteSpace(shop.CoverImagePath);
+            var hasCategories = shop.Categories != null && shop.Categories.Any();
+            var hasLocation = !string.IsNullOrWhiteSpace(shop.City) && !string.IsNullOrWhiteSpace(shop.District) && !string.IsNullOrWhiteSpace(shop.Address);
+            var hasOpeningHours = shop.OpenTime.HasValue && shop.CloseTime.HasValue;
+            var hasActiveServices = activeServices > 0;
+            var hasActiveEmployees = activeEmployees > 0;
+
+            var setupSteps = new[] { hasName, hasDescription, hasCoverImage, hasCategories, hasLocation, hasOpeningHours, hasActiveServices, hasActiveEmployees, hasEmployeeServices, hasEmployeeSchedules };
+            var completionPercentage = (int)Math.Round((double)setupSteps.Count(s => s) / setupSteps.Length * 100);
+
+            var notificationItems = new List<NotificationItemDto>();
+
+            if (unconfirmedApps > 0)
+                notificationItems.Add(new NotificationItemDto { Type = "action", Message = $"{unconfirmedApps} randevu onayınızı bekliyor.", Link = "/salon-panel/appointments" });
+
+            if (!hasDescription)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Salon açıklaması eksik.", Link = "/salon-panel/shop" });
+            if (!hasCoverImage)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Kapak fotoğrafı eklenmemiş.", Link = "/salon-panel/shop" });
+            if (!hasCategories)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Salon kategorisi seçilmemiş.", Link = "/salon-panel/shop" });
+            if (!hasLocation)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Konum bilgisi eksik.", Link = "/salon-panel/shop" });
+            if (!hasOpeningHours)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Çalışma saatleri girilmemiş.", Link = "/salon-panel/shop" });
+            if (!hasActiveServices)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Henüz aktif hizmet bulunmuyor.", Link = "/salon-panel/services" });
+            if (!hasActiveEmployees)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Henüz aktif çalışan bulunmuyor.", Link = "/salon-panel/employees" });
+            if (hasActiveEmployees && !hasEmployeeServices)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Çalışanlara henüz hizmet atanmamış.", Link = "/salon-panel/employees" });
+            if (hasActiveEmployees && !hasEmployeeSchedules)
+                notificationItems.Add(new NotificationItemDto { Type = "setup", Message = "Çalışanların çalışma saatleri ayarlanmamış.", Link = "/salon-panel/employees" });
+
+            // Eski format (geriye dönük uyumluluk)
             var notifications = new List<string>();
             if (unconfirmedApps > 0) notifications.Add($"{unconfirmedApps} adet onay/yanıt bekleyen randevunuz var.");
+            var missingInfo = new List<string>();
+            if (!hasDescription) missingInfo.Add("Açıklama");
+            if (!hasCoverImage) missingInfo.Add("Kapak Fotoğrafı");
+            if (!hasCategories) missingInfo.Add("Kategori");
             if (missingInfo.Any()) notifications.Add($"Dükkan profilinizde eksikler var: {string.Join(", ", missingInfo)}.");
 
             return new ShopDashboardStatsDto
             {
                 ShopId = shop.Id,
                 Notifications = notifications,
+                NotificationItems = notificationItems,
+                SetupStatus = new SetupStatusDto
+                {
+                    HasName = hasName,
+                    HasDescription = hasDescription,
+                    HasCoverImage = hasCoverImage,
+                    HasCategories = hasCategories,
+                    HasLocation = hasLocation,
+                    HasOpeningHours = hasOpeningHours,
+                    HasActiveServices = hasActiveServices,
+                    HasActiveEmployees = hasActiveEmployees,
+                    HasEmployeeServices = hasEmployeeServices,
+                    HasEmployeeSchedules = hasEmployeeSchedules,
+                    CompletionPercentage = completionPercentage
+                },
                 Appointments = new AppointmentStats
                 {
                     Today = Summarize(appointments.Where(a => a.StartTime.Date == today).ToList()),
@@ -527,6 +594,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 IsActive = shop.IsActive,
                 IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
                 BookingDaysAhead = shop.BookingDaysAhead,
+                CancellationHours = shop.CancellationHours,
                 CoverImagePath = shop.CoverImagePath,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
