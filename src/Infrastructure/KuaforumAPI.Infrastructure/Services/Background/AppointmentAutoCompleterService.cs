@@ -108,6 +108,51 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 if (appointmentsToApprove.Count > 0 || appointmentsToComplete.Count > 0 || appointmentsToExpire.Count > 0)
                     await context.SaveChangesAsync(stoppingToken);
 
+                // 4. 48 saat hatırlatması (Confirmed randevular, henüz gönderilmemiş, 47-49 saat arasında)
+                var remind48Candidates = await context.Appointments
+                    .Include(a => a.Shop)
+                    .Include(a => a.User)
+                    .Where(a => a.Status == AppointmentStatus.Confirmed
+                                && !a.Is48hReminderSent
+                                && a.StartTime >= now.AddHours(47)
+                                && a.StartTime <= now.AddHours(49))
+                    .ToListAsync(stoppingToken);
+
+                var remind48Groups = remind48Candidates
+                    .GroupBy(a => a.GroupId ?? a.Id)
+                    .Select(g => g.OrderBy(a => a.StartTime).First())
+                    .ToList();
+
+                foreach (var appointment in remind48Groups)
+                {
+                    foreach (var a in remind48Candidates.Where(a => (a.GroupId ?? a.Id) == (appointment.GroupId ?? appointment.Id)))
+                        a.Is48hReminderSent = true;
+                }
+
+                // 5. 2 saat hatırlatması (Confirmed randevular, henüz gönderilmemiş, 1h45m-2h15m arasında)
+                var remind2hCandidates = await context.Appointments
+                    .Include(a => a.Shop)
+                    .Include(a => a.User)
+                    .Where(a => a.Status == AppointmentStatus.Confirmed
+                                && !a.Is2hReminderSent
+                                && a.StartTime >= now.AddMinutes(105)
+                                && a.StartTime <= now.AddMinutes(135))
+                    .ToListAsync(stoppingToken);
+
+                var remind2hGroups = remind2hCandidates
+                    .GroupBy(a => a.GroupId ?? a.Id)
+                    .Select(g => g.OrderBy(a => a.StartTime).First())
+                    .ToList();
+
+                foreach (var appointment in remind2hGroups)
+                {
+                    foreach (var a in remind2hCandidates.Where(a => (a.GroupId ?? a.Id) == (appointment.GroupId ?? appointment.Id)))
+                        a.Is2hReminderSent = true;
+                }
+
+                if (remind48Candidates.Count > 0 || remind2hCandidates.Count > 0)
+                    await context.SaveChangesAsync(stoppingToken);
+
                 // SMS bildirimleri (SaveChanges sonrası, hata olursa ana akışı etkilemez)
                 foreach (var appointment in appointmentsToApprove)
                 {
@@ -128,10 +173,39 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                         if (appointment.User?.PhoneNumber != null)
                             await smsService.SendSmsAsync(
                                 appointment.User.PhoneNumber,
-                                SmsTemplates.AppointmentCompleted(appointment.Shop.Name, appointment.ShopService?.Name ?? ""));
+                                SmsTemplates.AppointmentCompleted(appointment.Shop.Name));
                     }
                     catch { }
                 }
+
+                foreach (var appointment in remind48Groups)
+                {
+                    try
+                    {
+                        if (appointment.User?.PhoneNumber != null)
+                            await smsService.SendSmsAsync(
+                                appointment.User.PhoneNumber,
+                                SmsTemplates.AppointmentReminder48h(appointment.Shop.Name, appointment.StartTime));
+                    }
+                    catch { }
+                }
+
+                foreach (var appointment in remind2hGroups)
+                {
+                    try
+                    {
+                        if (appointment.User?.PhoneNumber != null)
+                            await smsService.SendSmsAsync(
+                                appointment.User.PhoneNumber,
+                                SmsTemplates.AppointmentReminder2h(appointment.Shop.Name, appointment.StartTime));
+                    }
+                    catch { }
+                }
+
+                if (remind48Groups.Count > 0)
+                    _logger.LogInformation("Sent 48h reminders for {Count} appointments.", remind48Groups.Count);
+                if (remind2hGroups.Count > 0)
+                    _logger.LogInformation("Sent 2h reminders for {Count} appointments.", remind2hGroups.Count);
             }
         }
     }

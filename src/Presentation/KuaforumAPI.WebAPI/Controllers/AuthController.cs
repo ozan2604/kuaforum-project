@@ -97,6 +97,22 @@ namespace KuaforumAPI.WebAPI.Controllers
             return NoContent();
         }
 
+        [HttpPost("forgot-password/send-otp")]
+        [EnableRateLimiting("auth")]
+        public async Task<IActionResult> SendForgotPasswordOtp(SendForgotPasswordOtpRequest request)
+        {
+            var result = await _authService.SendForgotPasswordOtpAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("forgot-password/reset")]
+        [EnableRateLimiting("auth")]
+        public async Task<IActionResult> ResetPasswordWithOtp(ResetPasswordWithOtpRequest request)
+        {
+            await _authService.ResetPasswordWithOtpAsync(request);
+            return Ok(new { message = "Şifreniz başarıyla sıfırlandı." });
+        }
+
         [Authorize]
         [HttpPut("change-password")]
         [EnableRateLimiting("auth")]

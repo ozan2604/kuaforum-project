@@ -117,22 +117,33 @@ namespace KuaforumAPI.Infrastructure.Services
                 .ThenInclude(a => a.ShopService)
                 .Where(r => r.ShopId == shopId);
 
-            // Fetch list first to avoid complex EF translation for custom sorting if needed, 
-            // OR use concise OrderBy. 
-            // EF Core usually handles boolean sorting: OrderByDescending(x => x.IsMyReview)
-            
             if (!string.IsNullOrEmpty(currentUserId))
-            {
-                 // OrderByDescending(true) comes before false.
-                 return await query
+                return await query
                     .OrderByDescending(r => r.UserId == currentUserId)
                     .ThenByDescending(r => r.CreatedAt)
                     .ToListAsync();
-            }
 
-            return await query
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
+            return await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
+        }
+
+        public async Task<(List<Review> Items, int TotalCount)> GetShopReviewsPagedAsync(
+            Guid shopId, string? currentUserId, int pageNumber, int pageSize)
+        {
+            var query = _context.Reviews
+                .Include(r => r.User)
+                .Include(r => r.Images)
+                .Include(r => r.ShopEmployee).ThenInclude(se => se.User)
+                .Include(r => r.Appointment).ThenInclude(a => a.ShopService)
+                .Where(r => r.ShopId == shopId);
+
+            var total = await query.CountAsync();
+
+            IQueryable<Review> ordered = !string.IsNullOrEmpty(currentUserId)
+                ? query.OrderByDescending(r => r.UserId == currentUserId).ThenByDescending(r => r.CreatedAt)
+                : query.OrderByDescending(r => r.CreatedAt);
+
+            var items = await ordered.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+            return (items, total);
         }
 
         public async Task<Review> UpdateReviewAsync(UpdateReviewDto dto, string userId)

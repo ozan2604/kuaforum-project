@@ -10,6 +10,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
     {
         Task<Review> AddReviewAsync(CreateReviewDto createReviewDto, string userId);
         Task<IEnumerable<Review>> GetShopReviewsAsync(Guid shopId, string? currentUserId = null);
+        Task<(List<Review> Items, int TotalCount)> GetShopReviewsPagedAsync(Guid shopId, string? currentUserId, int pageNumber, int pageSize);
         Task<Review> UpdateReviewAsync(UpdateReviewDto updateReviewDto, string userId);
         Task DeleteReviewAsync(Guid reviewId, string userId);
         Task<IEnumerable<Review>> GetMyReviewsAsync(string userId);

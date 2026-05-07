@@ -536,6 +536,61 @@ namespace KuaforumAPI.Infrastructure.Services
             return BuildAuthResponse(user, await GenerateJwtToken(user), refreshToken);
         }
 
+        // ─── OTP: Şifre Sıfırlama ─────────────────────────────────────────────────
+
+        public async Task<SendOtpResponse> SendForgotPasswordOtpAsync(SendForgotPasswordOtpRequest request)
+        {
+            var user = await FindUserByPhoneAsync(request.PhoneNumber);
+            if (user == null)
+                throw new AppValidationException("Bu telefon numarasına kayıtlı hesap bulunamadı.");
+
+            await CheckOtpRateLimitAsync(request.PhoneNumber, OtpPurpose.PasswordReset);
+            await InvalidateExistingOtpsAsync(request.PhoneNumber, OtpPurpose.PasswordReset);
+
+            var code = GenerateOtpCode();
+            var otpEntry = new OtpCode
+            {
+                PhoneNumber = request.PhoneNumber,
+                CodeHash = HashOtp(code),
+                Purpose = OtpPurpose.PasswordReset,
+                ExpiresAt = _dateTimeService.Now.AddMinutes(OtpExpiryMinutes)
+            };
+            _context.OtpCodes.Add(otpEntry);
+            await _context.SaveChangesAsync();
+
+            await _smsService.SendSmsAsync(request.PhoneNumber,
+                $"Şifre sıfırlama kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
+
+            return new SendOtpResponse
+            {
+                Message = $"Sıfırlama kodu {MaskPhone(request.PhoneNumber)} numarasına gönderildi.",
+                ExpiresInSeconds = OtpExpiryMinutes * 60
+            };
+        }
+
+        public async Task ResetPasswordWithOtpAsync(ResetPasswordWithOtpRequest request)
+        {
+            var user = await FindUserByPhoneAsync(request.PhoneNumber);
+            if (user == null)
+                throw new AppValidationException("Bu telefon numarasına kayıtlı hesap bulunamadı.");
+
+            await ValidateAndConsumeOtpAsync(request.PhoneNumber, request.OtpCode, OtpPurpose.PasswordReset);
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new AppValidationException($"Şifre belirlenemedi: {errors}");
+            }
+
+            try
+            {
+                await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.PasswordChanged());
+            }
+            catch { }
+        }
+
         // ─── OTP Yardımcı Metodlar ────────────────────────────────────────────────
 
         private static string GenerateOtpCode()

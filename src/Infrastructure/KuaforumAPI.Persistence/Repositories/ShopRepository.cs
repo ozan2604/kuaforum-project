@@ -51,7 +51,7 @@ namespace KuaforumAPI.Persistence.Repositories
 
             if (!string.IsNullOrEmpty(city))
                 query = query.Where(s => s.City.ToLower() == city.ToLower());
-            
+
             if (!string.IsNullOrEmpty(district))
                 query = query.Where(s => s.District.ToLower() == district.ToLower());
 
@@ -59,6 +59,32 @@ namespace KuaforumAPI.Persistence.Repositories
                 query = query.Where(s => s.Neighborhood.ToLower() == neighborhood.ToLower());
 
             return await query.ToListAsync();
+        }
+
+        public async Task<(List<Shop> Items, int TotalCount)> GetPagedWithDetailsAsync(
+            string? city, string? district, string? neighborhood, int pageNumber, int pageSize)
+        {
+            var query = _context.Shops
+                .Include(s => s.Owner)
+                .Include(s => s.Categories)
+                .Where(s => s.IsActive)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(city))
+                query = query.Where(s => s.City.ToLower() == city.ToLower());
+            if (!string.IsNullOrEmpty(district))
+                query = query.Where(s => s.District.ToLower() == district.ToLower());
+            if (!string.IsNullOrEmpty(neighborhood))
+                query = query.Where(s => s.Neighborhood.ToLower() == neighborhood.ToLower());
+
+            var total = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(s => s.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, total);
         }
 
         public async Task<List<string>> DeleteShopWithDependenciesAsync(Guid shopId)

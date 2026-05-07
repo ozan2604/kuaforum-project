@@ -3,6 +3,7 @@ namespace KuaforumAPI.Domain.Enums
     public enum OtpPurpose
     {
         Login = 0,
-        Register = 1
+        Register = 1,
+        PasswordReset = 2
     }
 }

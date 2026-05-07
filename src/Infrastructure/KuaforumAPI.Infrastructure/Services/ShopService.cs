@@ -1,4 +1,5 @@
 using FluentValidation;
+using KuaforumAPI.Application.DTOs.Common;
 using KuaforumAPI.Application.DTOs.Shop;
 using KuaforumAPI.Application.Exceptions;
 using KuaforumAPI.Application.Interfaces.Repositories;
@@ -197,6 +198,52 @@ namespace KuaforumAPI.Infrastructure.Services
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             });
+        }
+
+        public async Task<PagedResult<ShopDto>> GetPublicShopsPagedAsync(string? city, string? district, string? neighborhood, int pageNumber, int pageSize)
+        {
+            var (shops, total) = await _shopRepository.GetPagedWithDetailsAsync(city, district, neighborhood, pageNumber, pageSize);
+
+            var shopIds = shops.Select(s => s.Id).ToList();
+            var minPrices = await _context.ShopServices
+                .Where(ss => shopIds.Contains(ss.ShopId) && !ss.IsDeleted && ss.IsActive)
+                .GroupBy(ss => ss.ShopId)
+                .Select(g => new { ShopId = g.Key, MinPrice = g.Min(x => x.Price) })
+                .ToDictionaryAsync(x => x.ShopId, x => x.MinPrice);
+
+            var items = shops.Select(shop => new ShopDto
+            {
+                Id = shop.Id,
+                Name = shop.Name,
+                Description = shop.Description,
+                Address = shop.Address,
+                City = shop.City,
+                District = shop.District,
+                Neighborhood = shop.Neighborhood,
+                Street = shop.Street,
+                BuildingNumber = shop.BuildingNumber,
+                PhoneNumber = shop.PhoneNumber,
+                Latitude = shop.Latitude,
+                Longitude = shop.Longitude,
+                Categories = shop.Categories.Select(c => c.CategoryValue).ToList(),
+                GenderPreference = shop.GenderPreference,
+                IsActive = shop.IsActive,
+                IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                BookingDaysAhead = shop.BookingDaysAhead,
+                CancellationHours = shop.CancellationHours,
+                CoverImagePath = shop.CoverImagePath,
+                AverageRating = shop.AverageRating,
+                ReviewCount = shop.ReviewCount,
+                MinServicePrice = minPrices.TryGetValue(shop.Id, out var mp) ? mp : null,
+                OpenTime = FormatTime(shop.OpenTime),
+                CloseTime = FormatTime(shop.CloseTime),
+                OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
+                OwnerEmail = null,
+                CreatedAt = shop.CreatedAt,
+                UpdatedAt = shop.UpdatedAt
+            }).ToList();
+
+            return new PagedResult<ShopDto>(items, total, pageNumber, pageSize);
         }
 
         public async Task DeleteShopAsync(Guid id)

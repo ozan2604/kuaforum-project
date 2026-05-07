@@ -76,12 +76,16 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpGet("public/all")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPublicShops([FromQuery] string? city = null, [FromQuery] string? district = null, [FromQuery] string? neighborhood = null)
+        public async Task<IActionResult> GetPublicShops(
+            [FromQuery] string? city = null,
+            [FromQuery] string? district = null,
+            [FromQuery] string? neighborhood = null,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 20)
         {
-            var shops = await _shopService.GetAllShopsAsync(city, district, neighborhood);
-            // Filter only active shops for public view if needed, but for now return all
-            // Ideally should filter in service, but this is fine for MVP
-            return Ok(shops);
+            if (pageSize > 50) pageSize = 50;
+            var result = await _shopService.GetPublicShopsPagedAsync(city, district, neighborhood, pageNumber, pageSize);
+            return Ok(result);
         }
 
         [HttpGet("public/{id}")]

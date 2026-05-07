@@ -298,7 +298,7 @@ namespace KuaforumAPI.Infrastructure.Services
                         AppointmentStatus.Confirmed  => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
                         AppointmentStatus.Rejected   => SmsTemplates.AppointmentRejected(appointment.Shop.Name, request.Reason),
                         AppointmentStatus.Cancelled  => SmsTemplates.AppointmentCancelledByShop(appointment.Shop.Name, appointment.StartTime, request.Reason),
-                        AppointmentStatus.Completed  => SmsTemplates.AppointmentCompleted(appointment.Shop.Name, appointment.ShopService?.Name ?? ""),
+                        AppointmentStatus.Completed  => SmsTemplates.AppointmentCompleted(appointment.Shop.Name),
                         _ => null
                     };
                     if (msg != null)
@@ -595,7 +595,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     var msg = request.Status switch
                     {
                         AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
-                        AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(appointment.Shop.Name, appointment.ShopService?.Name ?? ""),
+                        AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(appointment.Shop.Name),
                         _ => null
                     };
                     if (msg != null)
@@ -690,7 +690,7 @@ namespace KuaforumAPI.Infrastructure.Services
                         AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(shop.Name, first.StartTime),
                         AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(shop.Name, request.Reason),
                         AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(shop.Name, first.StartTime, request.Reason),
-                        AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(shop.Name, first.ShopService?.Name ?? ""),
+                        AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(shop.Name),
                         _ => null
                     };
                     if (msg != null)

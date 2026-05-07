@@ -1,3 +1,4 @@
+using KuaforumAPI.Application.DTOs.Common;
 using KuaforumAPI.Application.DTOs.Shop;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<ShopDto> GetShopByOwnerIdAsync(string userId);
         Task UpdateShopAsync(string userId, CreateShopDto request);
         Task<IEnumerable<ShopDto>> GetAllShopsAsync(string? city = null, string? district = null, string? neighborhood = null);
+        Task<PagedResult<ShopDto>> GetPublicShopsPagedAsync(string? city, string? district, string? neighborhood, int pageNumber, int pageSize);
         Task DeleteShopAsync(Guid id);
         Task<ShopDto> GetShopByIdAsync(Guid id);
         

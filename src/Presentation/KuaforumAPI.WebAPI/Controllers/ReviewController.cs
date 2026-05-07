@@ -54,12 +54,15 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpGet("shop/{shopId}")]
-        public async Task<IActionResult> GetShopReviews(Guid shopId)
+        public async Task<IActionResult> GetShopReviews(
+            Guid shopId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
+            if (pageSize > 50) pageSize = 50;
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var reviews = await _reviewService.GetShopReviewsAsync(shopId, userId);
-            
-            // Map manually to DTO to avoid cycles and simplify response
+            var (reviews, total) = await _reviewService.GetShopReviewsPagedAsync(shopId, userId, pageNumber, pageSize);
+
             var dtos = reviews.Select(r => new ReviewListDto
             {
                 Id = r.Id,
@@ -68,9 +71,9 @@ namespace KuaforumAPI.WebAPI.Controllers
                 UserName = r.User != null ? $"{r.User.FirstName} {r.User.LastName}" : "Unknown User",
                 ShopId = r.ShopId,
                 ShopEmployeeId = r.ShopEmployeeId,
-                EmployeeName = r.ShopEmployee != null && r.ShopEmployee.User != null 
-                    ? $"{r.ShopEmployee.User.FirstName} {r.ShopEmployee.User.LastName}" 
-                    : "Unknown Employee", 
+                EmployeeName = r.ShopEmployee != null && r.ShopEmployee.User != null
+                    ? $"{r.ShopEmployee.User.FirstName} {r.ShopEmployee.User.LastName}"
+                    : "Unknown Employee",
                 ShopName = r.Shop?.Name ?? "Unknown Shop",
                 ServiceName = r.Appointment?.ShopService?.Name ?? "Unknown Service",
                 AppointmentDate = r.Appointment?.StartTime ?? r.CreatedAt,
@@ -79,9 +82,9 @@ namespace KuaforumAPI.WebAPI.Controllers
                 CreatedAt = r.CreatedAt,
                 ImageUrls = r.Images?.Select(i => i.Url).ToList() ?? new List<string>(),
                 ServicePrice = r.Appointment?.ShopService?.Price ?? 0
-            });
+            }).ToList();
 
-            return Ok(dtos);
+            return Ok(new { items = dtos, totalCount = total, pageNumber, pageSize, totalPages = (int)Math.Ceiling((double)total / pageSize) });
         }
 
         [HttpPut("{id}")]

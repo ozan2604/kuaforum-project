@@ -28,5 +28,8 @@ namespace KuaforumAPI.Domain.Entities
         public Guid? GroupId { get; set; }
 
         public string? CancellationReason { get; set; }
+
+        public bool Is48hReminderSent { get; set; } = false;
+        public bool Is2hReminderSent { get; set; } = false;
     }
 }
