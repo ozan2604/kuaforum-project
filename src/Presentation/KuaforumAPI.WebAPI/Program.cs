@@ -1,5 +1,6 @@
 using KuaforumAPI.Persistence.Contexts;
 using KuaforumAPI.Persistence;
+using Microsoft.AspNetCore.HttpOverrides;
 using KuaforumAPI.Application;
 using KuaforumAPI.WebAPI.Middlewares;
 using Microsoft.AspNetCore.Identity;
@@ -212,11 +213,22 @@ using (var scope = app.Services.CreateScope())
     await KuaforumAPI.Persistence.Seeds.AdminUserSeeder.SeedAdminAsync(services);
 }
 
+// Proxy (Nginx, cloud load balancer) arkasında gerçek IP ve protokolü doğru oku
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+else
+{
+    // Production: tarayıcıya 1 yıl boyunca bu siteyi sadece HTTPS ile aç talimatı
+    app.UseHsts();
 }
 
 app.UseMiddleware<ExceptionMiddleware>();

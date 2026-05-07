@@ -38,7 +38,8 @@ namespace KuaforumAPI.WebAPI.Controllers
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest(new { message = "E-posta adresi boş olamaz." });
 
-            var result = await _salonApplicationService.CheckContactEmailAsync(email);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var result = await _salonApplicationService.CheckContactEmailAsync(email, userId);
             return Ok(result);
         }
 

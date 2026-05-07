@@ -523,12 +523,10 @@ namespace KuaforumAPI.Infrastructure.Services
             var employee = await _context.ShopEmployees
                 .Include(se => se.User)
                 .Include(se => se.Shop)
-                .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive);
+                .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
 
             if (employee == null)
             {
-                // Optionally throw exception or return null if user is not an employee.
-                // For now, let's assume if they hit this endpoint (Role = Employee), they SHOULD have a record.
                 throw new FluentValidation.ValidationException("Employee profile not found.");
             }
 

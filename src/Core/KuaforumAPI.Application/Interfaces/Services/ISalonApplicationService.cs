@@ -9,7 +9,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
     public interface ISalonApplicationService
     {
         Task ApplyAsync(string userId, CreateSalonApplicationDto request);
-        Task<ContactEmailCheckResultDto> CheckContactEmailAsync(string email);
+        Task<ContactEmailCheckResultDto> CheckContactEmailAsync(string email, string userId);
         Task<List<SalonApplicationListDto>> GetPendingApplicationsAsync();
         Task<List<SalonApplicationListDto>> GetRejectedApplicationsAsync();
         Task<SalonOwnerApplication> GetApplicationByUserIdAsync(string userId);

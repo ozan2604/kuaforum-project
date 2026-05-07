@@ -206,6 +206,22 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                     _logger.LogInformation("Sent 48h reminders for {Count} appointments.", remind48Groups.Count);
                 if (remind2hGroups.Count > 0)
                     _logger.LogInformation("Sent 2h reminders for {Count} appointments.", remind2hGroups.Count);
+
+                // 6. Eski OTP kodlarını temizle (7 günden eski)
+                var otpCutoff = now.AddDays(-7);
+                var deletedOtps = await context.OtpCodes
+                    .Where(o => o.CreatedAt < otpCutoff)
+                    .ExecuteDeleteAsync(stoppingToken);
+                if (deletedOtps > 0)
+                    _logger.LogInformation("Cleaned up {Count} expired OTP records.", deletedOtps);
+
+                // 7. Eski refresh token'ları temizle (30 günden eski, iptal edilmiş)
+                var tokenCutoff = now.AddDays(-30);
+                var deletedTokens = await context.RefreshTokens
+                    .Where(rt => rt.IsRevoked && rt.CreatedAt < tokenCutoff)
+                    .ExecuteDeleteAsync(stoppingToken);
+                if (deletedTokens > 0)
+                    _logger.LogInformation("Cleaned up {Count} revoked refresh tokens.", deletedTokens);
             }
         }
     }

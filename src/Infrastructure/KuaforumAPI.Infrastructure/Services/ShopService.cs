@@ -110,7 +110,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = shop.ClosureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
-                Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
+                Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 CreatedAt = shop.CreatedAt,
@@ -354,7 +354,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = closureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
-                Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
+                Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 SaturdayClosingTime = saturdayClosingTime,
@@ -381,6 +381,20 @@ namespace KuaforumAPI.Infrastructure.Services
             await _shopRepository.UpdateAsync(shop);
 
             return imageUrl;
+        }
+
+        public async Task DeleteCoverImageAsync(Guid shopId, string userId)
+        {
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
+
+            if (!string.IsNullOrEmpty(shop.CoverImagePath))
+            {
+                await _imageService.DeleteImageAsync(shop.CoverImagePath);
+                shop.CoverImagePath = string.Empty;
+                await _shopRepository.UpdateAsync(shop);
+            }
         }
 
         public async Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files)
@@ -671,5 +685,47 @@ namespace KuaforumAPI.Infrastructure.Services
             string.IsNullOrWhiteSpace(raw)
                 ? new List<int>()
                 : raw.Split(',').Select(int.Parse).ToList();
+
+        public async Task<ShopImageTagDto> AddImageTagAsync(string ownerId, Guid imageId, string name)
+        {
+            var image = await _context.ShopImages.Include(i => i.Shop).FirstOrDefaultAsync(i => i.Id == imageId);
+            if (image == null) throw new NotFoundException("Fotoğraf bulunamadı.");
+
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null || shop.Id != image.ShopId)
+                throw new UnauthorizedAccessException("Bu fotoğrafa etiket ekleme yetkiniz yok.");
+
+            var tag = new ShopImageTag { ShopImageId = imageId, Name = name.Trim() };
+            _context.ShopImageTags.Add(tag);
+            await _context.SaveChangesAsync();
+
+            return new ShopImageTagDto { Id = tag.Id, Name = tag.Name };
+        }
+
+        public async Task UpdateImageTagAsync(string ownerId, Guid tagId, string name)
+        {
+            var tag = await _context.ShopImageTags.Include(t => t.ShopImage).FirstOrDefaultAsync(t => t.Id == tagId);
+            if (tag == null) throw new NotFoundException("Etiket bulunamadı.");
+
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null || shop.Id != tag.ShopImage.ShopId)
+                throw new UnauthorizedAccessException("Bu etiketi düzenleme yetkiniz yok.");
+
+            tag.Name = name.Trim();
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteImageTagAsync(string ownerId, Guid tagId)
+        {
+            var tag = await _context.ShopImageTags.Include(t => t.ShopImage).FirstOrDefaultAsync(t => t.Id == tagId);
+            if (tag == null) throw new NotFoundException("Etiket bulunamadı.");
+
+            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            if (shop == null || shop.Id != tag.ShopImage.ShopId)
+                throw new UnauthorizedAccessException("Bu etiketi silme yetkiniz yok.");
+
+            _context.ShopImageTags.Remove(tag);
+            await _context.SaveChangesAsync();
+        }
     }
 }

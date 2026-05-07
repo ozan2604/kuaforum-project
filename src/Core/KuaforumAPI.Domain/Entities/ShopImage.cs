@@ -1,5 +1,6 @@
 using KuaforumAPI.Domain.Common;
 using System;
+using System.Collections.Generic;
 
 namespace KuaforumAPI.Domain.Entities
 {
@@ -9,5 +10,7 @@ namespace KuaforumAPI.Domain.Entities
         public virtual Shop Shop { get; set; }
 
         public string Url { get; set; }
+
+        public virtual ICollection<ShopImageTag> Tags { get; set; } = new List<ShopImageTag>();
     }
 }

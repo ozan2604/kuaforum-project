@@ -9,6 +9,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<SalonOwnerApplication> SalonOwnerApplications { get; set; }
         public DbSet<Shop> Shops { get; set; }
         public DbSet<ShopImage> ShopImages { get; set; }
+        public DbSet<ShopImageTag> ShopImageTags { get; set; }
         public DbSet<UserFavoriteShop> UserFavoriteShops { get; set; }
         public DbSet<ShopEmployee> ShopEmployees { get; set; }
         public DbSet<ServiceCategory> ServiceCategories { get; set; }
@@ -58,6 +59,17 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.HasOne(si => si.Shop)
                     .WithMany(s => s.Images)
                     .HasForeignKey(si => si.ShopId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ShopImageTag Configuration
+            builder.Entity<ShopImageTag>(entity =>
+            {
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
+
+                entity.HasOne(t => t.ShopImage)
+                    .WithMany(i => i.Tags)
+                    .HasForeignKey(t => t.ShopImageId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

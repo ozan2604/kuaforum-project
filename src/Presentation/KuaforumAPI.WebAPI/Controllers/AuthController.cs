@@ -80,6 +80,16 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId != null)
+                await _authService.LogoutAsync(userId);
+            return NoContent();
+        }
+
+        [Authorize]
         [HttpPut("profile")]
         public async Task<ActionResult<AuthResponse>> UpdateProfile(UpdateProfileDto request)
         {

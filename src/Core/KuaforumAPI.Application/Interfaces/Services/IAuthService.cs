@@ -22,5 +22,6 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<AuthResponse> VerifyRegisterOtpAsync(VerifyRegisterOtpRequest request);
         Task<SendOtpResponse> SendForgotPasswordOtpAsync(SendForgotPasswordOtpRequest request);
         Task ResetPasswordWithOtpAsync(ResetPasswordWithOtpRequest request);
+        Task LogoutAsync(string userId);
     }
 }

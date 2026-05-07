@@ -559,6 +559,10 @@ namespace KuaforumAPI.Infrastructure.Services
             if (appointment.ShopEmployee.UserId != employeeUserId)
                 throw new ValidationException("You are not authorized to manage this appointment.");
 
+            var allowedForEmployee = new[] { AppointmentStatus.Confirmed, AppointmentStatus.Completed };
+            if (!allowedForEmployee.Contains(request.Status))
+                throw new ValidationException("Çalışanlar yalnızca randevuları onaylayabilir veya tamamlayabilir.");
+
             ValidateStatusTransition(appointment.Status, request.Status);
 
             if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)

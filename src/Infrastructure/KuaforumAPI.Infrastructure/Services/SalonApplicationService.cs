@@ -63,20 +63,38 @@ namespace KuaforumAPI.Infrastructure.Services
             };
 
             await _repository.AddAsync(application);
+
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user?.PhoneNumber != null)
+                    await _smsService.SendSmsAsync(user.PhoneNumber,
+                        "Kuaforum: Salon başvurunuz alındı. Değerlendirme sonucunda SMS ile bilgilendirileceksiniz.");
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Başvuru SMS gönderilemedi."); }
         }
 
-        public async Task<ContactEmailCheckResultDto> CheckContactEmailAsync(string email)
+        public async Task<ContactEmailCheckResultDto> CheckContactEmailAsync(string email, string userId)
         {
-            var normalizedEmail = email.Trim().ToLowerInvariant();
+            var normalizedEmail = email.Trim().ToUpperInvariant();
+
+            // Başvuran kişinin kendi emailini salon iletişim emaili olarak kullanmasına izin ver
+            var requestingUser = await _userManager.FindByIdAsync(userId);
+            var isOwnEmail = requestingUser?.NormalizedEmail == normalizedEmail;
 
             var isUsedByShop = await _context.Shops
-                .AnyAsync(s => s.ContactEmail.ToLower() == normalizedEmail);
+                .AnyAsync(s => s.ContactEmail != null && s.ContactEmail.ToUpper() == normalizedEmail);
 
             var isUsedByApplication = await _context.SalonOwnerApplications
-                .AnyAsync(a => a.ContactEmail.ToLower() == normalizedEmail
-                            && (a.Status == ApplicationStatus.Pending || a.Status == ApplicationStatus.Approved));
+                .AnyAsync(a => a.ContactEmail != null
+                             && a.ContactEmail.ToUpper() == normalizedEmail
+                             && a.UserId != userId
+                             && (a.Status == ApplicationStatus.Pending || a.Status == ApplicationStatus.Approved));
 
-            var isRegisteredUser = await _userManager.FindByEmailAsync(email) != null;
+            // Başka bir kullanıcının emailiyle çakışıyor mu (kendi emaili hariç)
+            var conflictingUser = _userManager.Users.FirstOrDefault(u =>
+                u.NormalizedEmail == normalizedEmail && u.Id != userId);
+            var isRegisteredUser = conflictingUser != null;
 
             return new ContactEmailCheckResultDto
             {

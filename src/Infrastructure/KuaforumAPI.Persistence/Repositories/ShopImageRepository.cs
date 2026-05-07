@@ -18,6 +18,7 @@ namespace KuaforumAPI.Persistence.Repositories
         public async Task<IEnumerable<ShopImage>> GetByShopIdAsync(Guid shopId)
         {
             return await _context.ShopImages
+                .Include(si => si.Tags)
                 .Where(si => si.ShopId == shopId)
                 .ToListAsync();
         }

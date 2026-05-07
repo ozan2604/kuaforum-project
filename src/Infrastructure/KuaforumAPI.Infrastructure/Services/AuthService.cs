@@ -251,7 +251,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expiry = _dateTimeService.Now.AddDays(Convert.ToDouble(_configuration["Jwt:DurationInDays"]));
+            var expiry = _dateTimeService.Now.AddDays(Convert.ToDouble(_configuration["Jwt:DurationInDays"] ?? "1"));
 
             var token = new JwtSecurityToken(
                 _configuration["Jwt:Issuer"],
@@ -455,7 +455,7 @@ namespace KuaforumAPI.Infrastructure.Services
             // Telefon zaten kayıtlıysa hata ver
             var existing = await FindUserByPhoneAsync(request.PhoneNumber);
             if (existing != null)
-                throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
+                 throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
 
             var isSalonOwner = !string.IsNullOrEmpty(request.Role) &&
                                request.Role == KuaforumAPI.Application.Constants.Roles.SalonOwner;
@@ -589,6 +589,18 @@ namespace KuaforumAPI.Infrastructure.Services
                 await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.PasswordChanged());
             }
             catch { }
+        }
+
+        // ─── Logout ───────────────────────────────────────────────────────────────
+
+        public async Task LogoutAsync(string userId)
+        {
+            var tokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+                .ToListAsync();
+            foreach (var t in tokens) t.IsRevoked = true;
+            if (tokens.Any())
+                await _context.SaveChangesAsync();
         }
 
         // ─── OTP Yardımcı Metodlar ────────────────────────────────────────────────

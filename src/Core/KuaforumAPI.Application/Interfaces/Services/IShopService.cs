@@ -17,6 +17,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<ShopDto> GetShopByIdAsync(Guid id);
         
         Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file);
+        Task DeleteCoverImageAsync(Guid shopId, string userId);
         Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files);
         Task DeleteGalleryImageAsync(Guid imageId, string userId, bool isAdmin);
         Task UpdateAutoProcessAsync(string ownerId, Guid shopId, bool isEnabled);
@@ -27,5 +28,9 @@ namespace KuaforumAPI.Application.Interfaces.Services
 
         Task<ShopDashboardStatsDto> GetDashboardStatsAsync(string ownerId);
         Task<(int TotalCount, IEnumerable<ShopDto> Shops)> GetAllShopsAdminAsync(string? search, int page, int pageSize);
+
+        Task<ShopImageTagDto> AddImageTagAsync(string ownerId, Guid imageId, string name);
+        Task UpdateImageTagAsync(string ownerId, Guid tagId, string name);
+        Task DeleteImageTagAsync(string ownerId, Guid tagId);
     }
 }

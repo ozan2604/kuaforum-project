@@ -123,6 +123,22 @@ namespace KuaforumAPI.WebAPI.Controllers
             }
         }
 
+        [HttpDelete("{id}/cover-image")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        public async Task<IActionResult> DeleteCoverImage(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                await _shopService.DeleteCoverImageAsync(id, userId);
+                return NoContent();
+            }
+            catch (System.UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
         [HttpPost("{id}/gallery-images")]
         [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> UploadGalleryImages(Guid id, System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile> files)
@@ -174,6 +190,72 @@ namespace KuaforumAPI.WebAPI.Controllers
             catch (System.Exception)
             {
                 return StatusCode(500, new { message = "Fotoğraf silinirken bir hata oluştu." });
+            }
+        }
+
+        [HttpPost("gallery-images/{imageId}/tags")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> AddImageTag(Guid imageId, [FromBody] string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { message = "Etiket adı boş olamaz." });
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            try
+            {
+                var tag = await _shopService.AddImageTagAsync(userId, imageId, name);
+                return Ok(tag);
+            }
+            catch (Application.Exceptions.NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
+        [HttpPut("gallery-images/tags/{tagId}")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> UpdateImageTag(Guid tagId, [FromBody] string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { message = "Etiket adı boş olamaz." });
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            try
+            {
+                await _shopService.UpdateImageTagAsync(userId, tagId, name);
+                return NoContent();
+            }
+            catch (Application.Exceptions.NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
+        [HttpDelete("gallery-images/tags/{tagId}")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> DeleteImageTag(Guid tagId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            try
+            {
+                await _shopService.DeleteImageTagAsync(userId, tagId);
+                return NoContent();
+            }
+            catch (Application.Exceptions.NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
             }
         }
 
