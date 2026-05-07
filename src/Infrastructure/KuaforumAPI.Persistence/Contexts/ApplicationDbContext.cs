@@ -114,7 +114,7 @@ namespace KuaforumAPI.Persistence.Contexts
             builder.Entity<ShopService>(entity =>
             {
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Price).IsRequired();
+                entity.Property(e => e.Price).IsRequired().HasPrecision(18, 2);
                 entity.Property(e => e.Duration).IsRequired();
 
                 entity.HasOne(ss => ss.Shop)
