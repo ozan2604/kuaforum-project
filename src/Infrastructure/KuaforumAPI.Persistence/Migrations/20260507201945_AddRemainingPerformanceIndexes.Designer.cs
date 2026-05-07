@@ -4,6 +4,7 @@ using KuaforumAPI.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KuaforumAPI.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507201945_AddRemainingPerformanceIndexes")]
+    partial class AddRemainingPerformanceIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -157,20 +160,11 @@ namespace KuaforumAPI.Persistence.Migrations
                     b.HasIndex("ShopId", "StartTime")
                         .HasDatabaseName("IX_Appointments_ShopId_StartTime");
 
-                    b.HasIndex("Status", "EndTime")
-                        .HasDatabaseName("IX_Appointments_Status_EndTime");
-
                     b.HasIndex("UserId", "StartTime")
                         .HasDatabaseName("IX_Appointments_User_Time");
 
                     b.HasIndex("ShopEmployeeId", "Status", "StartTime")
                         .HasDatabaseName("IX_Appointments_Employee_Status_Time");
-
-                    b.HasIndex("Status", "Is2hReminderSent", "StartTime")
-                        .HasDatabaseName("IX_Appointments_Reminder2h");
-
-                    b.HasIndex("Status", "Is48hReminderSent", "StartTime")
-                        .HasDatabaseName("IX_Appointments_Reminder48h");
 
                     b.ToTable("Appointments");
                 });
@@ -223,8 +217,7 @@ namespace KuaforumAPI.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ShopEmployeeId", "LeaveDate")
-                        .HasDatabaseName("IX_EmployeeLeaveDates_Employee_Date");
+                    b.HasIndex("ShopEmployeeId");
 
                     b.ToTable("EmployeeLeaveDates");
                 });
@@ -695,8 +688,7 @@ namespace KuaforumAPI.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ShopId", "ClosureDate")
-                        .HasDatabaseName("IX_ShopClosureDates_Shop_Date");
+                    b.HasIndex("ShopId");
 
                     b.ToTable("ShopClosureDates");
                 });
@@ -885,7 +877,7 @@ namespace KuaforumAPI.Persistence.Migrations
 
                     b.Property<string>("CircleUserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -899,9 +891,6 @@ namespace KuaforumAPI.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ShopId");
-
-                    b.HasIndex("CircleUserId", "ShopId")
-                        .HasDatabaseName("IX_UserFavoriteShops_User_Shop");
 
                     b.ToTable("UserFavoriteShops");
                 });

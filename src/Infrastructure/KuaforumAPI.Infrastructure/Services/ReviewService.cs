@@ -129,7 +129,9 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<(List<Review> Items, int TotalCount)> GetShopReviewsPagedAsync(
             Guid shopId, string? currentUserId, int pageNumber, int pageSize)
         {
+            pageSize = Math.Clamp(pageSize, 1, 100);
             var query = _context.Reviews
+                .AsNoTracking()
                 .Include(r => r.User)
                 .Include(r => r.Images)
                 .Include(r => r.ShopEmployee).ThenInclude(se => se.User)
@@ -269,6 +271,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (shop == null) return Enumerable.Empty<Review>();
 
             return await _context.Reviews
+                .AsNoTracking()
                 .Include(r => r.User)
                 .Include(r => r.Images)
                 .Include(r => r.ShopEmployee)
@@ -283,6 +286,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<IEnumerable<Review>> GetMyReviewsAsync(string userId)
         {
             return await _context.Reviews
+                .AsNoTracking()
                 .Include(r => r.Images)
                 .Include(r => r.Shop)
                 .Include(r => r.ShopEmployee)

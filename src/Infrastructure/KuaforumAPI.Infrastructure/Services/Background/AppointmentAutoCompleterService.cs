@@ -163,7 +163,10 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                                 appointment.User.PhoneNumber,
                                 SmsTemplates.AppointmentAutoConfirmed(appointment.Shop.Name, appointment.StartTime));
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Otomatik onay SMS gönderilemedi. AppointmentId: {AppointmentId}", appointment.Id);
+                    }
                 }
 
                 foreach (var appointment in appointmentsToComplete)
@@ -175,7 +178,10 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                                 appointment.User.PhoneNumber,
                                 SmsTemplates.AppointmentCompleted(appointment.Shop.Name));
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Tamamlama SMS gönderilemedi. AppointmentId: {AppointmentId}", appointment.Id);
+                    }
                 }
 
                 foreach (var appointment in remind48Groups)
@@ -187,7 +193,10 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                                 appointment.User.PhoneNumber,
                                 SmsTemplates.AppointmentReminder48h(appointment.Shop.Name, appointment.StartTime));
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "48 saat hatırlatma SMS gönderilemedi. AppointmentId: {AppointmentId}", appointment.Id);
+                    }
                 }
 
                 foreach (var appointment in remind2hGroups)
@@ -199,7 +208,10 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                                 appointment.User.PhoneNumber,
                                 SmsTemplates.AppointmentReminder2h(appointment.Shop.Name, appointment.StartTime));
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "2 saat hatırlatma SMS gönderilemedi. AppointmentId: {AppointmentId}", appointment.Id);
+                    }
                 }
 
                 if (remind48Groups.Count > 0)

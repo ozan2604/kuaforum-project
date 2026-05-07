@@ -342,6 +342,68 @@ namespace KuaforumAPI.Persistence.Contexts
             builder.Entity<Review>()
                 .HasIndex(r => r.ShopId)
                 .HasDatabaseName("IX_Reviews_ShopId");
+
+            // Dashboard stats query indexes
+            builder.Entity<Appointment>()
+                .HasIndex(a => new { a.ShopId, a.StartTime })
+                .HasDatabaseName("IX_Appointments_ShopId_StartTime");
+
+            builder.Entity<ShopService>()
+                .HasIndex(s => new { s.ShopId, s.IsDeleted, s.IsActive })
+                .HasDatabaseName("IX_ShopServices_ShopId_Status");
+
+            builder.Entity<ShopEmployeeService>()
+                .HasIndex(ses => ses.ShopEmployeeId)
+                .HasDatabaseName("IX_ShopEmployeeServices_EmployeeId");
+
+            builder.Entity<EmployeeSchedule>()
+                .HasIndex(es => new { es.ShopEmployeeId, es.IsWorking })
+                .HasDatabaseName("IX_EmployeeSchedules_Employee_IsWorking");
+
+            // Randevu oluşturma ve slot hesaplama: es.ShopEmployeeId == X && es.DayOfWeek == Y
+            builder.Entity<EmployeeSchedule>()
+                .HasIndex(es => new { es.ShopEmployeeId, es.DayOfWeek })
+                .HasDatabaseName("IX_EmployeeSchedules_Employee_DayOfWeek");
+
+            // Yorum sorgulama: r.ShopEmployeeId == X (rating güncellemesi, her yorum eklemede çalışır)
+            builder.Entity<Review>()
+                .HasIndex(r => r.ShopEmployeeId)
+                .HasDatabaseName("IX_Reviews_ShopEmployeeId");
+
+            // Müşteri yorum sayfası: r.UserId == X
+            builder.Entity<Review>()
+                .HasIndex(r => r.UserId)
+                .HasDatabaseName("IX_Reviews_UserId");
+
+            // Background service (dakikada 1): süresi geçmiş Pending ve tamamlanacak Confirmed randevular
+            builder.Entity<Appointment>()
+                .HasIndex(a => new { a.Status, a.EndTime })
+                .HasDatabaseName("IX_Appointments_Status_EndTime");
+
+            // Background service: 48 saat hatırlatması — Status=Confirmed, !Is48hReminderSent, StartTime aralığı
+            builder.Entity<Appointment>()
+                .HasIndex(a => new { a.Status, a.Is48hReminderSent, a.StartTime })
+                .HasDatabaseName("IX_Appointments_Reminder48h");
+
+            // Background service: 2 saat hatırlatması — Status=Confirmed, !Is2hReminderSent, StartTime aralığı
+            builder.Entity<Appointment>()
+                .HasIndex(a => new { a.Status, a.Is2hReminderSent, a.StartTime })
+                .HasDatabaseName("IX_Appointments_Reminder2h");
+
+            // Randevu oluşturma: çalışanın izin günü kontrolü
+            builder.Entity<EmployeeLeaveDate>()
+                .HasIndex(l => new { l.ShopEmployeeId, l.LeaveDate })
+                .HasDatabaseName("IX_EmployeeLeaveDates_Employee_Date");
+
+            // Randevu oluşturma ve slot listeleme: salonun kapalı gün kontrolü
+            builder.Entity<ShopClosureDate>()
+                .HasIndex(c => new { c.ShopId, c.ClosureDate })
+                .HasDatabaseName("IX_ShopClosureDates_Shop_Date");
+
+            // Favori toggle: CircleUserId + ShopId birlikte filtreleniyor
+            builder.Entity<UserFavoriteShop>()
+                .HasIndex(f => new { f.CircleUserId, f.ShopId })
+                .HasDatabaseName("IX_UserFavoriteShops_User_Shop");
         }
 
         public DbSet<CoreExample> CoreExamples { get; set; }

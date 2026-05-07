@@ -177,7 +177,9 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<PagedResult<AppointmentDto>> GetMyAppointmentsAsync(string userId, int page = 1, int pageSize = 20)
         {
+            pageSize = Math.Clamp(pageSize, 1, 100);
             var query = _context.Appointments
+                .AsNoTracking()
                 .Include(a => a.Shop)
                 .Include(a => a.ShopService)
                 .Include(a => a.ShopEmployee)
@@ -207,10 +209,12 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? employeeId = null, Guid? serviceId = null)
         {
+            pageSize = Math.Clamp(pageSize, 1, 100);
              var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
              if (shop == null || shop.Id != shopId) throw new ValidationException("Yetkisiz erişim veya salon bulunamadı.");
 
              var query = _context.Appointments
+                .AsNoTracking()
                 .Include(a => a.Shop)
                 .Include(a => a.ShopService)
                 .Include(a => a.ShopEmployee)
@@ -507,7 +511,9 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<PagedResult<AppointmentDto>> GetAssignedAppointmentsPagedAsync(string employeeUserId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? serviceId = null)
         {
+            pageSize = Math.Clamp(pageSize, 1, 100);
             var query = _context.Appointments
+                .AsNoTracking()
                 .Include(a => a.Shop)
                 .Include(a => a.ShopService)
                 .Include(a => a.ShopEmployee)

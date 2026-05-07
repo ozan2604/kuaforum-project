@@ -55,7 +55,8 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<IEnumerable<ShopDto>> GetUserFavoritesAsync(string userId)
         {
             var favorites = await _context.UserFavoriteShops
-                .Where(f => f.CircleUserId == userId)
+                .AsNoTracking()
+                .Where(f => f.CircleUserId == userId && f.Shop.IsActive)
                 .Include(f => f.Shop)
                 .ThenInclude(s => s.Images)
                 .Select(f => f.Shop)

@@ -202,6 +202,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<PagedResult<ShopDto>> GetPublicShopsPagedAsync(string? city, string? district, string? neighborhood, int pageNumber, int pageSize)
         {
+            pageSize = Math.Clamp(pageSize, 1, 100);
             var (shops, total) = await _shopRepository.GetPagedWithDetailsAsync(city, district, neighborhood, pageNumber, pageSize);
 
             var shopIds = shops.Select(s => s.Id).ToList();
@@ -505,8 +506,15 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Select(a => new AppointmentSlim { StartTime = a.StartTime, Status = a.Status, Price = a.ShopService != null ? a.ShopService.Price : 0 })
                 .ToListAsync();
 
-            var services = await _context.ShopServices.Where(s => s.ShopId == shop.Id && !s.IsDeleted).ToListAsync();
-            var employees = await _context.ShopEmployees.Where(e => e.ShopId == shop.Id && !e.IsDeleted).ToListAsync();
+            var serviceIsActiveList = await _context.ShopServices
+                .Where(s => s.ShopId == shop.Id && !s.IsDeleted)
+                .Select(s => s.IsActive)
+                .ToListAsync();
+
+            var employeeProjections = await _context.ShopEmployees
+                .Where(e => e.ShopId == shop.Id && !e.IsDeleted)
+                .Select(e => new { e.Id, e.IsActive })
+                .ToListAsync();
 
             static AppointmentPeriodStats Summarize(List<AppointmentSlim> apps) => new()
             {
@@ -517,8 +525,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 Revenue = apps.Where(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Completed).Sum(a => a.Price)
             };
 
-            var activeEmployeeIds = employees.Where(e => e.IsActive && !e.IsDeleted).Select(e => e.Id).ToList();
-            var activeServices = services.Count(s => s.IsActive);
+            var activeEmployeeIds = employeeProjections.Where(e => e.IsActive).Select(e => e.Id).ToList();
+            var activeServices = serviceIsActiveList.Count(x => x);
             var activeEmployees = activeEmployeeIds.Count;
             var unconfirmedApps = appointments.Count(a => a.Status == KuaforumAPI.Domain.Enums.AppointmentStatus.Pending);
 
@@ -603,15 +611,15 @@ namespace KuaforumAPI.Infrastructure.Services
                 },
                 Services = new ServiceStats
                 {
-                    Total = services.Count,
-                    Active = services.Count(s => s.IsActive),
-                    Passive = services.Count(s => !s.IsActive)
+                    Total = serviceIsActiveList.Count,
+                    Active = activeServices,
+                    Passive = serviceIsActiveList.Count - activeServices
                 },
                 Employees = new EmployeeStats
                 {
-                    Total = employees.Count,
-                    Active = employees.Count(e => e.IsActive),
-                    Passive = employees.Count(e => !e.IsActive)
+                    Total = employeeProjections.Count,
+                    Active = activeEmployees,
+                    Passive = employeeProjections.Count - activeEmployees
                 }
             };
         }
@@ -625,6 +633,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<(int TotalCount, IEnumerable<ShopDto> Shops)> GetAllShopsAdminAsync(string? search, int page, int pageSize)
         {
+            pageSize = Math.Clamp(pageSize, 1, 200);
             var query = _context.Shops.Include(s => s.Owner).Include(s => s.Categories).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
