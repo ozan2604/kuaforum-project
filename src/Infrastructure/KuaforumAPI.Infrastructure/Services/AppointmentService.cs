@@ -1,5 +1,7 @@
 using FluentValidation;
+using KuaforumAPI.Application.Constants;
 using KuaforumAPI.Application.DTOs.Appointment;
+using Microsoft.Extensions.Logging;
 using KuaforumAPI.Application.DTOs.Common;
 using KuaforumAPI.Application.DTOs.Service;
 using KuaforumAPI.Application.Interfaces.Services;
@@ -21,11 +23,15 @@ namespace KuaforumAPI.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeService _dateTimeService;
+        private readonly ISmsService _smsService;
+        private readonly ILogger<AppointmentService> _logger;
 
-        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService)
+        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService, ISmsService smsService, ILogger<AppointmentService> logger)
         {
             _context = context;
             _dateTimeService = dateTimeService;
+            _smsService = smsService;
+            _logger = logger;
         }
 
         public async Task CreateAsync(string userId, CreateAppointmentDto request)
@@ -154,9 +160,22 @@ namespace KuaforumAPI.Infrastructure.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+
+            try
+            {
+                var customer = await _context.Users.FindAsync(userId);
+                if (customer?.PhoneNumber != null)
+                {
+                    var msg = shop.IsAutoProcessEnabled
+                        ? SmsTemplates.AppointmentAutoConfirmed(shop.Name, appointmentStart)
+                        : SmsTemplates.AppointmentCreated(shop.Name, appointmentStart);
+                    await _smsService.SendSmsAsync(customer.PhoneNumber, msg);
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
-        public async Task<List<AppointmentDto>> GetMyAppointmentsAsync(string userId)
+        public async Task<PagedResult<AppointmentDto>> GetMyAppointmentsAsync(string userId, int page = 1, int pageSize = 20)
         {
             var query = _context.Appointments
                 .Include(a => a.Shop)
@@ -166,13 +185,24 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Where(a => a.UserId == userId)
                 .OrderByDescending(a => a.StartTime);
 
-            var items = await query.Select(a => new 
-            { 
-                Appointment = a, 
-                HasReview = _context.Reviews.Any(r => r.AppointmentId == a.Id) 
-            }).ToListAsync();
+            var totalCount = await query.CountAsync();
 
-            return items.Select(i => MapToDto(i.Appointment, i.HasReview)).ToList();
+            var appointments = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            if (appointments.Count == 0)
+                return new PagedResult<AppointmentDto>(new List<AppointmentDto>(), totalCount, page, pageSize);
+
+            var appointmentIds = appointments.Select(a => a.Id).ToList();
+            var reviewedIds = await _context.Reviews
+                .Where(r => appointmentIds.Contains(r.AppointmentId))
+                .Select(r => r.AppointmentId)
+                .ToHashSetAsync();
+
+            var dtos = appointments.Select(a => MapToDto(a, reviewedIds.Contains(a.Id))).ToList();
+            return new PagedResult<AppointmentDto>(dtos, totalCount, page, pageSize);
         }
 
         public async Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? employeeId = null, Guid? serviceId = null)
@@ -236,6 +266,8 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var appointment = await _context.Appointments
                 .Include(a => a.Shop)
+                .Include(a => a.User)
+                .Include(a => a.ShopService)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null) throw new ValidationException("Appointment not found.");
@@ -255,6 +287,25 @@ namespace KuaforumAPI.Infrastructure.Services
                 appointment.CancellationReason = request.Reason;
             }
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var phone = appointment.User?.PhoneNumber;
+                if (phone != null)
+                {
+                    var msg = request.Status switch
+                    {
+                        AppointmentStatus.Confirmed  => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
+                        AppointmentStatus.Rejected   => SmsTemplates.AppointmentRejected(appointment.Shop.Name, request.Reason),
+                        AppointmentStatus.Cancelled  => SmsTemplates.AppointmentCancelledByShop(appointment.Shop.Name, appointment.StartTime, request.Reason),
+                        AppointmentStatus.Completed  => SmsTemplates.AppointmentCompleted(appointment.Shop.Name, appointment.ShopService?.Name ?? ""),
+                        _ => null
+                    };
+                    if (msg != null)
+                        await _smsService.SendSmsAsync(phone, msg);
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
         private static bool IsValidTransition(AppointmentStatus current, AppointmentStatus next)
@@ -498,6 +549,9 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var appointment = await _context.Appointments
                 .Include(a => a.ShopEmployee)
+                .Include(a => a.Shop)
+                .Include(a => a.User)
+                .Include(a => a.ShopService)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null) throw new ValidationException("Appointment not found.");
@@ -532,11 +586,30 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var phone = appointment.User?.PhoneNumber;
+                if (phone != null)
+                {
+                    var msg = request.Status switch
+                    {
+                        AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
+                        AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(appointment.Shop.Name, appointment.ShopService?.Name ?? ""),
+                        _ => null
+                    };
+                    if (msg != null)
+                        await _smsService.SendSmsAsync(phone, msg);
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
         public async Task CancelGroupAsync(string userId, Guid groupId, string? reason = null)
         {
             var appointments = await _context.Appointments
+                .Include(a => a.User)
+                .Include(a => a.ShopService)
                 .Where(a => a.GroupId == groupId && a.UserId == userId)
                 .ToListAsync();
 
@@ -561,6 +634,20 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
+
+            try
+            {
+                if (shop?.PhoneNumber != null)
+                {
+                    var customer = first.User;
+                    var customerName = customer != null ? $"{customer.FirstName} {customer.LastName}" : "Müşteri";
+                    var serviceName = first.ShopService?.Name ?? "";
+                    await _smsService.SendSmsAsync(
+                        shop.PhoneNumber,
+                        SmsTemplates.AppointmentCancelledByCustomer(customerName, serviceName, first.StartTime));
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
         public async Task UpdateGroupStatusAsync(string ownerId, Guid groupId, UpdateAppointmentStatusDto request)
@@ -569,6 +656,8 @@ namespace KuaforumAPI.Infrastructure.Services
             if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             var appointments = await _context.Appointments
+                .Include(a => a.User)
+                .Include(a => a.ShopService)
                 .Where(a => a.GroupId == groupId && a.ShopId == shop.Id)
                 .ToListAsync();
 
@@ -576,7 +665,6 @@ namespace KuaforumAPI.Infrastructure.Services
 
             foreach (var apt in appointments)
             {
-                // Zaten hedef statüdeyse veya terminal statüdeyse sessizce atla
                 if (apt.Status == request.Status) continue;
                 if (!IsValidTransition(apt.Status, request.Status)) continue;
                 if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
@@ -590,11 +678,34 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var first = appointments.OrderBy(a => a.StartTime).FirstOrDefault();
+                var phone = first?.User?.PhoneNumber;
+                if (phone != null)
+                {
+                    var msg = request.Status switch
+                    {
+                        AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(shop.Name, first.StartTime),
+                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(shop.Name, request.Reason),
+                        AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(shop.Name, first.StartTime, request.Reason),
+                        AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(shop.Name, first.ShopService?.Name ?? ""),
+                        _ => null
+                    };
+                    if (msg != null)
+                        await _smsService.SendSmsAsync(phone, msg);
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
         public async Task CancelByCustomerAsync(string userId, Guid appointmentId, string? reason = null)
         {
-            var appointment = await _context.Appointments.FirstOrDefaultAsync(a => a.Id == appointmentId);
+            var appointment = await _context.Appointments
+                .Include(a => a.User)
+                .Include(a => a.ShopService)
+                .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null) throw new ValidationException("Randevu bulunamadı.");
 
@@ -620,6 +731,21 @@ namespace KuaforumAPI.Infrastructure.Services
                 appointment.CancellationReason = reason;
             }
             await _context.SaveChangesAsync();
+
+            try
+            {
+                if (shop?.PhoneNumber != null)
+                {
+                    var customerName = appointment.User != null
+                        ? $"{appointment.User.FirstName} {appointment.User.LastName}"
+                        : "Müşteri";
+                    var serviceName = appointment.ShopService?.Name ?? "";
+                    await _smsService.SendSmsAsync(
+                        shop.PhoneNumber,
+                        SmsTemplates.AppointmentCancelledByCustomer(customerName, serviceName, appointment.StartTime));
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
     }
 }

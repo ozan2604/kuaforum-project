@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace KuaforumAPI.WebAPI.Controllers
 {
@@ -15,6 +16,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         // GET /api/Geocoding/search?q=...
         [HttpGet("search")]
+        [EnableRateLimiting("geocoding")]
         public async Task<IActionResult> Search([FromQuery] string q)
         {
             if (string.IsNullOrWhiteSpace(q))

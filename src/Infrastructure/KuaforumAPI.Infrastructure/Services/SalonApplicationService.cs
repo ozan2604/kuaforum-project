@@ -1,4 +1,6 @@
+using KuaforumAPI.Application.Constants;
 using KuaforumAPI.Application.DTOs.SalonApplication;
+using Microsoft.Extensions.Logging;
 using KuaforumAPI.Application.Exceptions;
 using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
@@ -18,14 +20,18 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IDateTimeService _dateTimeService;
         private readonly ApplicationDbContext _context;
+        private readonly ISmsService _smsService;
+        private readonly ILogger<SalonApplicationService> _logger;
 
-        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager, IDateTimeService dateTimeService, ApplicationDbContext context)
+        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager, IDateTimeService dateTimeService, ApplicationDbContext context, ISmsService smsService, ILogger<SalonApplicationService> logger)
         {
             _repository = repository;
             _shopRepository = shopRepository;
             _userManager = userManager;
             _dateTimeService = dateTimeService;
             _context = context;
+            _smsService = smsService;
+            _logger = logger;
         }
 
         public async Task ApplyAsync(string userId, CreateSalonApplicationDto request)
@@ -179,6 +185,13 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await _repository.UpdateAsync(application);
+
+            try
+            {
+                if (user?.PhoneNumber != null)
+                    await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.SalonApplicationApproved(application.ShopName ?? ""));
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
         public async Task RejectApplicationAsync(Guid applicationId)
@@ -188,6 +201,14 @@ namespace KuaforumAPI.Infrastructure.Services
 
             application.Status = ApplicationStatus.Rejected;
             await _repository.UpdateAsync(application);
+
+            try
+            {
+                var user = await _userManager.FindByIdAsync(application.UserId);
+                if (user?.PhoneNumber != null)
+                    await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.SalonApplicationRejected());
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
     }
 }

@@ -3,6 +3,7 @@ using CloudinaryDotNet.Actions;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Application.Settings;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
@@ -14,8 +15,9 @@ namespace KuaforumAPI.Infrastructure.Services
     public class CloudinaryImageService : IImageService
     {
         private readonly Cloudinary _cloudinary;
+        private readonly ILogger<CloudinaryImageService> _logger;
 
-        public CloudinaryImageService(IOptions<CloudinarySettings> config)
+        public CloudinaryImageService(IOptions<CloudinarySettings> config, ILogger<CloudinaryImageService> logger)
         {
             var account = new Account(
                 config.Value.CloudName,
@@ -24,6 +26,7 @@ namespace KuaforumAPI.Infrastructure.Services
             );
 
             _cloudinary = new Cloudinary(account);
+            _logger = logger;
         }
 
         private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -45,7 +48,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new ArgumentException("Dosya boyutu 5 MB'ı geçemez.");
 
             using var stream = file.OpenReadStream();
-            
+
             var transformation = new Transformation().Quality("auto").FetchFormat("auto");
 
             if (width.HasValue && height.HasValue)
@@ -61,20 +64,33 @@ namespace KuaforumAPI.Infrastructure.Services
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+            if (uploadResult.Error != null)
+            {
+                _logger.LogError("Cloudinary yükleme başarısız. Klasör: {Folder}, Hata: {Error}", folderName, uploadResult.Error.Message);
+                throw new InvalidOperationException($"Görsel yüklenemedi: {uploadResult.Error.Message}");
+            }
+
+            _logger.LogInformation("Görsel yüklendi. Klasör: {Folder}, URL: {Url}", folderName, uploadResult.SecureUrl);
             return uploadResult.SecureUrl.ToString();
         }
-
 
         public async Task DeleteImageAsync(string imageUrl)
         {
             if (string.IsNullOrEmpty(imageUrl)) return;
 
             var publicId = GetPublicIdFromUrl(imageUrl);
-            if (!string.IsNullOrEmpty(publicId))
+            if (string.IsNullOrEmpty(publicId))
             {
-                var deletionParams = new DeletionParams(publicId);
-                await _cloudinary.DestroyAsync(deletionParams);
+                _logger.LogWarning("Cloudinary public ID çözümlenemedi. URL: {Url}", imageUrl);
+                return;
             }
+
+            var deletionParams = new DeletionParams(publicId);
+            var result = await _cloudinary.DestroyAsync(deletionParams);
+
+            if (result.Result != "ok")
+                _logger.LogWarning("Cloudinary silme başarısız. PublicId: {PublicId}, Sonuç: {Result}", publicId, result.Result);
         }
 
         private string GetPublicIdFromUrl(string url)

@@ -1,6 +1,8 @@
 using FluentValidation;
 using System.Linq;
 using System.Threading.Tasks;
+using KuaforumAPI.Application.Constants;
+using Microsoft.Extensions.Logging;
 using KuaforumAPI.Application.DTOs.Employee;
 using KuaforumAPI.Application.Exceptions;
 using KuaforumAPI.Application.Interfaces.Repositories;
@@ -21,10 +23,12 @@ namespace KuaforumAPI.Infrastructure.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IShopRepository _shopRepository;
-        private readonly IGenericRepository<ShopEmployee> _shopEmployeeRepository; // Using generic repo strictly
+        private readonly IGenericRepository<ShopEmployee> _shopEmployeeRepository;
         private readonly IValidator<CreateEmployeeDto> _validator;
-        private readonly ApplicationDbContext _context; // Ideally avoid this, but needed for transaction if not using UnitOfWork
+        private readonly ApplicationDbContext _context;
         private readonly IDateTimeService _dateTimeService;
+        private readonly ISmsService _smsService;
+        private readonly ILogger<EmployeeService> _logger;
 
         public EmployeeService(
             UserManager<ApplicationUser> userManager,
@@ -32,7 +36,9 @@ namespace KuaforumAPI.Infrastructure.Services
             IGenericRepository<ShopEmployee> shopEmployeeRepository,
             IValidator<CreateEmployeeDto> validator,
             ApplicationDbContext context,
-            IDateTimeService dateTimeService)
+            IDateTimeService dateTimeService,
+            ISmsService smsService,
+            ILogger<EmployeeService> logger)
         {
             _userManager = userManager;
             _shopRepository = shopRepository;
@@ -40,6 +46,8 @@ namespace KuaforumAPI.Infrastructure.Services
             _validator = validator;
             _context = context;
             _dateTimeService = dateTimeService;
+            _smsService = smsService;
+            _logger = logger;
         }
 
         public async Task<AddEmployeeResult> AddEmployeeAsync(string ownerId, CreateEmployeeDto request)
@@ -121,6 +129,14 @@ namespace KuaforumAPI.Infrastructure.Services
                     }
 
                     await transaction.CommitAsync();
+
+                    try
+                    {
+                        if (user.PhoneNumber != null)
+                            await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.EmployeeAddedExisting(shop.Name));
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
+
                     return new AddEmployeeResult
                     {
                         IsNewUser = isNewUser,
@@ -143,6 +159,18 @@ namespace KuaforumAPI.Infrastructure.Services
                 await _shopEmployeeRepository.AddAsync(shopEmployee);
 
                 await transaction.CommitAsync();
+
+                try
+                {
+                    if (user.PhoneNumber != null)
+                    {
+                        var msg = isNewUser && tempPassword != null
+                            ? SmsTemplates.EmployeeAdded(shop.Name, tempPassword)
+                            : SmsTemplates.EmployeeAddedExisting(shop.Name);
+                        await _smsService.SendSmsAsync(user.PhoneNumber, msg);
+                    }
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
 
                 return new AddEmployeeResult
                 {
@@ -375,6 +403,13 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new FluentValidation.ValidationException("Çalışan rolü kaldırılamadı.");
 
             await transaction.CommitAsync();
+
+            try
+            {
+                if (employee.User?.PhoneNumber != null)
+                    await _smsService.SendSmsAsync(employee.User.PhoneNumber, SmsTemplates.EmployeeRemoved(shop.Name));
+            }
+            catch { }
         }
 
         public async Task RestoreEmployeeAsync(string ownerId, Guid shopEmployeeId)
@@ -406,6 +441,13 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await transaction.CommitAsync();
+
+            try
+            {
+                if (employee.User?.PhoneNumber != null)
+                    await _smsService.SendSmsAsync(employee.User.PhoneNumber, SmsTemplates.EmployeeRestored(shop.Name));
+            }
+            catch { }
         }
 
         public async Task UpdateScheduleAsync(string ownerId, Guid shopEmployeeId, UpdateScheduleDto request)

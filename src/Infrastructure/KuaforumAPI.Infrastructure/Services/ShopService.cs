@@ -6,6 +6,7 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using KuaforumAPI.Persistence.Contexts;
 using System;
 using System.Collections.Generic;
@@ -24,8 +25,9 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IValidator<CreateShopDto> _validator;
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeService _dateTimeService;
+        private readonly ILogger<ShopService> _logger;
 
-        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService)
+        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService, ILogger<ShopService> logger)
         {
             _shopRepository = shopRepository;
             _shopImageRepository = shopImageRepository;
@@ -34,6 +36,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _validator = validator;
             _context = context;
             _dateTimeService = dateTimeService;
+            _logger = logger;
         }
 
         public async Task CreateShopAsync(string userId, CreateShopDto request)
@@ -214,8 +217,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
                 catch (Exception ex)
                 {
-                    // Log exception but continue deleting other images/shop
-                    Console.WriteLine($"Error deleting image {imageUrl}: {ex.Message}");
+                    _logger.LogWarning(ex, "Salon silinirken görsel silinemedi: {ImageUrl}", imageUrl);
                 }
             }
         }

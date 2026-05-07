@@ -1,5 +1,7 @@
 using FluentValidation;
+using KuaforumAPI.Application.Constants;
 using KuaforumAPI.Application.DTOs.Auth;
+using Microsoft.Extensions.Logging;
 using KuaforumAPI.Application.Exceptions;
 using AppValidationException = KuaforumAPI.Application.Exceptions.ValidationException;
 using KuaforumAPI.Application.Interfaces.Repositories;
@@ -32,6 +34,7 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
         private readonly ApplicationDbContext _context;
         private readonly ISmsService _smsService;
+        private readonly ILogger<AuthService> _logger;
 
         private const int OtpExpiryMinutes = 3;
         private const int OtpMaxAttempts = 5;
@@ -46,7 +49,8 @@ namespace KuaforumAPI.Infrastructure.Services
                            IValidator<UpdateProfileDto> updateProfileValidator,
                            IValidator<ChangePasswordDto> changePasswordValidator,
                            ApplicationDbContext context,
-                           ISmsService smsService)
+                           ISmsService smsService,
+                           ILogger<AuthService> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -57,6 +61,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _changePasswordValidator = changePasswordValidator;
             _context = context;
             _smsService = smsService;
+            _logger = logger;
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -327,6 +332,13 @@ namespace KuaforumAPI.Infrastructure.Services
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 throw new AppValidationException($"Şifre değiştirilemedi: {errors}");
             }
+
+            try
+            {
+                if (user.PhoneNumber != null)
+                    await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.PasswordChanged());
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
 
@@ -336,7 +348,6 @@ namespace KuaforumAPI.Infrastructure.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
 
-            // Delete profile image if exists
             if (!string.IsNullOrEmpty(user.ProfileImageUrl))
             {
                 await _imageService.DeleteImageAsync(user.ProfileImageUrl);

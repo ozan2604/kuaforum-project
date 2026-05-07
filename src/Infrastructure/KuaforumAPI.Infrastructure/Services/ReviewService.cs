@@ -5,6 +5,7 @@ using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
 using KuaforumAPI.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -17,12 +18,14 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeService _dateTimeService;
         private readonly IImageService _imageService;
+        private readonly ILogger<ReviewService> _logger;
 
-        public ReviewService(ApplicationDbContext context, IDateTimeService dateTimeService, IImageService imageService)
+        public ReviewService(ApplicationDbContext context, IDateTimeService dateTimeService, IImageService imageService, ILogger<ReviewService> logger)
         {
             _context = context;
             _dateTimeService = dateTimeService;
             _imageService = imageService;
+            _logger = logger;
         }
 
         public async Task<Review> AddReviewAsync(CreateReviewDto dto, string userId)
@@ -64,13 +67,13 @@ namespace KuaforumAPI.Infrastructure.Services
             // Handle Review Images
             if (dto.Images != null && dto.Images.Count > 0)
             {
-                Console.WriteLine($"[ReviewService] Processing {dto.Images.Count} images...");
+                _logger.LogInformation("[ReviewService] Processing {Count} images...", dto.Images.Count);
                 foreach (var file in dto.Images)
                 {
-                    try 
+                    try
                     {
                         var imageUrl = await _imageService.UploadImageAsync(file, "reviews");
-                        Console.WriteLine($"[ReviewService] Uploaded image: {imageUrl}");
+                        _logger.LogInformation("[ReviewService] Uploaded image: {Url}", imageUrl);
                         review.Images.Add(new ReviewImage
                         {
                             Url = imageUrl
@@ -78,8 +81,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     }
                     catch(Exception ex)
                     {
-                         Console.WriteLine($"[ReviewService] Image upload failed: {ex.Message}");
-                         // Should we fail the whole review? Maybe not, just log.
+                        _logger.LogWarning(ex, "[ReviewService] Image upload failed.");
                     }
                 }
             }
@@ -172,14 +174,14 @@ namespace KuaforumAPI.Infrastructure.Services
             // Handle New Images
             if (dto.NewImages != null && dto.NewImages.Count > 0)
             {
-                 Console.WriteLine($"[ReviewService] UpdateReviewAsync: Processing {dto.NewImages.Count} new images.");
-                 foreach (var file in dto.NewImages)
+                _logger.LogInformation("[ReviewService] UpdateReviewAsync: Processing {Count} new images.", dto.NewImages.Count);
+                foreach (var file in dto.NewImages)
                 {
                     try
                     {
                         var imageUrl = await _imageService.UploadImageAsync(file, "reviews");
-                        Console.WriteLine($"[ReviewService] UpdateReviewAsync: Uploaded image {imageUrl}");
-                        
+                        _logger.LogInformation("[ReviewService] UpdateReviewAsync: Uploaded image {Url}", imageUrl);
+
                         var newImage = new ReviewImage
                         {
                             Id = Guid.NewGuid(),
@@ -188,31 +190,24 @@ namespace KuaforumAPI.Infrastructure.Services
                             CreatedAt = _dateTimeService.Now
                         };
 
-                        // Add to both context and collection to be safe
                         _context.ReviewImages.Add(newImage);
                         review.Images.Add(newImage);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[ReviewService] UpdateReviewAsync: Image upload failed: {ex.Message}");
-                        // Continue ensuring other images might succeed, or rethrow? 
-                        // For now, let's log and continue to minimize disruption.
+                        _logger.LogWarning(ex, "[ReviewService] UpdateReviewAsync: Image upload failed.");
                     }
                 }
             }
 
-            try 
+            try
             {
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
-                 Console.WriteLine($"[ReviewService] UpdateReviewAsync: SaveChanges failed: {ex.Message}");
-                 if (ex.InnerException != null)
-                 {
-                     Console.WriteLine($"[ReviewService] Inner Exception: {ex.InnerException.Message}");
-                 }
-                 throw; // Rethrow to let controller handle it
+                _logger.LogError(ex, "[ReviewService] UpdateReviewAsync: SaveChanges failed.");
+                throw;
             }
 
             // Recalculate Ratings

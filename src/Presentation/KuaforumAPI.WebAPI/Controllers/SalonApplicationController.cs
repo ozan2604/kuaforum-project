@@ -3,6 +3,7 @@ using KuaforumAPI.Application.DTOs.SalonApplication;
 using KuaforumAPI.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -22,6 +23,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpPost("apply")]
         [Authorize]
+        [EnableRateLimiting("application")]
         public async Task<IActionResult> Apply([FromBody] CreateSalonApplicationDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

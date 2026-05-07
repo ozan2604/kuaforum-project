@@ -72,6 +72,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPost("refresh")]
+        [EnableRateLimiting("auth")]
         public async Task<ActionResult<AuthResponse>> Refresh([FromBody] RefreshTokenRequest request)
         {
             var result = await _authService.RefreshAsync(request.RefreshToken);
@@ -98,6 +99,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [Authorize]
         [HttpPut("change-password")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ChangePassword(ChangePasswordDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -107,6 +109,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [Authorize]
         [HttpPut("profile-image")]
+        [EnableRateLimiting("upload")]
         public async Task<IActionResult> UpdateProfileImage(IFormFile image)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -116,6 +119,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [Authorize]
         [HttpDelete("profile-image")]
+        [EnableRateLimiting("upload")]
         public async Task<IActionResult> DeleteProfileImage()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

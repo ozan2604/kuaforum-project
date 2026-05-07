@@ -35,6 +35,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         [HttpGet("all")]
         public async Task<IActionResult> GetAllUsers([FromQuery] string search = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
+            if (pageSize > 100) pageSize = 100;
             var query = _userManager.Users.AsQueryable();
             
             if (!string.IsNullOrWhiteSpace(search))

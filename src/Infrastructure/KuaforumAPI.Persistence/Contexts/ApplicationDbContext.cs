@@ -293,6 +293,43 @@ namespace KuaforumAPI.Persistence.Contexts
                     .HasForeignKey(ri => ri.ReviewId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // ── Performance Indexes ────────────────────────────────────────────
+            // Randevu çakışma kontrolü ve listeleme sorguları
+            builder.Entity<Appointment>()
+                .HasIndex(a => new { a.ShopEmployeeId, a.Status, a.StartTime })
+                .HasDatabaseName("IX_Appointments_Employee_Status_Time");
+
+            builder.Entity<Appointment>()
+                .HasIndex(a => new { a.UserId, a.StartTime })
+                .HasDatabaseName("IX_Appointments_User_Time");
+
+            builder.Entity<Appointment>()
+                .HasIndex(a => a.GroupId)
+                .HasDatabaseName("IX_Appointments_GroupId");
+
+            // Çalışan listeleme ve kullanıcı-çalışan bağlantısı
+            builder.Entity<ShopEmployee>()
+                .HasIndex(se => new { se.ShopId, se.IsDeleted, se.IsActive })
+                .HasDatabaseName("IX_ShopEmployees_Shop_Status");
+
+            builder.Entity<ShopEmployee>()
+                .HasIndex(se => new { se.UserId, se.IsDeleted })
+                .HasDatabaseName("IX_ShopEmployees_User_Deleted");
+
+            // Salon sahibi sorguları
+            builder.Entity<Shop>()
+                .HasIndex(s => new { s.OwnerId, s.IsActive })
+                .HasDatabaseName("IX_Shops_Owner_Active");
+
+            // Yorum sorguları
+            builder.Entity<Review>()
+                .HasIndex(r => r.AppointmentId)
+                .HasDatabaseName("IX_Reviews_AppointmentId");
+
+            builder.Entity<Review>()
+                .HasIndex(r => r.ShopId)
+                .HasDatabaseName("IX_Reviews_ShopId");
         }
 
         public DbSet<CoreExample> CoreExamples { get; set; }

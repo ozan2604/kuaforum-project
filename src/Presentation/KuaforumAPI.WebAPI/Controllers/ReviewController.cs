@@ -3,6 +3,7 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,6 +25,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpPost]
         [Authorize]
+        [EnableRateLimiting("reviews")]
         public async Task<IActionResult> AddReview([FromForm] CreateReviewDto createReviewDto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -84,6 +86,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpPut("{id}")]
         [Authorize]
+        [EnableRateLimiting("reviews")]
         public async Task<IActionResult> UpdateReview(Guid id, [FromForm] UpdateReviewDto dto)
         {
             if (id != dto.Id)

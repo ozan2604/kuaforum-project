@@ -6,7 +6,8 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
-   
+using Microsoft.Extensions.Logging;
+
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -17,7 +18,8 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IGenericRepository<Domain.Entities.ShopService> _serviceRepository;
         private readonly IValidator<CreateServiceCategoryDto> _categoryValidator;
         private readonly IValidator<CreateShopServiceDto> _serviceValidator;
-        private readonly ApplicationDbContext _context; // Direct access for efficient querying (Include)
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<ServiceManagementService> _logger;
 
         public ServiceManagementService(
             IShopRepository shopRepository,
@@ -25,7 +27,8 @@ namespace KuaforumAPI.Infrastructure.Services
             IGenericRepository<KuaforumAPI.Domain.Entities.ShopService> serviceRepository,
             IValidator<CreateServiceCategoryDto> categoryValidator,
             IValidator<CreateShopServiceDto> serviceValidator,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            ILogger<ServiceManagementService> logger)
         {
             _shopRepository = shopRepository;
             _categoryRepository = categoryRepository;
@@ -33,6 +36,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _categoryValidator = categoryValidator;
             _serviceValidator = serviceValidator;
             _context = context;
+            _logger = logger;
         }
 
         public async Task CreateCategoryAsync(string ownerId, CreateServiceCategoryDto request)
@@ -114,6 +118,7 @@ namespace KuaforumAPI.Infrastructure.Services
             category.IsDeleted = true;
             category.IsActive = false;
             await _categoryRepository.UpdateAsync(category);
+            _logger.LogInformation("Kategori silindi. KategoriId: {CategoryId}, Salon: {ShopId}", categoryId, shop.Id);
         }
 
         public async Task UpdateServiceAsync(string ownerId, Guid serviceId, UpdateShopServiceDto request)
@@ -142,21 +147,21 @@ namespace KuaforumAPI.Infrastructure.Services
             if (service == null || service.ShopId != shop.Id)
                 throw new FluentValidation.ValidationException("Service not found.");
 
-            // Soft delete service
             service.IsDeleted = true;
             service.IsActive = false;
             await _serviceRepository.UpdateAsync(service);
 
-            // Clean up employee assignments for the deleted service
             var employeeAssignments = await _context.ShopEmployeeServices
                 .Where(ses => ses.ShopServiceId == serviceId)
                 .ToListAsync();
-            
+
             if (employeeAssignments.Any())
             {
                 _context.ShopEmployeeServices.RemoveRange(employeeAssignments);
                 await _context.SaveChangesAsync();
             }
+
+            _logger.LogInformation("Hizmet silindi. HizmetId: {ServiceId}, Salon: {ShopId}, Temizlenen atama: {Count}", serviceId, shop.Id, employeeAssignments.Count);
         }
 
         public async Task<List<ServiceCategoryDto>> GetShopServicesAsync(string userId)
@@ -169,7 +174,6 @@ namespace KuaforumAPI.Infrastructure.Services
             // Here using Context for Efficiency.
             var categories = await _context.ServiceCategories
                 .Where(c => c.ShopId == shop.Id)
-                .Include(c => c.Shop) // Optional
                 .ToListAsync();
 
             var services = await _context.ShopServices
@@ -222,8 +226,10 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<List<ServiceCategoryDto>> GetServicesByShopIdAsync(Guid shopId)
         {
             // Similar logic but by ShopId directly
-             var categories = await _context.ServiceCategories
-                .Where(c => c.ShopId == shopId && c.IsActive && !c.IsDeleted)
+             // !c.IsDeleted global query filter tarafından uygulanır (ServiceCategory)
+            // !s.IsDeleted manuel olarak uygulanır (ShopService global filter yok)
+            var categories = await _context.ServiceCategories
+                .Where(c => c.ShopId == shopId && c.IsActive)
                 .ToListAsync();
 
             var services = await _context.ShopServices

@@ -7,16 +7,19 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
     public class FavoriteService : IFavoriteService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<FavoriteService> _logger;
 
-        public FavoriteService(ApplicationDbContext context)
+        public FavoriteService(ApplicationDbContext context, ILogger<FavoriteService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task ToggleFavoriteAsync(string userId, Guid shopId)
@@ -27,6 +30,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (existingFavorite != null)
             {
                 _context.UserFavoriteShops.Remove(existingFavorite);
+                _logger.LogInformation("Favoriden çıkarıldı. Kullanıcı: {UserId}, Salon: {ShopId}", userId, shopId);
             }
             else
             {
@@ -36,6 +40,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     ShopId = shopId
                 };
                 await _context.UserFavoriteShops.AddAsync(newFavorite);
+                _logger.LogInformation("Favoriye eklendi. Kullanıcı: {UserId}, Salon: {ShopId}", userId, shopId);
             }
 
             await _context.SaveChangesAsync();

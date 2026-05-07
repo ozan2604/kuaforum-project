@@ -1,3 +1,5 @@
+using KuaforumAPI.Application.Constants;
+using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Enums;
 using KuaforumAPI.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +48,8 @@ namespace KuaforumAPI.Infrastructure.Services.Background
             using (var scope = _serviceProvider.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var dateTimeService = scope.ServiceProvider.GetRequiredService<KuaforumAPI.Application.Interfaces.Services.IDateTimeService>();
+                var dateTimeService = scope.ServiceProvider.GetRequiredService<IDateTimeService>();
+                var smsService = scope.ServiceProvider.GetRequiredService<ISmsService>();
 
                 var now = dateTimeService.Now;
                 _logger.LogDebug("Auto-process running at {Now} (Turkey time).", now);
@@ -54,6 +57,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 // 1. Bekleyen (Pending) randevuları otomatik onayla (IsAutoProcessEnabled olan salonlar için, henüz süresi dolmamış)
                 var appointmentsToApprove = await context.Appointments
                     .Include(a => a.Shop)
+                    .Include(a => a.User)
                     .Where(a => a.Status == AppointmentStatus.Pending
                                 && a.StartTime > now
                                 && a.Shop.IsAutoProcessEnabled)
@@ -71,6 +75,8 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 // 2. Onaylanmış randevuları otomatik tamamla (IsAutoProcessEnabled olan salonlar için, süresi dolmuş)
                 var appointmentsToComplete = await context.Appointments
                     .Include(a => a.Shop)
+                    .Include(a => a.User)
+                    .Include(a => a.ShopService)
                     .Where(a => a.Status == AppointmentStatus.Confirmed
                                 && a.EndTime <= now
                                 && a.Shop.IsAutoProcessEnabled)
@@ -86,7 +92,6 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                     _logger.LogInformation("Auto-completed {Count} appointments.", appointmentsToComplete.Count);
 
                 // 3. Saati geçmiş Pending randevuları otomatik reddet (onaylanmamış kalmış)
-                // IsAutoProcessEnabled olan salonlar için zaten 1. adımda onaylandıklarından bu sorgu onları etkilemez
                 var appointmentsToExpire = await context.Appointments
                     .Where(a => a.Status == AppointmentStatus.Pending && a.EndTime <= now)
                     .ToListAsync(stoppingToken);
@@ -102,6 +107,31 @@ namespace KuaforumAPI.Infrastructure.Services.Background
 
                 if (appointmentsToApprove.Count > 0 || appointmentsToComplete.Count > 0 || appointmentsToExpire.Count > 0)
                     await context.SaveChangesAsync(stoppingToken);
+
+                // SMS bildirimleri (SaveChanges sonrası, hata olursa ana akışı etkilemez)
+                foreach (var appointment in appointmentsToApprove)
+                {
+                    try
+                    {
+                        if (appointment.User?.PhoneNumber != null)
+                            await smsService.SendSmsAsync(
+                                appointment.User.PhoneNumber,
+                                SmsTemplates.AppointmentAutoConfirmed(appointment.Shop.Name, appointment.StartTime));
+                    }
+                    catch { }
+                }
+
+                foreach (var appointment in appointmentsToComplete)
+                {
+                    try
+                    {
+                        if (appointment.User?.PhoneNumber != null)
+                            await smsService.SendSmsAsync(
+                                appointment.User.PhoneNumber,
+                                SmsTemplates.AppointmentCompleted(appointment.Shop.Name, appointment.ShopService?.Name ?? ""));
+                    }
+                    catch { }
+                }
             }
         }
     }

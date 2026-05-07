@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using KuaforumAPI.Application.DTOs.Employee;
 using KuaforumAPI.Application.DTOs.Service;
 using KuaforumAPI.Application.Interfaces.Repositories;
@@ -24,6 +24,11 @@ namespace KuaforumAPI.Infrastructure
         {
             // NetGSM SMS servisi
             services.Configure<NetGsmSettings>(configuration.GetSection("NetGsm"));
+            services.AddHttpClient("netgsm", client =>
+            {
+                client.BaseAddress = new Uri("https://api.netgsm.com.tr/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
             services.AddScoped<ISmsService, NetGsmSmsService>();
 
             services.AddScoped<IAuthService, AuthService>();

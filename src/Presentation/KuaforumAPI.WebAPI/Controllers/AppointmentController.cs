@@ -4,6 +4,7 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System;
 using System.Security.Claims;
 
@@ -22,6 +23,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpPost]
         [Authorize(Roles = Roles.Customer)]
+        [EnableRateLimiting("appointments")]
         public async Task<IActionResult> Create([FromBody] CreateAppointmentDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -31,10 +33,10 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpGet("my-appointments")]
         [Authorize]
-        public async Task<IActionResult> GetMyAppointments()
+        public async Task<IActionResult> GetMyAppointments([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _appointmentService.GetMyAppointmentsAsync(userId);
+            var result = await _appointmentService.GetMyAppointmentsAsync(userId, page, pageSize);
             return Ok(result);
         }
 
