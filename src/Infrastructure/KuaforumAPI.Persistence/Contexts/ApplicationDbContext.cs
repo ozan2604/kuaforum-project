@@ -41,7 +41,7 @@ namespace KuaforumAPI.Persistence.Contexts
             builder.Entity<Shop>(entity =>
             {
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.Description).HasMaxLength(2000);
                 entity.Property(e => e.Address).IsRequired().HasMaxLength(250);
                 entity.Property(e => e.City).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.District).IsRequired().HasMaxLength(50);
