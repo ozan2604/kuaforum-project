@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<AppointmentAutoCompleterService> _logger;
+        private DateTime _lastOwnerSummarySent = DateTime.MinValue;
 
         public AppointmentAutoCompleterService(IServiceProvider serviceProvider, ILogger<AppointmentAutoCompleterService> logger)
         {
@@ -234,6 +236,60 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                     .ExecuteDeleteAsync(stoppingToken);
                 if (deletedTokens > 0)
                     _logger.LogInformation("Cleaned up {Count} revoked refresh tokens.", deletedTokens);
+
+                // 8. Salon sahibine 30 dakikalık yeni randevu özet SMS'i
+                if ((now - _lastOwnerSummarySent).TotalMinutes >= 30)
+                {
+                    await SendOwnerSummaryAsync(context, smsService, stoppingToken);
+                    _lastOwnerSummarySent = now;
+                }
+            }
+        }
+
+        private async Task SendOwnerSummaryAsync(ApplicationDbContext context, ISmsService smsService, CancellationToken stoppingToken)
+        {
+            var unnotified = await context.Appointments
+                .Include(a => a.Shop)
+                .Include(a => a.ShopEmployee)
+                    .ThenInclude(e => e.User)
+                .Where(a => !a.IsIncludedInOwnerSummary)
+                .ToListAsync(stoppingToken);
+
+            if (!unnotified.Any()) return;
+
+            foreach (var apt in unnotified)
+                apt.IsIncludedInOwnerSummary = true;
+
+            await context.SaveChangesAsync(stoppingToken);
+
+            var byShop = unnotified.GroupBy(a => a.ShopId);
+            foreach (var shopGroup in byShop)
+            {
+                var shop = shopGroup.First().Shop;
+                if (string.IsNullOrWhiteSpace(shop?.PhoneNumber)) continue;
+
+                var summary = shopGroup
+                    .GroupBy(a => a.ShopEmployeeId)
+                    .Select(g =>
+                    {
+                        var emp = g.First().ShopEmployee;
+                        var name = emp?.User != null
+                            ? $"{emp.User.FirstName} {emp.User.LastName}"
+                            : "Personel";
+                        return (name, g.Count());
+                    })
+                    .ToList();
+
+                try
+                {
+                    await smsService.SendSmsAsync(shop.PhoneNumber,
+                        SmsTemplates.NewAppointmentSummaryForShop(summary));
+                    _logger.LogInformation("Özet SMS gönderildi. ShopId: {ShopId}, Toplam: {Total}", shopGroup.Key, unnotified.Count);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Özet SMS gönderilemedi. ShopId: {ShopId}", shopGroup.Key);
+                }
             }
         }
     }

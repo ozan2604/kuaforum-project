@@ -196,6 +196,35 @@ namespace KuaforumAPI.WebAPI.Controllers
             var result = await _employeeService.GetPublicEmployeeLeaveDatesAsync(id);
             return Ok(result);
         }
+
+        // ─── Employee self-managed leave dates ───────────────────────────────
+
+        [HttpGet("me/leave-dates")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> GetMyLeaveDates()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _employeeService.GetMyLeaveDatesAsync(userId);
+            return Ok(result);
+        }
+
+        [HttpPost("me/leave-dates")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> AddMyLeaveDate([FromBody] AddLeaveDateRequest request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.AddMyLeaveDateAsync(userId, request.LeaveDate, request.Reason);
+            return Ok(new { Message = "İzin günü eklendi." });
+        }
+
+        [HttpDelete("me/leave-dates/{leaveDateId}")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> RemoveMyLeaveDate(Guid leaveDateId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.RemoveMyLeaveDateAsync(userId, leaveDateId);
+            return Ok(new { Message = "İzin günü silindi." });
+        }
     }
 
     public class AddLeaveDateRequest

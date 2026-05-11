@@ -15,5 +15,6 @@ namespace KuaforumAPI.Application.DTOs.Employee
         public double AverageRating { get; set; }
         public int ReviewCount { get; set; }
         public bool IsActive { get; set; }
+        public int BookingDaysAhead { get; set; }
     }
 }

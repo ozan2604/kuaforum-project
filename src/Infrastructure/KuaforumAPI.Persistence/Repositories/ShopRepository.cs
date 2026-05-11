@@ -71,11 +71,20 @@ namespace KuaforumAPI.Persistence.Repositories
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(city))
-                query = query.Where(s => s.City.ToLower() == city.ToLower());
+            {
+                var cityLower = city.Trim().ToLower();
+                query = query.Where(s => s.City != null && s.City.ToLower().Contains(cityLower));
+            }
             if (!string.IsNullOrEmpty(district))
-                query = query.Where(s => s.District.ToLower() == district.ToLower());
+            {
+                var districtLower = district.Trim().ToLower();
+                query = query.Where(s => s.District != null && s.District.ToLower().Contains(districtLower));
+            }
             if (!string.IsNullOrEmpty(neighborhood))
-                query = query.Where(s => s.Neighborhood.ToLower() == neighborhood.ToLower());
+            {
+                var neighborhoodLower = neighborhood.Trim().ToLower();
+                query = query.Where(s => s.Neighborhood != null && s.Neighborhood.ToLower().Contains(neighborhoodLower));
+            }
 
             var total = await query.CountAsync();
             var items = await query

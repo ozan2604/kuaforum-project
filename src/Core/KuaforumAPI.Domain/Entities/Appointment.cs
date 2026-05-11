@@ -31,5 +31,6 @@ namespace KuaforumAPI.Domain.Entities
 
         public bool Is48hReminderSent { get; set; } = false;
         public bool Is2hReminderSent { get; set; } = false;
+        public bool IsIncludedInOwnerSummary { get; set; } = false;
     }
 }

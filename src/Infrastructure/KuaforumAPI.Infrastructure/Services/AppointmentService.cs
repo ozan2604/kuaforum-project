@@ -164,12 +164,33 @@ namespace KuaforumAPI.Infrastructure.Services
             try
             {
                 var customer = await _context.Users.FindAsync(userId);
+                var customerName = customer != null ? $"{customer.FirstName} {customer.LastName}" : "Müşteri";
+
                 if (customer?.PhoneNumber != null)
                 {
                     var msg = shop.IsAutoProcessEnabled
                         ? SmsTemplates.AppointmentAutoConfirmed(shop.Name, appointmentStart)
                         : SmsTemplates.AppointmentCreated(shop.Name, appointmentStart);
                     await _smsService.SendSmsAsync(customer.PhoneNumber, msg);
+                }
+
+                // Çalışana anlık SMS gönder
+                var employeeWithUser = await _context.ShopEmployees
+                    .Include(e => e.User)
+                    .FirstOrDefaultAsync(e => e.Id == request.ShopEmployeeId);
+
+                if (employeeWithUser?.User?.PhoneNumber != null)
+                {
+                    var serviceNames = await _context.ShopServices
+                        .Where(s => request.ServiceIds.Contains(s.Id))
+                        .Select(s => s.Name)
+                        .ToListAsync();
+                    var servicesDisplay = serviceNames.Count == 1
+                        ? serviceNames[0]
+                        : $"{serviceNames.Count} hizmet";
+                    await _smsService.SendSmsAsync(
+                        employeeWithUser.User.PhoneNumber,
+                        SmsTemplates.NewAppointmentForEmployee(customerName, servicesDisplay, appointmentStart));
                 }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
@@ -300,7 +321,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     var msg = request.Status switch
                     {
                         AppointmentStatus.Confirmed  => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
-                        AppointmentStatus.Rejected   => SmsTemplates.AppointmentRejected(appointment.Shop.Name, request.Reason),
+                        AppointmentStatus.Rejected   => SmsTemplates.AppointmentRejected(appointment.Shop.Name, appointment.StartTime, request.Reason),
                         AppointmentStatus.Cancelled  => SmsTemplates.AppointmentCancelledByShop(appointment.Shop.Name, appointment.StartTime, request.Reason),
                         AppointmentStatus.Completed  => SmsTemplates.AppointmentCompleted(appointment.Shop.Name),
                         _ => null
@@ -316,8 +337,10 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var allowed = current switch
             {
+                // Bekleyen randevu: onaylanabilir, reddedilebilir veya iptal edilebilir
                 AppointmentStatus.Pending   => new[] { AppointmentStatus.Confirmed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled },
-                AppointmentStatus.Confirmed => new[] { AppointmentStatus.Completed, AppointmentStatus.Cancelled, AppointmentStatus.Rejected },
+                // Onaylanmış randevu: SADECE tamamlanabilir veya iptal edilebilir — artık reddedilemez
+                AppointmentStatus.Confirmed => new[] { AppointmentStatus.Completed, AppointmentStatus.Cancelled },
                 _ => Array.Empty<AppointmentStatus>()
             };
             return allowed.Contains(next);
@@ -565,9 +588,9 @@ namespace KuaforumAPI.Infrastructure.Services
             if (appointment.ShopEmployee.UserId != employeeUserId)
                 throw new ValidationException("You are not authorized to manage this appointment.");
 
-            var allowedForEmployee = new[] { AppointmentStatus.Confirmed, AppointmentStatus.Completed };
+            var allowedForEmployee = new[] { AppointmentStatus.Confirmed, AppointmentStatus.Completed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled };
             if (!allowedForEmployee.Contains(request.Status))
-                throw new ValidationException("Çalışanlar yalnızca randevuları onaylayabilir veya tamamlayabilir.");
+                throw new ValidationException("Geçersiz durum geçişi.");
 
             ValidateStatusTransition(appointment.Status, request.Status);
 
@@ -620,6 +643,8 @@ namespace KuaforumAPI.Infrastructure.Services
             var appointments = await _context.Appointments
                 .Include(a => a.User)
                 .Include(a => a.ShopService)
+                .Include(a => a.ShopEmployee)
+                    .ThenInclude(e => e.User)
                 .Where(a => a.GroupId == groupId && a.UserId == userId)
                 .ToListAsync();
 
@@ -647,14 +672,27 @@ namespace KuaforumAPI.Infrastructure.Services
 
             try
             {
+                var customer = first.User;
+                var customerName = customer != null ? $"{customer.FirstName} {customer.LastName}" : "Müşteri";
+                var serviceName = first.ShopService?.Name ?? "";
+
                 if (shop?.PhoneNumber != null)
                 {
-                    var customer = first.User;
-                    var customerName = customer != null ? $"{customer.FirstName} {customer.LastName}" : "Müşteri";
-                    var serviceName = first.ShopService?.Name ?? "";
                     await _smsService.SendSmsAsync(
                         shop.PhoneNumber,
                         SmsTemplates.AppointmentCancelledByCustomer(customerName, serviceName, first.StartTime));
+                }
+
+                var notifiedEmployees = new HashSet<string>();
+                foreach (var apt in appointments)
+                {
+                    var empPhone = apt.ShopEmployee?.User?.PhoneNumber;
+                    if (empPhone != null && notifiedEmployees.Add(empPhone))
+                    {
+                        await _smsService.SendSmsAsync(
+                            empPhone,
+                            SmsTemplates.AppointmentCancelledByCustomerToEmployee(customerName, serviceName, first.StartTime));
+                    }
                 }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
@@ -698,7 +736,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     var msg = request.Status switch
                     {
                         AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(shop.Name, first.StartTime),
-                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(shop.Name, request.Reason),
+                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(shop.Name, first.StartTime, request.Reason),
                         AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(shop.Name, first.StartTime, request.Reason),
                         AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(shop.Name),
                         _ => null
@@ -715,6 +753,8 @@ namespace KuaforumAPI.Infrastructure.Services
             var appointment = await _context.Appointments
                 .Include(a => a.User)
                 .Include(a => a.ShopService)
+                .Include(a => a.ShopEmployee)
+                    .ThenInclude(e => e.User)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null) throw new ValidationException("Randevu bulunamadı.");
@@ -744,15 +784,23 @@ namespace KuaforumAPI.Infrastructure.Services
 
             try
             {
+                var customerName = appointment.User != null
+                    ? $"{appointment.User.FirstName} {appointment.User.LastName}"
+                    : "Müşteri";
+                var serviceName = appointment.ShopService?.Name ?? "";
+
                 if (shop?.PhoneNumber != null)
                 {
-                    var customerName = appointment.User != null
-                        ? $"{appointment.User.FirstName} {appointment.User.LastName}"
-                        : "Müşteri";
-                    var serviceName = appointment.ShopService?.Name ?? "";
                     await _smsService.SendSmsAsync(
                         shop.PhoneNumber,
                         SmsTemplates.AppointmentCancelledByCustomer(customerName, serviceName, appointment.StartTime));
+                }
+
+                if (appointment.ShopEmployee?.User?.PhoneNumber != null)
+                {
+                    await _smsService.SendSmsAsync(
+                        appointment.ShopEmployee.User.PhoneNumber,
+                        SmsTemplates.AppointmentCancelledByCustomerToEmployee(customerName, serviceName, appointment.StartTime));
                 }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }

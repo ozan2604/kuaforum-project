@@ -542,7 +542,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 Title = employee.Title,
                 AverageRating = employee.AverageRating,
                 ReviewCount = employee.ReviewCount,
-                IsActive = employee.IsActive
+                IsActive = employee.IsActive,
+                BookingDaysAhead = employee.Shop.BookingDaysAhead
             };
         }
 
@@ -759,6 +760,71 @@ namespace KuaforumAPI.Infrastructure.Services
                 LeaveDate = l.LeaveDate.ToString("yyyy-MM-dd"),
                 Reason = l.Reason
             }).ToList();
+        }
+
+        // ─── Self-managed leave dates (Employee) ─────────────────────────────
+
+        public async Task<List<EmployeeLeaveDateDto>> GetMyLeaveDatesAsync(string userId)
+        {
+            var employee = await _context.ShopEmployees
+                .Include(se => se.User)
+                .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
+            if (employee == null) throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
+
+            var leaveDates = await _context.EmployeeLeaveDates
+                .Where(l => l.ShopEmployeeId == employee.Id)
+                .OrderBy(l => l.LeaveDate)
+                .ToListAsync();
+
+            return leaveDates.Select(l => new EmployeeLeaveDateDto
+            {
+                Id = l.Id,
+                ShopEmployeeId = l.ShopEmployeeId,
+                EmployeeName = $"{employee.User.FirstName} {employee.User.LastName}",
+                LeaveDate = l.LeaveDate.ToString("yyyy-MM-dd"),
+                Reason = l.Reason
+            }).ToList();
+        }
+
+        public async Task AddMyLeaveDateAsync(string userId, string leaveDate, string? reason)
+        {
+            var employee = await _context.ShopEmployees
+                .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
+            if (employee == null) throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
+
+            if (!DateTime.TryParseExact(leaveDate, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var parsedDate))
+                throw new FluentValidation.ValidationException("Geçersiz tarih formatı. Beklenen: yyyy-MM-dd");
+
+            if (parsedDate.Date < DateTime.Today)
+                throw new FluentValidation.ValidationException("Geçmiş bir tarihe izin günü eklenemez.");
+
+            var alreadyExists = await _context.EmployeeLeaveDates
+                .AnyAsync(l => l.ShopEmployeeId == employee.Id && l.LeaveDate.Date == parsedDate.Date);
+            if (alreadyExists) throw new FluentValidation.ValidationException("Bu tarihte zaten izin günü tanımlı.");
+
+            await _context.EmployeeLeaveDates.AddAsync(new EmployeeLeaveDate
+            {
+                ShopEmployeeId = employee.Id,
+                LeaveDate = parsedDate,
+                Reason = reason
+            });
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveMyLeaveDateAsync(string userId, Guid leaveDateId)
+        {
+            var employee = await _context.ShopEmployees
+                .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
+            if (employee == null) throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
+
+            var leave = await _context.EmployeeLeaveDates
+                .FirstOrDefaultAsync(l => l.Id == leaveDateId && l.ShopEmployeeId == employee.Id);
+            if (leave == null) throw new FluentValidation.ValidationException("İzin günü bulunamadı.");
+
+            _context.EmployeeLeaveDates.Remove(leave);
+            await _context.SaveChangesAsync();
         }
     }
 }
