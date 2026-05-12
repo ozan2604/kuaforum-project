@@ -4,6 +4,7 @@ using KuaforumAPI.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KuaforumAPI.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512104431_AddGuestCustomerFieldsToAppointment")]
+    partial class AddGuestCustomerFieldsToAppointment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -667,43 +670,6 @@ namespace KuaforumAPI.Persistence.Migrations
                     b.ToTable("Shops");
                 });
 
-            modelBuilder.Entity("KuaforumAPI.Domain.Entities.ShopBlockedCustomer", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BlockedByUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CustomerId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<Guid>("ShopId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("ShopId", "CustomerId")
-                        .IsUnique();
-
-                    b.ToTable("ShopBlockedCustomers");
-                });
-
             modelBuilder.Entity("KuaforumAPI.Domain.Entities.ShopCategoryAssignment", b =>
                 {
                     b.Property<Guid>("ShopId")
@@ -1240,25 +1206,6 @@ namespace KuaforumAPI.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
-                });
-
-            modelBuilder.Entity("KuaforumAPI.Domain.Entities.ShopBlockedCustomer", b =>
-                {
-                    b.HasOne("KuaforumAPI.Domain.Entities.ApplicationUser", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("KuaforumAPI.Domain.Entities.Shop", "Shop")
-                        .WithMany()
-                        .HasForeignKey("ShopId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("Shop");
                 });
 
             modelBuilder.Entity("KuaforumAPI.Domain.Entities.ShopCategoryAssignment", b =>

@@ -15,8 +15,8 @@ namespace KuaforumAPI.Domain.Entities
         public Guid ShopEmployeeId { get; set; }
         public virtual ShopEmployee ShopEmployee { get; set; }
 
-        public string UserId { get; set; }
-        public virtual ApplicationUser User { get; set; }
+        public string? UserId { get; set; }
+        public virtual ApplicationUser? User { get; set; }
 
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
@@ -32,5 +32,9 @@ namespace KuaforumAPI.Domain.Entities
         public bool Is48hReminderSent { get; set; } = false;
         public bool Is2hReminderSent { get; set; } = false;
         public bool IsIncludedInOwnerSummary { get; set; } = false;
+
+        // Manuel (walk-in / telefon) randevular için — UserId null olduğunda geçerli
+        public string? GuestCustomerName { get; set; }
+        public string? GuestCustomerPhone { get; set; }
     }
 }

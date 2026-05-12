@@ -40,6 +40,10 @@ namespace KuaforumAPI.Infrastructure.Services
             var shop = await _context.Shops.FindAsync(request.ShopId);
             if (shop == null || !shop.IsActive) throw new ValidationException("Salon bulunamadı veya aktif değil.");
 
+            var isBlocked = await _context.ShopBlockedCustomers
+                .AnyAsync(b => b.ShopId == request.ShopId && b.CustomerId == userId);
+            if (isBlocked) throw new ValidationException("Bu salona randevu oluşturamazsınız. Daha önceki randevulara gitmediğiniz tespit edilmiştir. Lütfen İşletme ile iletişime geçiniz.");
+
             var employee = await _context.ShopEmployees.FindAsync(request.ShopEmployeeId);
             if (employee == null || employee.ShopId != request.ShopId || employee.IsDeleted || !employee.IsActive) throw new ValidationException("Personel bu salonda bulunamadı veya aktif değil.");
 
@@ -196,6 +200,159 @@ namespace KuaforumAPI.Infrastructure.Services
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
+        public async Task CreateManualAsync(string staffUserId, CreateManualAppointmentDto request)
+        {
+            // 1. Shop kontrolü — staff bu salona mı ait?
+            var shop = await _context.Shops.FindAsync(request.ShopId);
+            if (shop == null || !shop.IsActive) throw new ValidationException("Salon bulunamadı veya aktif değil.");
+
+            var isOwner = shop.OwnerId == staffUserId;
+            var isEmployee = await _context.ShopEmployees
+                .AnyAsync(e => e.ShopId == request.ShopId && e.UserId == staffUserId && !e.IsDeleted && e.IsActive);
+
+            if (!isOwner && !isEmployee)
+                throw new ValidationException("Bu salon için randevu oluşturma yetkiniz yok.");
+
+            // 2. Personel kontrolü
+            var employee = await _context.ShopEmployees.FindAsync(request.ShopEmployeeId);
+            if (employee == null || employee.ShopId != request.ShopId || employee.IsDeleted || !employee.IsActive)
+                throw new ValidationException("Personel bu salonda bulunamadı veya aktif değil.");
+
+            if (request.ServiceIds == null || !request.ServiceIds.Any())
+                throw new ValidationException("En az bir hizmet seçilmelidir.");
+
+            var rawStart = _dateTimeService.ToTurkeyTime(request.StartTime);
+            var appointmentStart = new DateTime(rawStart.Year, rawStart.Month, rawStart.Day, rawStart.Hour, rawStart.Minute, 0, DateTimeKind.Unspecified);
+
+            // 3. Geçmiş tarih yasağı (aynı kural)
+            if (appointmentStart < _dateTimeService.Now)
+                throw new ValidationException("Geçmiş bir tarihe randevu oluşturamazsınız.");
+
+            // 4. İleriye dönük limit
+            var maxBookingDate = _dateTimeService.Now.Date.AddDays(shop.BookingDaysAhead);
+            if (appointmentStart.Date > maxBookingDate)
+                throw new ValidationException($"Bu salon en fazla {shop.BookingDaysAhead} gün öncesinden randevu kabul etmektedir.");
+
+            // 5. Kapanış tarihi kontrolü
+            var isClosed = await _context.ShopClosureDates
+                .AnyAsync(c => c.ShopId == request.ShopId && c.ClosureDate.Date == appointmentStart.Date);
+            if (isClosed) throw new ValidationException("Salon bu tarihte kapalıdır.");
+
+            // 6. Haftalık tatil kontrolü
+            if (!string.IsNullOrWhiteSpace(shop.WeeklyOffDays))
+            {
+                var offDays = shop.WeeklyOffDays.Split(',').Select(int.Parse);
+                if (offDays.Contains((int)appointmentStart.DayOfWeek))
+                    throw new ValidationException("Salon bu günde haftalık tatildir.");
+            }
+
+            // 7. Personel program kontrolü
+            var dayOfWeek = appointmentStart.DayOfWeek;
+            var schedule = await _context.EmployeeSchedules
+                .FirstOrDefaultAsync(es => es.ShopEmployeeId == request.ShopEmployeeId && es.DayOfWeek == dayOfWeek);
+
+            if (schedule == null || !schedule.IsWorking)
+                throw new ValidationException("Seçili personel bu gün çalışmıyor.");
+
+            var guestName = string.IsNullOrWhiteSpace(request.GuestCustomerName) ? null : request.GuestCustomerName.Trim();
+            var guestPhone = string.IsNullOrWhiteSpace(request.GuestCustomerPhone) ? null : request.GuestCustomerPhone.Trim();
+
+            var groupId = Guid.NewGuid();
+            var currentStartTime = appointmentStart;
+
+            using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                foreach (var serviceId in request.ServiceIds)
+                {
+                    var service = await _context.ShopServices.FindAsync(serviceId);
+                    if (service == null || service.ShopId != request.ShopId || service.IsDeleted || !service.IsActive)
+                        throw new ValidationException("Hizmet bulunamadı veya pasif.");
+
+                    var hasSkill = await _context.ShopEmployeeServices
+                        .AnyAsync(ses => ses.ShopEmployeeId == request.ShopEmployeeId && ses.ShopServiceId == serviceId);
+                    if (!hasSkill) throw new ValidationException("Seçili personel bu hizmetlerden birini sağlayamıyor.");
+
+                    var currentEndTime = currentStartTime.AddMinutes(service.Duration);
+                    var timeStart = currentStartTime.TimeOfDay;
+                    var timeEnd = currentEndTime.TimeOfDay;
+
+                    if (timeStart < schedule.StartTime || timeEnd > schedule.EndTime)
+                        throw new ValidationException($"Seçilen hizmetler mesai saatleri dışına taşıyor ({schedule.StartTime:hh\\:mm} - {schedule.EndTime:hh\\:mm}).");
+
+                    if (schedule.BreakStartTime.HasValue && schedule.BreakEndTime.HasValue)
+                    {
+                        if (timeStart < schedule.BreakEndTime.Value && timeEnd > schedule.BreakStartTime.Value)
+                            throw new ValidationException("Randevu mola saatleri ile çakışıyor.");
+                    }
+
+                    var hasConflict = await _context.Appointments
+                        .AnyAsync(a =>
+                            a.ShopEmployeeId == request.ShopEmployeeId &&
+                            a.Status != AppointmentStatus.Cancelled &&
+                            a.Status != AppointmentStatus.Rejected &&
+                            a.StartTime < currentEndTime &&
+                            a.EndTime > currentStartTime);
+
+                    if (hasConflict)
+                        throw new ValidationException("Bu saat dilimi dolu. Lütfen farklı bir saat seçin.");
+
+                    var appointment = new Appointment
+                    {
+                        ShopId = request.ShopId,
+                        ShopServiceId = serviceId,
+                        ShopEmployeeId = request.ShopEmployeeId,
+                        UserId = null,
+                        GuestCustomerName = guestName,
+                        GuestCustomerPhone = guestPhone,
+                        StartTime = currentStartTime,
+                        EndTime = currentEndTime,
+                        Status = AppointmentStatus.Confirmed,
+                        Note = request.Note,
+                        GroupId = groupId
+                    };
+
+                    await _context.Appointments.AddAsync(appointment);
+                    currentStartTime = currentEndTime;
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+
+            try
+            {
+                if (guestPhone != null)
+                {
+                    var guestDisplayName = guestName ?? "Müşteri";
+                    await _smsService.SendSmsAsync(guestPhone, SmsTemplates.AppointmentAutoConfirmed(shop.Name, appointmentStart));
+                }
+
+                var employeeWithUser = await _context.ShopEmployees
+                    .Include(e => e.User)
+                    .FirstOrDefaultAsync(e => e.Id == request.ShopEmployeeId);
+
+                if (employeeWithUser?.User?.PhoneNumber != null)
+                {
+                    var serviceNames = await _context.ShopServices
+                        .Where(s => request.ServiceIds.Contains(s.Id))
+                        .Select(s => s.Name)
+                        .ToListAsync();
+                    var servicesDisplay = serviceNames.Count == 1 ? serviceNames[0] : $"{serviceNames.Count} hizmet";
+                    var displayName = guestName ?? "Misafir";
+                    await _smsService.SendSmsAsync(
+                        employeeWithUser.User.PhoneNumber,
+                        SmsTemplates.NewAppointmentForEmployee(displayName, servicesDisplay, appointmentStart));
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
+        }
+
         public async Task<PagedResult<AppointmentDto>> GetMyAppointmentsAsync(string userId, int page = 1, int pageSize = 20)
         {
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -251,8 +408,10 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var lowerTerm = searchTerm.ToLower();
-                query = query.Where(a => 
-                    (a.User != null && (a.User.FirstName + " " + a.User.LastName).ToLower().Contains(lowerTerm)) ||
+                query = query.Where(a =>
+                    (a.UserId != null && a.User != null && (a.User.FirstName + " " + a.User.LastName).ToLower().Contains(lowerTerm)) ||
+                    (a.UserId == null && a.GuestCustomerName != null && a.GuestCustomerName.ToLower().Contains(lowerTerm)) ||
+                    (a.UserId == null && a.GuestCustomerPhone != null && a.GuestCustomerPhone.Contains(lowerTerm)) ||
                     a.ShopService.Name.ToLower().Contains(lowerTerm) ||
                     (a.ShopEmployee.Title + " " + (a.ShopEmployee.User != null ? a.ShopEmployee.User.FirstName : "")).ToLower().Contains(lowerTerm)
                 );
@@ -287,7 +446,7 @@ namespace KuaforumAPI.Infrastructure.Services
             return new PagedResult<AppointmentDto>(appointmentDtos, totalCount, page, pageSize);
         }
 
-        public async Task UpdateStatusAsync(string ownerId, Guid appointmentId, UpdateAppointmentStatusDto request)
+        public async Task<NoShowResultDto?> UpdateStatusAsync(string ownerId, Guid appointmentId, UpdateAppointmentStatusDto request)
         {
             var appointment = await _context.Appointments
                 .Include(a => a.Shop)
@@ -303,7 +462,11 @@ namespace KuaforumAPI.Infrastructure.Services
             ValidateStatusTransition(appointment.Status, request.Status);
 
             if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)
-                throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
+                throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
+            if (request.Status == AppointmentStatus.NoShow
+                && appointment.Status != AppointmentStatus.Completed
+                && appointment.StartTime > _dateTimeService.Now)
+                throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
 
             appointment.Status = request.Status;
             if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
@@ -312,6 +475,21 @@ namespace KuaforumAPI.Infrastructure.Services
                 appointment.CancellationReason = request.Reason;
             }
             await _context.SaveChangesAsync();
+
+            NoShowResultDto? noShowResult = null;
+            if (request.Status == AppointmentStatus.NoShow && appointment.UserId != null)
+            {
+                var count = await _context.Appointments
+                    .CountAsync(a => a.UserId == appointment.UserId && a.ShopId == appointment.ShopId && a.Status == AppointmentStatus.NoShow);
+                noShowResult = new NoShowResultDto
+                {
+                    NoShowCount = count,
+                    CustomerId = appointment.UserId,
+                    CustomerName = appointment.User != null
+                        ? $"{appointment.User.FirstName} {appointment.User.LastName}"
+                        : null
+                };
+            }
 
             try
             {
@@ -331,16 +509,17 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
+
+            return noShowResult;
         }
 
         private static bool IsValidTransition(AppointmentStatus current, AppointmentStatus next)
         {
             var allowed = current switch
             {
-                // Bekleyen randevu: onaylanabilir, reddedilebilir veya iptal edilebilir
                 AppointmentStatus.Pending   => new[] { AppointmentStatus.Confirmed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled },
-                // Onaylanmış randevu: SADECE tamamlanabilir veya iptal edilebilir — artık reddedilemez
-                AppointmentStatus.Confirmed => new[] { AppointmentStatus.Completed, AppointmentStatus.Cancelled },
+                AppointmentStatus.Confirmed => new[] { AppointmentStatus.Completed, AppointmentStatus.Cancelled, AppointmentStatus.NoShow },
+                AppointmentStatus.Completed => new[] { AppointmentStatus.NoShow },
                 _ => Array.Empty<AppointmentStatus>()
             };
             return allowed.Contains(next);
@@ -366,8 +545,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 ShopEmployeeId = a.ShopEmployeeId,
                 EmployeeName = a.ShopEmployee.Title + " " + (a.ShopEmployee.User != null ? a.ShopEmployee.User.FirstName : ""), 
                 UserId = a.UserId,
-                CustomerName = (a.User != null ? a.User.FirstName + " " + a.User.LastName : ""),
-                CustomerPhone = a.User?.PhoneNumber,
+                CustomerName = a.UserId != null
+                    ? (a.User != null ? a.User.FirstName + " " + a.User.LastName : "")
+                    : (a.GuestCustomerName ?? "Misafir"),
+                CustomerPhone = a.UserId != null ? a.User?.PhoneNumber : a.GuestCustomerPhone,
+                IsManual = a.UserId == null,
                 StartTime = a.StartTime,
                 EndTime = a.EndTime,
                 Status = a.Status,
@@ -574,7 +756,7 @@ namespace KuaforumAPI.Infrastructure.Services
             return new PagedResult<AppointmentDto>(items.Select(a => MapToDto(a)).ToList(), totalCount, page, pageSize);
         }
 
-        public async Task UpdateStatusByEmployeeAsync(string employeeUserId, Guid appointmentId, UpdateAppointmentStatusDto request)
+        public async Task<NoShowResultDto?> UpdateStatusByEmployeeAsync(string employeeUserId, Guid appointmentId, UpdateAppointmentStatusDto request)
         {
             var appointment = await _context.Appointments
                 .Include(a => a.ShopEmployee)
@@ -588,16 +770,19 @@ namespace KuaforumAPI.Infrastructure.Services
             if (appointment.ShopEmployee.UserId != employeeUserId)
                 throw new ValidationException("You are not authorized to manage this appointment.");
 
-            var allowedForEmployee = new[] { AppointmentStatus.Confirmed, AppointmentStatus.Completed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled };
+            var allowedForEmployee = new[] { AppointmentStatus.Confirmed, AppointmentStatus.Completed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled, AppointmentStatus.NoShow };
             if (!allowedForEmployee.Contains(request.Status))
                 throw new ValidationException("Geçersiz durum geçişi.");
 
             ValidateStatusTransition(appointment.Status, request.Status);
 
             if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)
-                throw new ValidationException("Randevu henüz başlamadığı için tamamlanamaz.");
+                throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
+            if (request.Status == AppointmentStatus.NoShow
+                && appointment.Status != AppointmentStatus.Completed
+                && appointment.StartTime > _dateTimeService.Now)
+                throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
 
-            // Grup randevusuysa gruptaki tüm uyumlu randevuları da güncelle (ya hep ya hiç)
             if (appointment.GroupId.HasValue)
             {
                 var groupAppointments = await _context.Appointments
@@ -610,6 +795,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     if (apt.Status == request.Status) continue;
                     if (!IsValidTransition(apt.Status, request.Status)) continue;
                     if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
+                    if (request.Status == AppointmentStatus.NoShow && apt.Status != AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
                     apt.Status = request.Status;
                 }
             }
@@ -619,6 +805,21 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
+
+            NoShowResultDto? noShowResult = null;
+            if (request.Status == AppointmentStatus.NoShow && appointment.UserId != null)
+            {
+                var count = await _context.Appointments
+                    .CountAsync(a => a.UserId == appointment.UserId && a.ShopId == appointment.ShopId && a.Status == AppointmentStatus.NoShow);
+                noShowResult = new NoShowResultDto
+                {
+                    NoShowCount = count,
+                    CustomerId = appointment.UserId,
+                    CustomerName = appointment.User != null
+                        ? $"{appointment.User.FirstName} {appointment.User.LastName}"
+                        : null
+                };
+            }
 
             try
             {
@@ -636,6 +837,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
+
+            return noShowResult;
         }
 
         public async Task CancelGroupAsync(string userId, Guid groupId, string? reason = null)
@@ -698,7 +901,7 @@ namespace KuaforumAPI.Infrastructure.Services
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
-        public async Task UpdateGroupStatusAsync(string ownerId, Guid groupId, UpdateAppointmentStatusDto request)
+        public async Task<NoShowResultDto?> UpdateGroupStatusAsync(string ownerId, Guid groupId, UpdateAppointmentStatusDto request)
         {
             var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
             if (shop == null) throw new ValidationException("Yetkisiz erişim.");
@@ -716,6 +919,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 if (apt.Status == request.Status) continue;
                 if (!IsValidTransition(apt.Status, request.Status)) continue;
                 if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
+                if (request.Status == AppointmentStatus.NoShow && apt.Status != AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
 
                 apt.Status = request.Status;
                 if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
@@ -726,6 +930,25 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
+
+            NoShowResultDto? noShowResult = null;
+            if (request.Status == AppointmentStatus.NoShow)
+            {
+                var first = appointments.OrderBy(a => a.StartTime).FirstOrDefault();
+                if (first?.UserId != null)
+                {
+                    var count = await _context.Appointments
+                        .CountAsync(a => a.UserId == first.UserId && a.ShopId == shop.Id && a.Status == AppointmentStatus.NoShow);
+                    noShowResult = new NoShowResultDto
+                    {
+                        NoShowCount = count,
+                        CustomerId = first.UserId,
+                        CustomerName = first.User != null
+                            ? $"{first.User.FirstName} {first.User.LastName}"
+                            : null
+                    };
+                }
+            }
 
             try
             {
@@ -746,6 +969,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
+
+            return noShowResult;
         }
 
         public async Task CancelByCustomerAsync(string userId, Guid appointmentId, string? reason = null)

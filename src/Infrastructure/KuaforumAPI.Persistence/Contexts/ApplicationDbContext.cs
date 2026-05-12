@@ -25,6 +25,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<OtpCode> OtpCodes { get; set; }
         public DbSet<EmployeeLeaveDate> EmployeeLeaveDates { get; set; }
+        public DbSet<ShopBlockedCustomer> ShopBlockedCustomers { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
@@ -304,6 +305,21 @@ namespace KuaforumAPI.Persistence.Contexts
                     .WithMany(r => r.Images)
                     .HasForeignKey(ri => ri.ReviewId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ShopBlockedCustomer Configuration
+            builder.Entity<ShopBlockedCustomer>(entity =>
+            {
+                entity.Property(e => e.Reason).HasMaxLength(500);
+                entity.HasOne(b => b.Shop)
+                    .WithMany()
+                    .HasForeignKey(b => b.ShopId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(b => b.Customer)
+                    .WithMany()
+                    .HasForeignKey(b => b.CustomerId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(b => new { b.ShopId, b.CustomerId }).IsUnique();
             });
 
             // ── Performance Indexes ────────────────────────────────────────────

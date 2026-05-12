@@ -17,9 +17,10 @@ namespace KuaforumAPI.Application.DTOs.Appointment
         public Guid ShopEmployeeId { get; set; }
         public string EmployeeName { get; set; }
 
-        public string UserId { get; set; }
-        public string CustomerName { get; set; } // FirstName + LastName
+        public string? UserId { get; set; }
+        public string CustomerName { get; set; }
         public string? CustomerPhone { get; set; }
+        public bool IsManual { get; set; }
 
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }

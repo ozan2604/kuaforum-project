@@ -6,6 +6,7 @@ namespace KuaforumAPI.Domain.Enums
         Confirmed = 1,  // Onaylandı
         Completed = 2,  // İşlem tamamlandı
         Cancelled = 3,  // Müşteri iptal etti
-        Rejected = 4    // Dükkan sahibi reddetti
+        Rejected = 4,   // Dükkan sahibi reddetti
+        NoShow = 5      // Müşteri gelmedi (terminal)
     }
 }

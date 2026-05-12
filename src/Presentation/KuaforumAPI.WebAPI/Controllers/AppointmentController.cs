@@ -31,6 +31,15 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Appointment created successfully." });
         }
 
+        [HttpPost("manual")]
+        [Authorize(Roles = $"{Roles.SalonOwner},{Roles.Employee}")]
+        public async Task<IActionResult> CreateManual([FromBody] CreateManualAppointmentDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _appointmentService.CreateManualAsync(userId, request);
+            return Ok(new { Message = "Manuel randevu oluşturuldu." });
+        }
+
         [HttpGet("my-appointments")]
         [Authorize]
         public async Task<IActionResult> GetMyAppointments([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
@@ -63,8 +72,8 @@ namespace KuaforumAPI.WebAPI.Controllers
         public async Task<IActionResult> UpdateStatusByEmployee(Guid id, [FromBody] UpdateAppointmentStatusDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _appointmentService.UpdateStatusByEmployeeAsync(userId, id, request);
-            return Ok(new { Message = "Appointment status updated." });
+            var noShowResult = await _appointmentService.UpdateStatusByEmployeeAsync(userId, id, request);
+            return Ok(new { Message = "Appointment status updated.", noShowResult });
         }
 
         [HttpGet("shop/{shopId}")]
@@ -81,8 +90,8 @@ namespace KuaforumAPI.WebAPI.Controllers
         public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateAppointmentStatusDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _appointmentService.UpdateStatusAsync(userId, id, request);
-            return Ok(new { Message = "Appointment status updated." });
+            var noShowResult = await _appointmentService.UpdateStatusAsync(userId, id, request);
+            return Ok(new { Message = "Appointment status updated.", noShowResult });
         }
         [HttpDelete("{id}")]
         [Authorize]
@@ -122,8 +131,8 @@ namespace KuaforumAPI.WebAPI.Controllers
         public async Task<IActionResult> UpdateGroupStatus(Guid groupId, [FromBody] UpdateAppointmentStatusDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _appointmentService.UpdateGroupStatusAsync(userId, groupId, request);
-            return Ok(new { Message = "Grup randevu durumu güncellendi." });
+            var noShowResult = await _appointmentService.UpdateGroupStatusAsync(userId, groupId, request);
+            return Ok(new { Message = "Grup randevu durumu güncellendi.", noShowResult });
         }
 
         [HttpGet("reviewable")]
