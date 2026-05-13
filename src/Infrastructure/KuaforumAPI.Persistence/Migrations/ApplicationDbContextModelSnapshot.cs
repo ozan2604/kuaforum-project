@@ -670,6 +670,10 @@ namespace KuaforumAPI.Persistence.Migrations
                     b.HasIndex("OwnerId", "IsActive")
                         .HasDatabaseName("IX_Shops_Owner_Active");
 
+                    b.HasIndex("OwnerId")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Shops_OwnerId");
+
                     b.ToTable("Shops");
                 });
 

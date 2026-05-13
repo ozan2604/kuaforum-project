@@ -354,6 +354,12 @@ namespace KuaforumAPI.Persistence.Contexts
                 .HasIndex(s => new { s.OwnerId, s.IsActive })
                 .HasDatabaseName("IX_Shops_Owner_Active");
 
+            // Bir kullanıcı yalnızca bir salon sahibi olabilir (race condition koruması)
+            builder.Entity<Shop>()
+                .HasIndex(s => s.OwnerId)
+                .IsUnique()
+                .HasDatabaseName("UQ_Shops_OwnerId");
+
             // Yorum sorguları
             builder.Entity<Review>()
                 .HasIndex(r => r.AppointmentId)

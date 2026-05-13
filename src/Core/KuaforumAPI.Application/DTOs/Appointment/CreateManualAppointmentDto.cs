@@ -27,6 +27,7 @@ namespace KuaforumAPI.Application.DTOs.Appointment
         public string? GuestCustomerName { get; set; }
 
         [MaxLength(20)]
+        [RegularExpression(@"^05[0-9]{9}$", ErrorMessage = "Telefon numarası 05XXXXXXXXX formatında olmalıdır.")]
         public string? GuestCustomerPhone { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
