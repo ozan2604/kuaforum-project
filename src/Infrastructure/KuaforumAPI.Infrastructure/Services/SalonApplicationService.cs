@@ -68,8 +68,7 @@ namespace KuaforumAPI.Infrastructure.Services
             {
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user?.PhoneNumber != null)
-                    await _smsService.SendSmsAsync(user.PhoneNumber,
-                        "Kuaforum: Salon başvurunuz alındı. Değerlendirme sonucunda SMS ile bilgilendirileceksiniz.");
+                    await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.SalonApplicationSubmitted());
             }
             catch (Exception ex) { _logger.LogWarning(ex, "Başvuru SMS gönderilemedi."); }
         }
@@ -114,9 +113,15 @@ namespace KuaforumAPI.Infrastructure.Services
                 Id = a.Id,
                 UserId = a.UserId,
                 UserName = a.User.UserName,
+                UserFirstName = a.User.FirstName,
+                UserLastName = a.User.LastName,
                 ShopName = a.ShopName,
                 Description = a.Description,
                 ContactEmail = a.ContactEmail,
+                PhoneNumber = a.PhoneNumber,
+                City = a.City,
+                District = a.District,
+                Neighborhood = a.Neighborhood,
                 Categories = a.Categories.Select(c => c.CategoryValue).ToList(),
                 GenderPreference = a.GenderPreference,
                 Status = a.Status,
@@ -133,9 +138,15 @@ namespace KuaforumAPI.Infrastructure.Services
                 Id = a.Id,
                 UserId = a.UserId,
                 UserName = a.User.UserName,
+                UserFirstName = a.User.FirstName,
+                UserLastName = a.User.LastName,
                 ShopName = a.ShopName,
                 Description = a.Description,
                 ContactEmail = a.ContactEmail,
+                PhoneNumber = a.PhoneNumber,
+                City = a.City,
+                District = a.District,
+                Neighborhood = a.Neighborhood,
                 Categories = a.Categories.Select(c => c.CategoryValue).ToList(),
                 GenderPreference = a.GenderPreference,
                 Status = a.Status,

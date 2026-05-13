@@ -6,7 +6,7 @@ namespace KuaforumAPI.Application.DTOs.Shop
     public class CreateShopDto
     {
         [Required(ErrorMessage = "Salon adı zorunludur.")]
-        [MaxLength(200, ErrorMessage = "Salon adı en fazla 200 karakter olabilir.")]
+        [MaxLength(100, ErrorMessage = "Salon adı en fazla 100 karakter olabilir.")]
         public string Name { get; set; }
 
         [Required(ErrorMessage = "Açıklama zorunludur.")]
@@ -14,15 +14,15 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public string Description { get; set; }
 
         [Required(ErrorMessage = "Adres zorunludur.")]
-        [MaxLength(500, ErrorMessage = "Adres en fazla 500 karakter olabilir.")]
+        [MaxLength(250, ErrorMessage = "Adres en fazla 250 karakter olabilir.")]
         public string Address { get; set; }
 
         [Required(ErrorMessage = "İl zorunludur.")]
-        [MaxLength(100, ErrorMessage = "İl en fazla 100 karakter olabilir.")]
+        [MaxLength(50, ErrorMessage = "İl en fazla 50 karakter olabilir.")]
         public string City { get; set; }
 
         [Required(ErrorMessage = "İlçe zorunludur.")]
-        [MaxLength(100, ErrorMessage = "İlçe en fazla 100 karakter olabilir.")]
+        [MaxLength(50, ErrorMessage = "İlçe en fazla 50 karakter olabilir.")]
         public string District { get; set; }
 
         [Required(ErrorMessage = "Mahalle zorunludur.")]

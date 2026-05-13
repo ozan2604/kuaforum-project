@@ -4,10 +4,15 @@ namespace KuaforumAPI.Application.DTOs.Employee
 {
     public class UpdateEmployeeProfileDto
     {
-        [Required]
+        [Required(ErrorMessage = "Ad zorunludur.")]
+        [MaxLength(50, ErrorMessage = "Ad en fazla 50 karakter olabilir.")]
         public string FirstName { get; set; }
-        [Required]
+
+        [Required(ErrorMessage = "Soyad zorunludur.")]
+        [MaxLength(50, ErrorMessage = "Soyad en fazla 50 karakter olabilir.")]
         public string LastName { get; set; }
-        public string Title { get; set; }
+
+        [MaxLength(100, ErrorMessage = "Unvan en fazla 100 karakter olabilir.")]
+        public string? Title { get; set; }
     }
 }

@@ -5,11 +5,11 @@ namespace KuaforumAPI.Application.DTOs.Service
     public class CreateServiceCategoryDto
     {
         [Required(ErrorMessage = "Kategori adı zorunludur.")]
-        [MaxLength(100, ErrorMessage = "Kategori adı en fazla 100 karakter olabilir.")]
+        [MaxLength(50, ErrorMessage = "Kategori adı en fazla 50 karakter olabilir.")]
         public string Name { get; set; }
 
         [Required(ErrorMessage = "Açıklama zorunludur.")]
-        [MaxLength(500, ErrorMessage = "Açıklama en fazla 500 karakter olabilir.")]
+        [MaxLength(250, ErrorMessage = "Açıklama en fazla 250 karakter olabilir.")]
         public string Description { get; set; }
     }
 }

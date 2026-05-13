@@ -8,27 +8,28 @@ namespace KuaforumAPI.Application.Validators
         public CreateShopValidator()
         {
             RuleFor(x => x.Name)
-                .NotEmpty().WithMessage("Shop name is required.")
-                .MaximumLength(150).WithMessage("Shop name must not exceed 150 characters.")
+                .NotEmpty().WithMessage("Salon adı zorunludur.")
+                .MaximumLength(100).WithMessage("Salon adı en fazla 100 karakter olabilir.")
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.Address)
-                .NotEmpty().WithMessage("Address is required.")
+                .NotEmpty().WithMessage("Adres zorunludur.")
+                .MaximumLength(250).WithMessage("Adres en fazla 250 karakter olabilir.")
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.City)
-                .NotEmpty().WithMessage("City is required.")
-                .MaximumLength(50).WithMessage("City must not exceed 50 characters.")
+                .NotEmpty().WithMessage("İl zorunludur.")
+                .MaximumLength(50).WithMessage("İl en fazla 50 karakter olabilir.")
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.District)
-                .NotEmpty().WithMessage("District is required.")
-                .MaximumLength(50).WithMessage("District must not exceed 50 characters.")
+                .NotEmpty().WithMessage("İlçe zorunludur.")
+                .MaximumLength(50).WithMessage("İlçe en fazla 50 karakter olabilir.")
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.PhoneNumber)
                 .NotEmpty().WithMessage("Telefon numarası zorunludur.")
-                .Matches(@"^05\d{9}$").WithMessage("Telefon numarası 05XXXXXXXXX formatında olmalıdır. (Örn: 05321234567)");
+                .Matches(@"^05\d{9}$").WithMessage("Telefon numarası 05XXXXXXXXX formatında olmalıdır.");
 
             RuleFor(x => x.CategoryIds)
                 .NotEmpty().WithMessage("En az bir kategori seçimi zorunludur.");

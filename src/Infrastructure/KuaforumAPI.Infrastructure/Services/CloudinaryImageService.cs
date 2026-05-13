@@ -55,6 +55,11 @@ namespace KuaforumAPI.Infrastructure.Services
             {
                 transformation.Width(width.Value).Height(height.Value).Crop("fill").Gravity("auto");
             }
+            else
+            {
+                // Limit to 1200px wide max while preserving aspect ratio
+                transformation.Width(1200).Crop("limit");
+            }
 
             var uploadParams = new ImageUploadParams
             {

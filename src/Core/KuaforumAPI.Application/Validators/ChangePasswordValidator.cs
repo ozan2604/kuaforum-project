@@ -7,11 +7,17 @@ namespace KuaforumAPI.Application.Validators
     {
         public ChangePasswordValidator()
         {
-            RuleFor(x => x.CurrentPassword).NotEmpty().WithMessage("Current password is required.");
-            RuleFor(x => x.NewPassword).NotEmpty().WithMessage("New password is required.")
-                .MinimumLength(6).WithMessage("Password must be at least 6 characters.");
-            RuleFor(x => x.ConfirmPassword).NotEmpty().WithMessage("Confirm password is required.")
-                .Equal(x => x.NewPassword).WithMessage("Passwords do not match.");
+            RuleFor(x => x.CurrentPassword)
+                .NotEmpty().WithMessage("Mevcut şifre zorunludur.");
+
+            RuleFor(x => x.NewPassword)
+                .NotEmpty().WithMessage("Yeni şifre zorunludur.")
+                .MinimumLength(6).WithMessage("Şifre en az 6 karakter olmalıdır.")
+                .MaximumLength(100).WithMessage("Şifre en fazla 100 karakter olabilir.");
+
+            RuleFor(x => x.ConfirmPassword)
+                .NotEmpty().WithMessage("Şifre tekrarı zorunludur.")
+                .Equal(x => x.NewPassword).WithMessage("Şifreler eşleşmiyor.");
         }
     }
 }

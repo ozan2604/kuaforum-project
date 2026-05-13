@@ -281,6 +281,8 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.HasKey(rt => rt.Id);
                 entity.Property(rt => rt.Token).IsRequired().HasMaxLength(256);
                 entity.HasIndex(rt => rt.Token).IsUnique();
+                entity.HasIndex(rt => new { rt.IsRevoked, rt.CreatedAt })
+                    .HasDatabaseName("IX_RefreshTokens_Revoked_CreatedAt");
                 entity.HasOne(rt => rt.User)
                     .WithMany()
                     .HasForeignKey(rt => rt.UserId)
@@ -294,6 +296,8 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.Property(o => o.PhoneNumber).IsRequired().HasMaxLength(15);
                 entity.Property(o => o.CodeHash).IsRequired().HasMaxLength(64);
                 entity.HasIndex(o => new { o.PhoneNumber, o.Purpose });
+                entity.HasIndex(o => o.CreatedAt)
+                    .HasDatabaseName("IX_OtpCodes_CreatedAt");
             });
 
             // ReviewImage Configuration

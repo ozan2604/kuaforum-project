@@ -51,10 +51,10 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpGet("employee/my-appointments")]
         [Authorize(Roles = Roles.Employee)]
-        public async Task<IActionResult> GetAssignedAppointments()
+        public async Task<IActionResult> GetAssignedAppointments([FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _appointmentService.GetAssignedAppointmentsAsync(userId);
+            var result = await _appointmentService.GetAssignedAppointmentsAsync(userId, from, to);
             return Ok(result);
         }
 

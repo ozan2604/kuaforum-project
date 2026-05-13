@@ -6,7 +6,7 @@ namespace KuaforumAPI.Application.DTOs.Service
     public class UpdateShopServiceDto
     {
         [Required(ErrorMessage = "Hizmet adı zorunludur.")]
-        [MaxLength(200, ErrorMessage = "Hizmet adı en fazla 200 karakter olabilir.")]
+        [MaxLength(100, ErrorMessage = "Hizmet adı en fazla 100 karakter olabilir.")]
         public string Name { get; set; }
 
         [Range(0.01, 100000, ErrorMessage = "Fiyat 0.01 ile 100.000 arasında olmalıdır.")]

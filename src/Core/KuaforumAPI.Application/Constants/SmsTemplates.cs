@@ -13,13 +13,13 @@ namespace KuaforumAPI.Application.Constants
         // ── Müşteriye giden randevu SMS'leri ──────────────────────────────────
 
         public static string AppointmentCreated(string shopName, DateTime startTime) =>
-            $"Randevu talebiniz alindı. {shopName} - {Fmt(startTime)}. Onaylaninca bilgilendirileceksiniz.";
+            $"Randevu talebiniz alındı. {shopName} - {Fmt(startTime)}. Onaylanınca bilgilendirileceksiniz.";
 
         public static string AppointmentAutoConfirmed(string shopName, DateTime startTime) =>
-            $"Randevunuz onaylandi. {shopName} - {Fmt(startTime)}. Görüşmek üzere!";
+            $"Randevunuz onaylandı. {shopName} - {Fmt(startTime)}. Görüşmek üzere!";
 
         public static string AppointmentConfirmed(string shopName, DateTime startTime) =>
-            $"Randevunuz onaylandi. {shopName} - {Fmt(startTime)}. Görüşmek üzere!";
+            $"Randevunuz onaylandı. {shopName} - {Fmt(startTime)}. Görüşmek üzere!";
 
         public static string AppointmentRejected(string shopName, DateTime startTime, string? reason = null)
         {
@@ -36,61 +36,70 @@ namespace KuaforumAPI.Application.Constants
         }
 
         public static string AppointmentCompleted(string shopName) =>
-            $"Randevunuz tamamlandi. {shopName}'yi tercih ettiginiz icin tesekkurler!";
+            $"Randevunuz tamamlandı. {shopName}'yi tercih ettiğiniz için teşekkürler!";
 
         public static string AppointmentReminder48h(string shopName, DateTime startTime) =>
-            $"Yarin randevunuz var! {shopName} - {startTime:HH:mm}. Görüşürüz.";
+            $"Yarın randevunuz var! {shopName} - {startTime:HH:mm}. Görüşürüz.";
 
         public static string AppointmentReminder2h(string shopName, DateTime startTime) =>
-            $"Randevunuz {startTime:HH:mm}'de basliyor. {shopName} sizi bekliyor!";
+            $"Randevunuz {startTime:HH:mm}'de başlıyor. {shopName} sizi bekliyor!";
 
         // ── Salon sahibine giden SMS'ler ─────────────────────────────────────
 
         public static string AppointmentCancelledByCustomer(string customerName, string serviceName, DateTime startTime) =>
-            $"{FmtDate(startTime)} tarihindeki {customerName} adli musterinin {serviceName} randevusu iptal edildi.";
+            $"{FmtDate(startTime)} tarihindeki {customerName} adlı müşterinin {serviceName} randevusu iptal edildi.";
 
         public static string NewAppointmentSummaryForShop(IList<(string Name, int Count)> summary)
         {
             var details = string.Join(", ", summary.Select(s => $"{s.Name} {s.Count}"));
-            var msg = $"Son 30 dak. yeni randevular: {details}. Detay icin salon panelini kontrol edin.";
+            var msg = $"Son 30 dak. yeni randevular: {details}. Detay için salon panelini kontrol edin.";
             if (msg.Length <= 155) return msg;
             var total = summary.Sum(s => s.Count);
-            return $"Son 30 dak. {total} yeni randevu olusturuldu. Detay icin salon panelini kontrol edin.";
+            return $"Son 30 dak. {total} yeni randevu oluşturuldu. Detay için salon panelini kontrol edin.";
         }
 
-        // ── Calısana giden randevu SMS'leri ──────────────────────────────────
+        // ── Çalışana giden randevu SMS'leri ──────────────────────────────────
 
         public static string NewAppointmentForEmployee(string customerName, string serviceName, DateTime startTime) =>
-            $"Yeni randevunuz: {Fmt(startTime)}, {serviceName}. Musteri: {customerName}.";
+            $"Yeni randevunuz: {Fmt(startTime)}, {serviceName}. Müşteri: {customerName}.";
 
         public static string AppointmentCancelledByCustomerToEmployee(string customerName, string serviceName, DateTime startTime) =>
-            $"Randevunuz iptal edildi: {Fmt(startTime)}, {serviceName}. Iptal eden: {customerName}.";
+            $"Randevunuz iptal edildi: {Fmt(startTime)}, {serviceName}. İptal eden: {customerName}.";
 
-        // ── Salon basvuru SMS'leri ───────────────────────────────────────────
+        public static string AppointmentRejectedToEmployee(string shopName, DateTime startTime) =>
+            $"{Fmt(startTime)} tarihindeki randevunuz salon tarafından reddedildi. ({shopName})";
+
+        public static string AppointmentCancelledByShopToEmployee(string shopName, DateTime startTime) =>
+            $"{Fmt(startTime)} tarihindeki randevunuz salon tarafından iptal edildi. ({shopName})";
+
+        // ── Salon başvuru SMS'leri ───────────────────────────────────────────
+
+        public static string SalonApplicationSubmitted() =>
+            "Kuaforum: Salon başvurunuz alındı. Değerlendirme sonucunda SMS ile bilgilendirileceksiniz.";
 
         public static string SalonApplicationApproved(string shopName) =>
-            $"Tebrikler! {shopName} basvurunuz onaylandi. Salon panelinize erisebilirsiniz.";
+            $"Tebrikler! {shopName} başvurunuz onaylandı. Salon panelinize erişebilirsiniz.";
 
         public static string SalonApplicationRejected() =>
-            "Salon basvurunuz reddedildi. Bilgi icin destek hattimizla iletisime gecin.";
+            "Salon başvurunuz reddedildi. Bilgi için destek hattımızla iletişime geçin.";
 
-        // ── Calisán yönetimi SMS'leri ────────────────────────────────────────
+        // ── Çalışan yönetimi SMS'leri ────────────────────────────────────────
 
         public static string EmployeeAdded(string shopName, string tempPassword) =>
-            $"{shopName} salonuna calisan olarak eklendiniz. Gecici sifreniz: {tempPassword}";
+            $"{shopName} salonuna çalışan olarak eklendiniz. Geçici şifreniz: {tempPassword}";
 
         public static string EmployeeAddedExisting(string shopName) =>
-            $"{shopName} salonuna calisan olarak eklendiniz. Mevcut sifrenizle giris yapabilirsiniz.";
+            $"{shopName} salonuna çalışan olarak eklendiniz. Mevcut şifrenizle giriş yapabilirsiniz.";
 
         public static string EmployeeRemoved(string shopName) =>
-            $"{shopName} salonundaki calisan kaydiniz sonlandirildi.";
+            $"{shopName} salonundaki çalışan kaydınız sonlandırıldı.";
 
         public static string EmployeeRestored(string shopName) =>
-            $"{shopName} salonuna yeniden aktif edildiniz. Panelinize erisebilirsiniz.";
+            $"{shopName} salonuna yeniden aktif edildiniz. Panelinize erişebilirsiniz.";
 
-        // ── Kimlik / guvenlik SMS'leri ───────────────────────────────────────
+        // ── Kimlik / güvenlik SMS'leri ───────────────────────────────────────
 
         public static string PasswordChanged() =>
-            "Sifreniz degistirildi. Bu islemi siz yapmadiysaniz destek hattimizla iletisime gecin.";
+            "Şifreniz değiştirildi. Bu işlemi siz yapmadıysanız destek hattımızla iletişime geçin.";
     }
 }

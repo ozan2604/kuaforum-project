@@ -8,13 +8,13 @@ namespace KuaforumAPI.Application.Validators
         public CreateEmployeeValidator()
         {
             RuleFor(x => x.FirstName)
-                .NotEmpty().WithMessage("First name is required.")
-                .MaximumLength(50).WithMessage("First name must not exceed 50 characters.")
+                .NotEmpty().WithMessage("Ad zorunludur.")
+                .MaximumLength(50).WithMessage("Ad en fazla 50 karakter olabilir.")
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.LastName)
-                .NotEmpty().WithMessage("Last name is required.")
-                .MaximumLength(50).WithMessage("Last name must not exceed 50 characters.")
+                .NotEmpty().WithMessage("Soyad zorunludur.")
+                .MaximumLength(50).WithMessage("Soyad en fazla 50 karakter olabilir.")
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.PhoneNumber)
@@ -22,8 +22,8 @@ namespace KuaforumAPI.Application.Validators
                 .Matches(@"^05\d{9}$").WithMessage("Telefon numarası 05XXXXXXXXX formatında olmalıdır.");
 
             RuleFor(x => x.Title)
-                .NotEmpty().WithMessage("Title is required.")
-                .MaximumLength(100).WithMessage("Title must not exceed 100 characters.")
+                .NotEmpty().WithMessage("Unvan zorunludur.")
+                .MaximumLength(100).WithMessage("Unvan en fazla 100 karakter olabilir.")
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
         }
     }

@@ -4,15 +4,17 @@ namespace KuaforumAPI.Application.DTOs.Auth
 {
     public class ResetPasswordWithOtpRequest
     {
-        [Required]
+        [Required(ErrorMessage = "Telefon numarası zorunludur.")]
+        [RegularExpression(@"^05[0-9]{9}$", ErrorMessage = "Telefon numarası 05XXXXXXXXX formatında olmalıdır.")]
         public string PhoneNumber { get; set; }
 
-        [Required]
-        [StringLength(6, MinimumLength = 6)]
+        [Required(ErrorMessage = "Doğrulama kodu zorunludur.")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Doğrulama kodu 6 haneli olmalıdır.")]
         public string OtpCode { get; set; }
 
-        [Required]
-        [MinLength(6)]
+        [Required(ErrorMessage = "Yeni şifre zorunludur.")]
+        [MinLength(6, ErrorMessage = "Şifre en az 6 karakter olmalıdır.")]
+        [MaxLength(100, ErrorMessage = "Şifre en fazla 100 karakter olabilir.")]
         public string NewPassword { get; set; }
     }
 }
