@@ -13,16 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up .NET Core
+      - name: Set up .NET 9
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore dependencies
+        run: dotnet restore KuaforumAPI.sln
 
-      - name: dotnet publish
-        run: dotnet publish src/Presentation/KuaforumAPI.WebAPI/KuaforumAPI.WebAPI.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+      - name: Build
+        run: dotnet build KuaforumAPI.sln --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish src/Presentation/KuaforumAPI.WebAPI/KuaforumAPI.WebAPI.csproj -c Release --no-build -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -45,6 +48,5 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'salonbir-api'
-          slot-name: 'Production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
