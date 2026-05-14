@@ -709,6 +709,9 @@ namespace KuaforumAPI.Infrastructure.Services
                     System.Globalization.DateTimeStyles.None, out var parsedDate))
                 throw new FluentValidation.ValidationException("Geçersiz tarih formatı. Beklenen: yyyy-MM-dd");
 
+            if (parsedDate.Date < DateTime.Today)
+                throw new FluentValidation.ValidationException("Geçmiş bir tarihe izin günü eklenemez.");
+
             var alreadyExists = await _context.EmployeeLeaveDates
                 .AnyAsync(l => l.ShopEmployeeId == shopEmployeeId && l.LeaveDate.Date == parsedDate.Date);
             if (alreadyExists) throw new FluentValidation.ValidationException("Bu çalışan için bu tarihte zaten izin tanımlanmış.");

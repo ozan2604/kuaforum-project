@@ -465,10 +465,21 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)
                 throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
-            if (request.Status == AppointmentStatus.NoShow
-                && appointment.Status != AppointmentStatus.Completed
-                && appointment.StartTime > _dateTimeService.Now)
-                throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
+
+            if (request.Status == AppointmentStatus.NoShow)
+            {
+                if (appointment.Status == AppointmentStatus.Completed)
+                {
+                    if (!shop.IsAutoProcessEnabled)
+                        throw new ValidationException("Manuel onaylı salonlarda tamamlanmış randevular 'Gelmedi' durumuna çevrilemez.");
+                    if (_dateTimeService.Now > appointment.EndTime.AddHours(3))
+                        throw new ValidationException("Otomatik tamamlanan randevular, bitiş saatinin üzerinden 3 saat geçtikten sonra 'Gelmedi' durumuna çevrilemez.");
+                }
+                else if (appointment.StartTime > _dateTimeService.Now)
+                {
+                    throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
+                }
+            }
 
             appointment.Status = request.Status;
             if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
@@ -795,10 +806,21 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)
                 throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
-            if (request.Status == AppointmentStatus.NoShow
-                && appointment.Status != AppointmentStatus.Completed
-                && appointment.StartTime > _dateTimeService.Now)
-                throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
+            
+            if (request.Status == AppointmentStatus.NoShow)
+            {
+                if (appointment.Status == AppointmentStatus.Completed)
+                {
+                    if (!appointment.Shop.IsAutoProcessEnabled)
+                        throw new ValidationException("Manuel onaylı salonlarda tamamlanmış randevular 'Gelmedi' durumuna çevrilemez.");
+                    if (_dateTimeService.Now > appointment.EndTime.AddHours(3))
+                        throw new ValidationException("Otomatik tamamlanan randevular, bitiş saatinin üzerinden 3 saat geçtikten sonra 'Gelmedi' durumuna çevrilemez.");
+                }
+                else if (appointment.StartTime > _dateTimeService.Now)
+                {
+                    throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
+                }
+            }
 
             if (appointment.GroupId.HasValue)
             {
@@ -812,7 +834,14 @@ namespace KuaforumAPI.Infrastructure.Services
                     if (apt.Status == request.Status) continue;
                     if (!IsValidTransition(apt.Status, request.Status)) continue;
                     if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
-                    if (request.Status == AppointmentStatus.NoShow && apt.Status != AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
+                    if (request.Status == AppointmentStatus.NoShow)
+                    {
+                        if (apt.Status == AppointmentStatus.Completed)
+                        {
+                            if (!apt.Shop.IsAutoProcessEnabled || _dateTimeService.Now > apt.EndTime.AddHours(3)) continue;
+                        }
+                        else if (apt.StartTime > _dateTimeService.Now) continue;
+                    }
                     apt.Status = request.Status;
                 }
             }
@@ -938,7 +967,14 @@ namespace KuaforumAPI.Infrastructure.Services
                 if (apt.Status == request.Status) continue;
                 if (!IsValidTransition(apt.Status, request.Status)) continue;
                 if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
-                if (request.Status == AppointmentStatus.NoShow && apt.Status != AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
+                if (request.Status == AppointmentStatus.NoShow)
+                {
+                    if (apt.Status == AppointmentStatus.Completed)
+                    {
+                        if (!shop.IsAutoProcessEnabled || _dateTimeService.Now > apt.EndTime.AddHours(3)) continue;
+                    }
+                    else if (apt.StartTime > _dateTimeService.Now) continue;
+                }
 
                 apt.Status = request.Status;
                 if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)

@@ -462,6 +462,9 @@ namespace KuaforumAPI.Infrastructure.Services
             var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
             if (shop == null || shop.Id != shopId) throw new FluentValidation.ValidationException("Shop not found or unauthorized.");
 
+            if (date.Date < _dateTimeService.Now.Date)
+                throw new FluentValidation.ValidationException("Geçmiş bir tarihe kapalı gün eklenemez.");
+
             var alreadyExists = await _context.ShopClosureDates
                 .AnyAsync(c => c.ShopId == shopId && c.ClosureDate.Date == date.Date);
             if (alreadyExists) throw new FluentValidation.ValidationException("Bu tarih zaten kapalı olarak işaretlenmiş.");
