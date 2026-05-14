@@ -22,7 +22,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = Roles.Customer)]
+        [Authorize(Roles = $"{Roles.Customer},{Roles.SalonOwner},{Roles.Employee}")]
         [EnableRateLimiting("appointments")]
         public async Task<IActionResult> Create([FromBody] CreateAppointmentDto request)
         {
