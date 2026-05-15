@@ -31,10 +31,10 @@ namespace KuaforumAPI.Infrastructure.Services
 
         private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
         {
-            "image/jpeg", "image/jpg", "image/png", "image/webp"
+            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"
         };
 
-        private const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
+        private const long MaxFileSizeBytes = 15 * 1024 * 1024; // 15 MB
 
         public async Task<string> UploadImageAsync(IFormFile file, string folderName, int? width = null, int? height = null)
         {
@@ -42,10 +42,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 return null;
 
             if (!AllowedMimeTypes.Contains(file.ContentType))
-                throw new ArgumentException("Yalnızca JPEG, PNG veya WebP formatında görsel yüklenebilir.");
+                throw new ArgumentException("Yalnızca JPEG, PNG, WebP veya HEIC formatında görsel yüklenebilir.");
 
             if (file.Length > MaxFileSizeBytes)
-                throw new ArgumentException("Dosya boyutu 5 MB'ı geçemez.");
+                throw new ArgumentException("Dosya boyutu 15 MB'ı geçemez.");
 
             using var stream = file.OpenReadStream();
 
