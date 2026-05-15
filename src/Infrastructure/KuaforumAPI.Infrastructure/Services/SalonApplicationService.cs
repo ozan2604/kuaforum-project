@@ -69,6 +69,16 @@ namespace KuaforumAPI.Infrastructure.Services
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user?.PhoneNumber != null)
                     await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.SalonApplicationSubmitted());
+
+                // Adminlere bildirim gönder
+                var admins = await _userManager.GetUsersInRoleAsync(Roles.Admin);
+                foreach (var admin in admins)
+                {
+                    if (!string.IsNullOrEmpty(admin.PhoneNumber))
+                    {
+                        await _smsService.SendSmsAsync(admin.PhoneNumber, SmsTemplates.NewSalonApplicationToAdmin(request.ShopName));
+                    }
+                }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "Başvuru SMS gönderilemedi."); }
         }

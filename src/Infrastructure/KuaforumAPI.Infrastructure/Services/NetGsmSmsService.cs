@@ -30,8 +30,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!string.IsNullOrWhiteSpace(_settings.TestPhoneOverride))
             {
                 targetPhone = _settings.TestPhoneOverride;
-                // "TEST:" prefix'ini kısa tutuyoruz; tam numara eklersek 160 karakter aşılabilir.
-                finalMessage = $"TEST: {message}";
+                finalMessage = message;
             }
             else
             {

@@ -36,7 +36,7 @@ namespace KuaforumAPI.Application.Constants
         }
 
         public static string AppointmentCompleted(string shopName) =>
-            $"Randevunuz tamamlandı. {shopName}'yi tercih ettiğiniz için teşekkürler!";
+            $"Randevunuz tamamlandı. Bizi tercih ettiğiniz için teşekkürler! Aldığınız hizmeti profilinizden değerlendirmeyi unutmayın.";
 
         public static string AppointmentReminder48h(string shopName, DateTime startTime) =>
             $"Yarın randevunuz var! {shopName} - {startTime:HH:mm}. Görüşürüz.";
@@ -82,6 +82,9 @@ namespace KuaforumAPI.Application.Constants
 
         public static string SalonApplicationRejected() =>
             "Salon başvurunuz reddedildi. Bilgi için destek hattımızla iletişime geçin.";
+
+        public static string NewSalonApplicationToAdmin(string shopName) =>
+            $"Sisteme yeni bir dükkan başvurusu geldi: {shopName}. Lütfen onay için admin panelini kontrol edin.";
 
         // ── Çalışan yönetimi SMS'leri ────────────────────────────────────────
 
