@@ -168,9 +168,26 @@ namespace KuaforumAPI.Persistence.Repositories
             var applications = await _context.SalonOwnerApplications.Where(a => a.UserId == shop.OwnerId).ToListAsync();
             _context.SalonOwnerApplications.RemoveRange(applications);
 
-            // Finally delete the shop
+            // Remove Roles (SalonOwner and Employee) to prevent panel access after shop deletion
             if (shop != null)
             {
+                var ownerId = shop.OwnerId;
+                var employeeUserIds = employees.Where(e => e.UserId != null).Select(e => e.UserId).ToList();
+
+                var salonOwnerRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == KuaforumAPI.Application.Constants.Roles.SalonOwner);
+                if (salonOwnerRole != null)
+                {
+                    var ownerRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == ownerId && ur.RoleId == salonOwnerRole.Id);
+                    if (ownerRole != null) _context.UserRoles.Remove(ownerRole);
+                }
+
+                var employeeRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == KuaforumAPI.Application.Constants.Roles.Employee);
+                if (employeeRole != null && employeeUserIds.Any())
+                {
+                    var empRoles = await _context.UserRoles.Where(ur => employeeUserIds.Contains(ur.UserId) && ur.RoleId == employeeRole.Id).ToListAsync();
+                    if (empRoles.Any()) _context.UserRoles.RemoveRange(empRoles);
+                }
+
                 _context.Shops.Remove(shop);
             }
 
