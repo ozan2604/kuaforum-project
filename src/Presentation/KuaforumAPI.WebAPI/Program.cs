@@ -133,6 +133,17 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         }));
 
+    // OTP gönderme: her IP'ye 1 dakikada 3 istek
+    options.AddPolicy("send-otp", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: GetIp(ctx),
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 3,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        }));
+
     // Misafir randevu oluşturma: her IP'ye 1 dakikada 3, saatte 10 istek
     options.AddPolicy("guest-appointments", ctx => RateLimitPartition.GetSlidingWindowLimiter(
         partitionKey: GetIp(ctx),
@@ -202,6 +213,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddMemoryCache();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 

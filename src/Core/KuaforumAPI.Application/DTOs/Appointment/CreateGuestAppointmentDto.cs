@@ -29,5 +29,9 @@ namespace KuaforumAPI.Application.DTOs.Appointment
 
         [MaxLength(500, ErrorMessage = "Not en fazla 500 karakter olabilir.")]
         public string? Note { get; set; }
+
+        [Required(ErrorMessage = "Doğrulama kodu zorunludur.")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Doğrulama kodu 6 haneli olmalıdır.")]
+        public string Otp { get; set; } = string.Empty;
     }
 }

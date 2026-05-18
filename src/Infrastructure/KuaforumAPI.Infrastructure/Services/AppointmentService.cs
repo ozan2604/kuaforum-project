@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using KuaforumAPI.Infrastructure.Services;
 using KuaforumAPI.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -27,14 +28,18 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly ISmsService _smsService;
         private readonly ILogger<AppointmentService> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IMemoryCache _cache;
 
-        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService, ISmsService smsService, ILogger<AppointmentService> logger, UserManager<ApplicationUser> userManager)
+        private static string OtpKey(string phone) => $"guest_otp:{phone}";
+
+        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService, ISmsService smsService, ILogger<AppointmentService> logger, UserManager<ApplicationUser> userManager, IMemoryCache cache)
         {
             _context = context;
             _dateTimeService = dateTimeService;
             _smsService = smsService;
             _logger = logger;
             _userManager = userManager;
+            _cache = cache;
         }
 
         public async Task CreateAsync(string userId, CreateAppointmentDto request)
@@ -356,9 +361,30 @@ namespace KuaforumAPI.Infrastructure.Services
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
+        public async Task<string> SendGuestOtpAsync(string phone)
+        {
+            // Numara kayıtlı mı?
+            var exists = await _userManager.Users.AnyAsync(u => u.PhoneNumber == phone);
+            if (exists) return "PHONE_EXISTS";
+
+            // 6 haneli OTP üret ve cache'e yaz (5 dakika TTL)
+            var otp = Random.Shared.Next(100_000, 999_999).ToString();
+            _cache.Set(OtpKey(phone), otp, TimeSpan.FromMinutes(5));
+
+            try { await _smsService.SendSmsAsync(phone, SmsTemplates.GuestOtp(otp)); }
+            catch (Exception ex) { _logger.LogWarning(ex, "OTP SMS gönderilemedi."); }
+
+            return "OTP_SENT";
+        }
+
         public async Task CreateGuestAsync(CreateGuestAppointmentDto request)
         {
-            // 1. Telefon zaten kayıtlı mı?
+            // 1. OTP doğrula
+            if (!_cache.TryGetValue(OtpKey(request.CustomerPhone), out string? storedOtp) || storedOtp != request.Otp)
+                throw new ValidationException("Geçersiz veya süresi dolmuş doğrulama kodu. Lütfen yeni kod isteyin.");
+            _cache.Remove(OtpKey(request.CustomerPhone)); // tek kullanımlık
+
+            // 2. Telefon zaten kayıtlı mı? (OTP gönderme ile randevu oluşturma arasında kayıt olmuş olabilir)
             var existing = await _userManager.Users
                 .FirstOrDefaultAsync(u => u.PhoneNumber == request.CustomerPhone);
             if (existing != null)

@@ -7,6 +7,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
     public interface IAppointmentService
     {
         Task CreateAsync(string userId, CreateAppointmentDto request);
+        Task<string> SendGuestOtpAsync(string phone);
         Task CreateGuestAsync(CreateGuestAppointmentDto request);
         Task CreateManualAsync(string staffUserId, CreateManualAppointmentDto request);
         Task<PagedResult<AppointmentDto>> GetMyAppointmentsAsync(string userId, int page = 1, int pageSize = 20);

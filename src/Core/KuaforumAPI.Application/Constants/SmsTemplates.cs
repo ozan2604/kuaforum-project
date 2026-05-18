@@ -105,6 +105,9 @@ namespace KuaforumAPI.Application.Constants
         public static string PasswordChanged() =>
             "Şifreniz değiştirildi. Bu işlemi siz yapmadıysanız destek hattımızla iletişime geçin.";
 
+        public static string GuestOtp(string otp) =>
+            $"Kuaforum doğrulama kodunuz: {otp} — Kod 5 dakika geçerlidir. Paylaşmayın.";
+
         public static string GuestAccountCreated(string tempPassword) =>
             $"Kuaforum hesabınız oluşturuldu. Kullanıcı adınız telefon numaranız, geçici şifreniz: {tempPassword} — salonbir.com adresinden giriş yapabilirsiniz.";
     }
