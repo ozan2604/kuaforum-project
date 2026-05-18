@@ -422,7 +422,7 @@ namespace KuaforumAPI.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             await _smsService.SendSmsAsync(request.PhoneNumber,
-                $"Kuaforum giriş kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
+                $"SALONBİR giriş kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
 
             return new SendOtpResponse
             {
@@ -489,7 +489,7 @@ namespace KuaforumAPI.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             await _smsService.SendSmsAsync(request.PhoneNumber,
-                $"Kuaforum kayıt kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
+                $"SALONBİR kayıt kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
 
             return new SendOtpResponse
             {

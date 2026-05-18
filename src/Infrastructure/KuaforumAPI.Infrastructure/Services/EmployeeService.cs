@@ -80,7 +80,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     user = new ApplicationUser
                     {
                         UserName = request.PhoneNumber,
-                        Email = $"{request.PhoneNumber}@kuaforum.dummy",
+                        Email = $"{request.PhoneNumber}@salonbir.dummy",
                         PhoneNumber = request.PhoneNumber,
                         FirstName = request.FirstName,
                         LastName = request.LastName,

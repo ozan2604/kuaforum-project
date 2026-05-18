@@ -63,7 +63,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient("nominatim", c =>
 {
-    c.DefaultRequestHeaders.Add("User-Agent", "KuaforumApp/1.0 (contact@kuaforum.com)");
+    c.DefaultRequestHeaders.Add("User-Agent", "SalonbirApp/1.0 (contact@salonbir.com)");
     c.DefaultRequestHeaders.Add("Accept-Language", "tr");
 });
 

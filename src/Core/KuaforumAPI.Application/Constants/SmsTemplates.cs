@@ -75,7 +75,7 @@ namespace KuaforumAPI.Application.Constants
         // ── Salon başvuru SMS'leri ───────────────────────────────────────────
 
         public static string SalonApplicationSubmitted() =>
-            "Kuaforum: Salon başvurunuz alındı. Değerlendirme sonucunda SMS ile bilgilendirileceksiniz.";
+            "SALONBİR: Salon başvurunuz alındı. Değerlendirme sonucunda SMS ile bilgilendirileceksiniz.";
 
         public static string SalonApplicationApproved(string shopName) =>
             $"Tebrikler! {shopName} başvurunuz onaylandı. Salon panelinize erişebilirsiniz.";
@@ -106,9 +106,9 @@ namespace KuaforumAPI.Application.Constants
             "Şifreniz değiştirildi. Bu işlemi siz yapmadıysanız destek hattımızla iletişime geçin.";
 
         public static string GuestOtp(string otp) =>
-            $"Kuaforum doğrulama kodunuz: {otp} — Kod 5 dakika geçerlidir. Paylaşmayın.";
+            $"SALONBİR doğrulama kodunuz: {otp} — Kod 5 dakika geçerlidir. Paylaşmayın.";
 
         public static string GuestAccountCreated(string tempPassword) =>
-            $"Kuaforum hesabınız oluşturuldu. Kullanıcı adınız telefon numaranız, geçici şifreniz: {tempPassword} — salonbir.com adresinden giriş yapabilirsiniz.";
+            $"SALONBİR hesabınız oluşturuldu. Kullanıcı adınız telefon numaranız, geçici şifreniz: {tempPassword} — salonbir.com adresinden giriş yapabilirsiniz.";
     }
 }
