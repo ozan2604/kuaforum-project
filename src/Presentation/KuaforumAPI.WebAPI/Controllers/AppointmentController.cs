@@ -102,8 +102,17 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Randevu iptal edildi." });
         }
 
+        [HttpPost("guest")]
+        [AllowAnonymous]
+        [EnableRateLimiting("guest-appointments")]
+        public async Task<IActionResult> CreateGuest([FromBody] CreateGuestAppointmentDto request)
+        {
+            await _appointmentService.CreateGuestAsync(request);
+            return Ok(new { Message = "Randevunuz oluşturuldu, hesabınız hazır." });
+        }
+
         [HttpGet("availability")]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAvailability([FromQuery] Guid employeeId, [FromQuery] string date)
         {
             // Kültür bağımsız parse: "yyyy-MM-dd" formatı zorunlu
