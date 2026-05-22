@@ -18,6 +18,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<List<AppointmentDto>> GetAssignedAppointmentsAsync(string employeeUserId, DateTime? from = null, DateTime? to = null);
         Task<PagedResult<AppointmentDto>> GetAssignedAppointmentsPagedAsync(string employeeUserId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? serviceId = null);
         Task<NoShowResultDto?> UpdateStatusByEmployeeAsync(string employeeUserId, Guid appointmentId, UpdateAppointmentStatusDto request);
+        Task<NoShowResultDto?> UpdateGroupStatusByEmployeeAsync(string employeeUserId, Guid groupId, UpdateAppointmentStatusDto request);
         Task CancelByCustomerAsync(string userId, Guid appointmentId, string? reason = null);
         Task CancelGroupAsync(string userId, Guid groupId, string? reason = null);
         Task<NoShowResultDto?> UpdateGroupStatusAsync(string ownerId, Guid groupId, UpdateAppointmentStatusDto request);

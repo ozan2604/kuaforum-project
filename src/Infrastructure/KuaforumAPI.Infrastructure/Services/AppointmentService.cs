@@ -922,42 +922,12 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
             }
 
-            if (appointment.GroupId.HasValue)
+            // Sadece tek randevuyu güncelle (Grup mantığı UpdateGroupStatusByEmployeeAsync metoduna taşındı)
+            appointment.Status = request.Status;
+            if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
+                && !string.IsNullOrWhiteSpace(request.Reason))
             {
-                var groupAppointments = await _context.Appointments
-                    .Include(a => a.ShopEmployee)
-                    .Where(a => a.GroupId == appointment.GroupId && a.ShopEmployee.UserId == employeeUserId)
-                    .ToListAsync();
-
-                foreach (var apt in groupAppointments)
-                {
-                    if (apt.Status == request.Status) continue;
-                    if (!IsValidTransition(apt.Status, request.Status)) continue;
-                    if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
-                    if (request.Status == AppointmentStatus.NoShow)
-                    {
-                        if (apt.Status == AppointmentStatus.Completed)
-                        {
-                            if (!apt.Shop.IsAutoProcessEnabled || _dateTimeService.Now > apt.EndTime.AddHours(3)) continue;
-                        }
-                        else if (apt.StartTime > _dateTimeService.Now) continue;
-                    }
-                    apt.Status = request.Status;
-                    if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
-                        && !string.IsNullOrWhiteSpace(request.Reason))
-                    {
-                        apt.CancellationReason = request.Reason;
-                    }
-                }
-            }
-            else
-            {
-                appointment.Status = request.Status;
-                if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
-                    && !string.IsNullOrWhiteSpace(request.Reason))
-                {
-                    appointment.CancellationReason = request.Reason;
-                }
+                appointment.CancellationReason = request.Reason;
             }
 
             await _context.SaveChangesAsync();
@@ -992,6 +962,101 @@ namespace KuaforumAPI.Infrastructure.Services
                     };
                     if (msg != null)
                         await _smsService.SendSmsAsync(phone, msg);
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
+
+            return noShowResult;
+        }
+
+        public async Task<NoShowResultDto?> UpdateGroupStatusByEmployeeAsync(string employeeUserId, Guid groupId, UpdateAppointmentStatusDto request)
+        {
+            var allowedForEmployee = new[] { AppointmentStatus.Confirmed, AppointmentStatus.Completed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled, AppointmentStatus.NoShow };
+            if (!allowedForEmployee.Contains(request.Status))
+                throw new ValidationException("Geçersiz durum geçişi.");
+
+            var groupAppointments = await _context.Appointments
+                .Include(a => a.ShopEmployee)
+                .Include(a => a.Shop)
+                .Include(a => a.User)
+                .Include(a => a.ShopService)
+                .Where(a => a.GroupId == groupId && a.ShopEmployee.UserId == employeeUserId)
+                .ToListAsync();
+
+            if (!groupAppointments.Any()) throw new ValidationException("Grup randevusu bulunamadı veya yetkiniz yok.");
+
+            foreach (var apt in groupAppointments)
+            {
+                if (apt.Status == request.Status) continue;
+                if (!IsValidTransition(apt.Status, request.Status)) continue;
+                if (request.Status == AppointmentStatus.Completed && apt.StartTime > _dateTimeService.Now) continue;
+                if (request.Status == AppointmentStatus.NoShow)
+                {
+                    if (apt.Status == AppointmentStatus.Completed)
+                    {
+                        if (!apt.Shop.IsAutoProcessEnabled || _dateTimeService.Now > apt.EndTime.AddHours(3)) continue;
+                    }
+                    else if (apt.StartTime > _dateTimeService.Now) continue;
+                }
+
+                apt.Status = request.Status;
+                if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
+                    && !string.IsNullOrWhiteSpace(request.Reason))
+                {
+                    apt.CancellationReason = request.Reason;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            NoShowResultDto? noShowResult = null;
+            if (request.Status == AppointmentStatus.NoShow)
+            {
+                var first = groupAppointments.OrderBy(a => a.StartTime).FirstOrDefault();
+                if (first?.UserId != null)
+                {
+                    var count = await _context.Appointments
+                        .CountAsync(a => a.UserId == first.UserId && a.ShopId == first.ShopId && a.Status == AppointmentStatus.NoShow);
+                    noShowResult = new NoShowResultDto
+                    {
+                        NoShowCount = count,
+                        CustomerId = first.UserId,
+                        CustomerName = first.User != null
+                            ? $"{first.User.FirstName} {first.User.LastName}"
+                            : null
+                    };
+                }
+            }
+
+            try
+            {
+                var first = groupAppointments.OrderBy(a => a.StartTime).FirstOrDefault();
+                var phone = first?.User?.PhoneNumber;
+                if (phone != null)
+                {
+                    var msg = request.Status switch
+                    {
+                        AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(first.Shop.Name, first.StartTime),
+                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(first.Shop.Name, first.StartTime, request.Reason),
+                        AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(first.Shop.Name, first.StartTime, request.Reason),
+                        AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(first.Shop.Name),
+                        _ => null
+                    };
+                    if (msg != null)
+                        await _smsService.SendSmsAsync(phone, msg);
+                }
+
+                var empPhone = first?.ShopEmployee?.User?.PhoneNumber;
+                if (empPhone != null && first != null)
+                {
+                    var empMsg = request.Status switch
+                    {
+                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejectedToEmployee(first.Shop.Name, first.StartTime),
+                        AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShopToEmployee(first.Shop.Name, first.StartTime),
+                        _ => null
+                    };
+                    if (empMsg != null)
+                        await _smsService.SendSmsAsync(empPhone, empMsg);
                 }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }

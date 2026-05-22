@@ -76,6 +76,15 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Appointment status updated.", noShowResult });
         }
 
+        [HttpPut("employee/group/{groupId}/status")]
+        [Authorize(Roles = Roles.Employee)]
+        public async Task<IActionResult> UpdateGroupStatusByEmployee(Guid groupId, [FromBody] UpdateAppointmentStatusDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var noShowResult = await _appointmentService.UpdateGroupStatusByEmployeeAsync(userId, groupId, request);
+            return Ok(new { Message = "Group appointment status updated.", noShowResult });
+        }
+
         [HttpGet("shop/{shopId}")]
         [Authorize(Roles = Roles.SalonOwner)]
         public async Task<IActionResult> GetShopAppointments(Guid shopId, [FromQuery] AppointmentStatus? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null, [FromQuery] DateTime? date = null, [FromQuery] Guid? employeeId = null, [FromQuery] Guid? serviceId = null)
