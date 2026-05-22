@@ -943,11 +943,21 @@ namespace KuaforumAPI.Infrastructure.Services
                         else if (apt.StartTime > _dateTimeService.Now) continue;
                     }
                     apt.Status = request.Status;
+                    if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
+                        && !string.IsNullOrWhiteSpace(request.Reason))
+                    {
+                        apt.CancellationReason = request.Reason;
+                    }
                 }
             }
             else
             {
                 appointment.Status = request.Status;
+                if ((request.Status == AppointmentStatus.Cancelled || request.Status == AppointmentStatus.Rejected)
+                    && !string.IsNullOrWhiteSpace(request.Reason))
+                {
+                    appointment.CancellationReason = request.Reason;
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -975,6 +985,8 @@ namespace KuaforumAPI.Infrastructure.Services
                     var msg = request.Status switch
                     {
                         AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
+                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(appointment.Shop.Name, appointment.StartTime, request.Reason),
+                        AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(appointment.Shop.Name, appointment.StartTime, request.Reason),
                         AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(appointment.Shop.Name),
                         _ => null
                     };
