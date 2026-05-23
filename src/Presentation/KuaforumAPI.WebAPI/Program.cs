@@ -1,5 +1,6 @@
 using KuaforumAPI.Persistence.Contexts;
 using KuaforumAPI.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.HttpOverrides;
 using KuaforumAPI.Application;
 using KuaforumAPI.WebAPI.Middlewares;
@@ -229,10 +230,15 @@ builder.Services.AddScoped<KuaforumAPI.Application.Interfaces.Services.IImageSer
 
 var app = builder.Build();
 
-// Seed Roles
+// Auto-Migrate & Seed Roles
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    
+    // Uygulama her başladığında bekleyen migration'ları otomatik olarak veritabanına uygular
+    var dbContext = services.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+
     await KuaforumAPI.Persistence.Seeds.RoleSeeder.SeedRolesAsync(services);
     await KuaforumAPI.Persistence.Seeds.AdminUserSeeder.SeedAdminAsync(services);
 }
