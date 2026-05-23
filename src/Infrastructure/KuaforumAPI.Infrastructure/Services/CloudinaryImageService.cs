@@ -98,13 +98,13 @@ namespace KuaforumAPI.Infrastructure.Services
 
             using var stream = file.OpenReadStream();
 
-            // Transformation olmadan sade upload:
-            // Cloudinary videoyu olduğu gibi saklar, SecureUrl direkt erişilebilir.
-            // Önceki hata: inline Transformation URL'i bozuyordu (derived video hazır olmadan 404 veriyordu).
+            // Format = "mp4" ile Cloudinary yükleme sırasında her formatı (MOV, WEBM, AVI) MP4'e çevirir.
+            // SecureUrl her zaman .mp4 uzantısıyla döner → tarayıcı doğrudan oynatabilir.
             var uploadParams = new VideoUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = folderName
+                Folder = folderName,
+                Format = "mp4"
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -115,7 +115,6 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new InvalidOperationException($"Video yüklenemedi: {uploadResult.Error.Message}");
             }
 
-            // SecureUrl: orijinal yüklenen video URL'i (doğrudan erişilebilir, transformation yok)
             _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, uploadResult.SecureUrl);
             return uploadResult.SecureUrl.ToString();
         }
