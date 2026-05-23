@@ -98,18 +98,13 @@ namespace KuaforumAPI.Infrastructure.Services
 
             using var stream = file.OpenReadStream();
 
-            // Eager transformation: Cloudinary'ye asenkron olarak mp4'e çevirmesini söylüyoruz.
-            // Bu sayede SecureUrl direkt erişilebilir bir URL döndürüyor ve derived video hazır olmayı beklemiyor.
-            var eagerTransformation = new EagerTransformation()
-                .Width(1280).Height(720).Crop("limit").Quality("auto").SetVideoCodec("auto");
-
+            // Transformation olmadan sade upload:
+            // Cloudinary videoyu olduğu gibi saklar, SecureUrl direkt erişilebilir.
+            // Önceki hata: inline Transformation URL'i bozuyordu (derived video hazır olmadan 404 veriyordu).
             var uploadParams = new VideoUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = folderName,
-                EagerTransforms = new System.Collections.Generic.List<Transformation> { eagerTransformation },
-                EagerAsync = true, // Eager dönüşümü asenkron yap, yüklemeyi bloke etmesin
-                ResourceType = ResourceType.Video
+                Folder = folderName
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -120,7 +115,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new InvalidOperationException($"Video yüklenemedi: {uploadResult.Error.Message}");
             }
 
-            // SecureUrl'i döndür - bu orijinal yüklenen video URL'i (doğrudan erişilebilir)
+            // SecureUrl: orijinal yüklenen video URL'i (doğrudan erişilebilir, transformation yok)
             _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, uploadResult.SecureUrl);
             return uploadResult.SecureUrl.ToString();
         }
