@@ -98,13 +98,14 @@ namespace KuaforumAPI.Infrastructure.Services
 
             using var stream = file.OpenReadStream();
 
-            var transformation = new Transformation().Width(1280).Height(720).Crop("limit").Quality("auto").FetchFormat("auto");
+            var transformation = new Transformation().Width(1280).Height(720).Crop("limit").Quality("auto");
 
             var uploadParams = new VideoUploadParams
             {
-                File = new FileDescription(file.FileName, stream),
+                File = new FileDescription("video.mp4", stream), // Explicitly set name to .mp4
                 Folder = folderName,
-                Transformation = transformation
+                Transformation = transformation,
+                Format = "mp4" // Force output format to mp4
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
