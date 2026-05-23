@@ -34,6 +34,7 @@ namespace KuaforumAPI.Domain.Entities
         public double? Longitude { get; set; }
 
         public string CoverImagePath { get; set; }
+        public string PromoVideoUrl { get; set; } // Added for promotional video
         public virtual ICollection<ShopImage> Images { get; set; }
 
         public double AverageRating { get; set; }

@@ -139,6 +139,47 @@ namespace KuaforumAPI.WebAPI.Controllers
             }
         }
 
+        [HttpPost("{id}/promo-video")]
+        [Authorize(Roles = "SalonOwner")]
+        public async Task<IActionResult> UploadPromoVideo(Guid id, Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            try
+            {
+                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new { message = "Kullanıcı token'da bulunamadı." });
+                }
+
+                var videoUrl = await _shopService.UploadPromoVideoAsync(id, userId, file);
+                return Ok(new { path = videoUrl });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { message = "Tanıtım videosu yüklenirken bir hata oluştu: " + ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}/promo-video")]
+        [Authorize(Roles = "SalonOwner")]
+        public async Task<IActionResult> DeletePromoVideo(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                await _shopService.DeletePromoVideoAsync(id, userId);
+                return NoContent();
+            }
+            catch (System.UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { message = "Tanıtım videosu silinirken bir hata oluştu: " + ex.Message });
+            }
+        }
+
         [HttpPost("{id}/gallery-images")]
         [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> UploadGalleryImages(Guid id, System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile> files)

@@ -110,6 +110,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = shop.ClosureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
+                PromoVideoUrl = shop.PromoVideoUrl,
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
@@ -188,6 +189,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 BookingDaysAhead = shop.BookingDaysAhead,
                 CancellationHours = shop.CancellationHours,
                 CoverImagePath = shop.CoverImagePath,
+                PromoVideoUrl = shop.PromoVideoUrl,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 MinServicePrice = minPrices.TryGetValue(shop.Id, out var mp) ? mp : null,
@@ -233,6 +235,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 BookingDaysAhead = shop.BookingDaysAhead,
                 CancellationHours = shop.CancellationHours,
                 CoverImagePath = shop.CoverImagePath,
+                PromoVideoUrl = shop.PromoVideoUrl,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 MinServicePrice = minPrices.TryGetValue(shop.Id, out var mp) ? mp : null,
@@ -355,6 +358,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = closureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
+                PromoVideoUrl = shop.PromoVideoUrl,
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
@@ -394,6 +398,39 @@ namespace KuaforumAPI.Infrastructure.Services
             {
                 await _imageService.DeleteImageAsync(shop.CoverImagePath);
                 shop.CoverImagePath = string.Empty;
+                await _shopRepository.UpdateAsync(shop);
+            }
+        }
+
+        public async Task<string> UploadPromoVideoAsync(Guid shopId, string userId, IFormFile file)
+        {
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
+
+            if (!string.IsNullOrEmpty(shop.PromoVideoUrl))
+            {
+                await _imageService.DeleteVideoAsync(shop.PromoVideoUrl);
+            }
+
+            var videoUrl = await _imageService.UploadVideoAsync(file, "shops/videos");
+            
+            shop.PromoVideoUrl = videoUrl;
+            await _shopRepository.UpdateAsync(shop);
+
+            return videoUrl;
+        }
+
+        public async Task DeletePromoVideoAsync(Guid shopId, string userId)
+        {
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
+
+            if (!string.IsNullOrEmpty(shop.PromoVideoUrl))
+            {
+                await _imageService.DeleteVideoAsync(shop.PromoVideoUrl);
+                shop.PromoVideoUrl = string.Empty;
                 await _shopRepository.UpdateAsync(shop);
             }
         }
@@ -671,6 +708,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 BookingDaysAhead = shop.BookingDaysAhead,
                 CancellationHours = shop.CancellationHours,
                 CoverImagePath = shop.CoverImagePath,
+                PromoVideoUrl = shop.PromoVideoUrl,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",

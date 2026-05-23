@@ -33,8 +33,13 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"
         };
+        private static readonly HashSet<string> AllowedVideoMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"
+        };
 
         private const long MaxFileSizeBytes = 15 * 1024 * 1024; // 15 MB
+        private const long MaxVideoFileSizeBytes = 100 * 1024 * 1024; // 100 MB
 
         public async Task<string> UploadImageAsync(IFormFile file, string folderName, int? width = null, int? height = null)
         {
@@ -80,6 +85,40 @@ namespace KuaforumAPI.Infrastructure.Services
             return uploadResult.SecureUrl.ToString();
         }
 
+        public async Task<string> UploadVideoAsync(IFormFile file, string folderName)
+        {
+            if (file == null || file.Length == 0)
+                return null;
+
+            if (!AllowedVideoMimeTypes.Contains(file.ContentType))
+                throw new ArgumentException("Yalnızca MP4, MOV, AVI, MKV veya WEBM formatında video yüklenebilir.");
+
+            if (file.Length > MaxVideoFileSizeBytes)
+                throw new ArgumentException("Video boyutu 100 MB'ı geçemez.");
+
+            using var stream = file.OpenReadStream();
+
+            var transformation = new Transformation().Width(1280).Height(720).Crop("limit").Quality("auto").FetchFormat("auto");
+
+            var uploadParams = new VideoUploadParams
+            {
+                File = new FileDescription(file.FileName, stream),
+                Folder = folderName,
+                Transformation = transformation
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+            if (uploadResult.Error != null)
+            {
+                _logger.LogError("Cloudinary video yükleme başarısız. Klasör: {Folder}, Hata: {Error}", folderName, uploadResult.Error.Message);
+                throw new InvalidOperationException($"Video yüklenemedi: {uploadResult.Error.Message}");
+            }
+
+            _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, uploadResult.SecureUrl);
+            return uploadResult.SecureUrl.ToString();
+        }
+
         public async Task DeleteImageAsync(string imageUrl)
         {
             if (string.IsNullOrEmpty(imageUrl)) return;
@@ -96,6 +135,28 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (result.Result != "ok")
                 _logger.LogWarning("Cloudinary silme başarısız. PublicId: {PublicId}, Sonuç: {Result}", publicId, result.Result);
+        }
+
+        public async Task DeleteVideoAsync(string videoUrl)
+        {
+            if (string.IsNullOrEmpty(videoUrl)) return;
+
+            var publicId = GetPublicIdFromUrl(videoUrl);
+            if (string.IsNullOrEmpty(publicId))
+            {
+                _logger.LogWarning("Cloudinary public ID çözümlenemedi (Video). URL: {Url}", videoUrl);
+                return;
+            }
+
+            var deletionParams = new DeletionParams(publicId)
+            {
+                ResourceType = ResourceType.Video
+            };
+            
+            var result = await _cloudinary.DestroyAsync(deletionParams);
+
+            if (result.Result != "ok")
+                _logger.LogWarning("Cloudinary video silme başarısız. PublicId: {PublicId}, Sonuç: {Result}", publicId, result.Result);
         }
 
         private string GetPublicIdFromUrl(string url)
