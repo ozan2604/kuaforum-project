@@ -180,6 +180,66 @@ namespace KuaforumAPI.WebAPI.Controllers
             }
         }
 
+        // ─── Yeni Çok-Video Mimarisi Endpoint'leri ───────────────────────────────
+
+        [HttpGet("{shopId}/videos")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetShopVideos(Guid shopId)
+        {
+            var videos = await _shopService.GetShopVideosAsync(shopId);
+            return Ok(videos);
+        }
+
+        [HttpPost("{id}/videos")]
+        [Authorize(Roles = "SalonOwner")]
+        public async Task<IActionResult> UploadShopVideo(Guid id, Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Dosya seçilmedi." });
+
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Kullanıcı token'da bulunamadı." });
+
+            try
+            {
+                var video = await _shopService.UploadShopVideoAsync(id, userId, file);
+                return Ok(video);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { message = "Video yüklenirken bir hata oluştu: " + ex.Message });
+            }
+        }
+
+        [HttpDelete("videos/{videoId}")]
+        [Authorize(Roles = "SalonOwner")]
+        public async Task<IActionResult> DeleteShopVideo(Guid videoId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                await _shopService.DeleteShopVideoAsync(videoId, userId);
+                return NoContent();
+            }
+            catch (System.UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Application.Exceptions.NotFoundException)
+            {
+                return NotFound(new { message = "Video bulunamadı." });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { message = "Video silinirken bir hata oluştu: " + ex.Message });
+            }
+        }
+
         [HttpPost("{id}/gallery-images")]
         [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> UploadGalleryImages(Guid id, System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile> files)

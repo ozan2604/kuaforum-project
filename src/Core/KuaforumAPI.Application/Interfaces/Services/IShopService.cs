@@ -18,8 +18,15 @@ namespace KuaforumAPI.Application.Interfaces.Services
         
         Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file);
         Task DeleteCoverImageAsync(Guid shopId, string userId);
+
+        // Legacy tek-video metodlar (geriye dönük)
         Task<string> UploadPromoVideoAsync(Guid shopId, string userId, IFormFile file);
         Task DeletePromoVideoAsync(Guid shopId, string userId);
+
+        // Yeni çok-video mimarisi
+        Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file);
+        Task DeleteShopVideoAsync(Guid videoId, string userId);
+        Task<List<ShopVideoDto>> GetShopVideosAsync(Guid shopId);
         Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files);
         Task DeleteGalleryImageAsync(Guid imageId, string userId, bool isAdmin);
         Task UpdateAutoProcessAsync(string ownerId, Guid shopId, bool isEnabled);

@@ -23,7 +23,8 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public List<ShopScheduleDto> WeeklySchedule { get; set; }
 
         public string CoverImagePath { get; set; }
-        public string PromoVideoUrl { get; set; }
+        public string PromoVideoUrl { get; set; }  // Legacy alan - geriye dönük uyumluluk
+        public List<ShopVideoDto> Videos { get; set; } = new List<ShopVideoDto>();
         public List<ShopImageDto> Images { get; set; }
 
         public double AverageRating { get; set; }

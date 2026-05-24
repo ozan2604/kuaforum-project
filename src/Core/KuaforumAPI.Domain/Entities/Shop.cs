@@ -34,7 +34,8 @@ namespace KuaforumAPI.Domain.Entities
         public double? Longitude { get; set; }
 
         public string CoverImagePath { get; set; }
-        public string PromoVideoUrl { get; set; } // Added for promotional video
+        public string PromoVideoUrl { get; set; } // Legacy - tek video. Yeni videolar ShopVideos tablosunda.
+        public virtual ICollection<ShopVideo> Videos { get; set; } = new List<ShopVideo>();
         public virtual ICollection<ShopImage> Images { get; set; }
 
         public double AverageRating { get; set; }
