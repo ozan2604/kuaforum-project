@@ -130,7 +130,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 return;
             }
 
-            var deletionParams = new DeletionParams(publicId);
+            var deletionParams = new DeletionParams(publicId)
+            {
+                Invalidate = true
+            };
             var result = await _cloudinary.DestroyAsync(deletionParams);
 
             if (result.Result != "ok")
@@ -150,7 +153,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var deletionParams = new DeletionParams(publicId)
             {
-                ResourceType = ResourceType.Video
+                ResourceType = ResourceType.Video,
+                Invalidate = true
             };
             
             var result = await _cloudinary.DestroyAsync(deletionParams);
