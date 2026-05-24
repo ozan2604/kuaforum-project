@@ -120,9 +120,13 @@ namespace KuaforumAPI.Infrastructure.Services
 
             // Eager transformasyon başarılıysa, web-safe (H.264 MP4) URL'i dön
             string finalUrl = uploadResult.SecureUrl.ToString();
-            if (uploadResult.Eager != null && uploadResult.Eager.Length > 0)
+            if (uploadResult.JsonObj != null && uploadResult.JsonObj["eager"] != null && uploadResult.JsonObj["eager"].HasValues)
             {
-                finalUrl = uploadResult.Eager[0].SecureUrl.ToString();
+                var eagerUrl = uploadResult.JsonObj["eager"][0]["secure_url"]?.ToString();
+                if (!string.IsNullOrEmpty(eagerUrl))
+                {
+                    finalUrl = eagerUrl;
+                }
             }
 
             _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, finalUrl);
