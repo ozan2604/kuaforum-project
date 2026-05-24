@@ -141,6 +141,47 @@ namespace KuaforumAPI.WebAPI.Controllers
 
 
 
+        [HttpPost("{id}/videos")]
+        [Authorize(Roles = "SalonOwner")]
+        [RequestSizeLimit(200_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 200_000_000)]
+        public async Task<IActionResult> UploadShopVideo(Guid id, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Dosya seçilmedi." });
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                var result = await _shopService.UploadShopVideoAsync(id, userId, file);
+                return Ok(result);
+            }
+            catch (FluentValidation.ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
+        [HttpDelete("videos/{videoId}")]
+        [Authorize(Roles = "SalonOwner")]
+        public async Task<IActionResult> DeleteShopVideo(Guid videoId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                await _shopService.DeleteShopVideoAsync(videoId, userId);
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
         [HttpPost("{id}/gallery-images")]
         [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> UploadGalleryImages(Guid id, System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile> files)

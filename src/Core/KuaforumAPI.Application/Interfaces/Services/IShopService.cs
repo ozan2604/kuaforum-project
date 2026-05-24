@@ -19,6 +19,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file);
         Task DeleteCoverImageAsync(Guid shopId, string userId);
 
+        Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file);
+        Task DeleteShopVideoAsync(Guid videoId, string userId);
 
         Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files);
         Task DeleteGalleryImageAsync(Guid imageId, string userId, bool isAdmin);
