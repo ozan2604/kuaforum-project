@@ -98,13 +98,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
             using var stream = file.OpenReadStream();
 
-            // Format = "mp4" ile Cloudinary yükleme sırasında her formatı (MOV, WEBM, AVI) MP4'e çevirir.
-            // SecureUrl her zaman .mp4 uzantısıyla döner → tarayıcı doğrudan oynatabilir.
+            // Cloudinary'e orijinal formatıyla yükle (MP4 dönüşümü asenkron olduğu için 404 hatasına sebep oluyordu)
             var uploadParams = new VideoUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = folderName,
-                Format = "mp4"
+                Folder = folderName
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
