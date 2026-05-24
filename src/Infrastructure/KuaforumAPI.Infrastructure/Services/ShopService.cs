@@ -40,19 +40,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _logger = logger;
         }
 
-        private string GetOptimizedVideoUrl(string url)
-        {
-            if (string.IsNullOrEmpty(url)) return url;
-            if (url.Contains("res.cloudinary.com") && url.Contains("/video/upload/"))
-            {
-                int lastDot = url.LastIndexOf('.');
-                if (lastDot > 0 && lastDot > url.LastIndexOf('/'))
-                {
-                    return url.Substring(0, lastDot) + ".mp4";
-                }
-            }
-            return url;
-        }
+
 
         public async Task CreateShopAsync(string userId, CreateShopDto request)
         {
@@ -124,8 +112,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = shop.ClosureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
-                PromoVideoUrl = shop.Videos != null && shop.Videos.Any() ? GetOptimizedVideoUrl(shop.Videos.OrderBy(v => v.DisplayOrder).First().Url) : shop.PromoVideoUrl,
-                Videos = shop.Videos?.OrderBy(v => v.DisplayOrder).Select(v => new ShopVideoDto { Id = v.Id, Url = GetOptimizedVideoUrl(v.Url), DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList() ?? new List<ShopVideoDto>(),
+                PromoVideoUrl = null,
+                Videos = new List<ShopVideoDto>(),
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
@@ -204,8 +192,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 BookingDaysAhead = shop.BookingDaysAhead,
                 CancellationHours = shop.CancellationHours,
                 CoverImagePath = shop.CoverImagePath,
-                PromoVideoUrl = shop.PromoVideoUrl,
-                Videos = shop.Videos?.OrderBy(v => v.DisplayOrder).Select(v => new ShopVideoDto { Id = v.Id, Url = v.Url, DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList() ?? new List<ShopVideoDto>(),
+                PromoVideoUrl = null,
+                Videos = new List<ShopVideoDto>(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 MinServicePrice = minPrices.TryGetValue(shop.Id, out var mp) ? mp : null,
@@ -251,8 +239,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 BookingDaysAhead = shop.BookingDaysAhead,
                 CancellationHours = shop.CancellationHours,
                 CoverImagePath = shop.CoverImagePath,
-                PromoVideoUrl = shop.PromoVideoUrl,
-                Videos = shop.Videos?.OrderBy(v => v.DisplayOrder).Select(v => new ShopVideoDto { Id = v.Id, Url = v.Url, DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList() ?? new List<ShopVideoDto>(),
+                PromoVideoUrl = null,
+                Videos = new List<ShopVideoDto>(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 MinServicePrice = minPrices.TryGetValue(shop.Id, out var mp) ? mp : null,
@@ -375,8 +363,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = closureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
-                PromoVideoUrl = shop.Videos != null && shop.Videos.Any() ? GetOptimizedVideoUrl(shop.Videos.OrderBy(v => v.DisplayOrder).First().Url) : shop.PromoVideoUrl,
-                Videos = (await _context.ShopVideos.Where(v => v.ShopId == shop.Id).OrderBy(v => v.DisplayOrder).ToListAsync()).Select(v => new ShopVideoDto { Id = v.Id, Url = GetOptimizedVideoUrl(v.Url), DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList(),
+                PromoVideoUrl = null,
+                Videos = new List<ShopVideoDto>(),
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
@@ -420,84 +408,7 @@ namespace KuaforumAPI.Infrastructure.Services
             }
         }
 
-        public async Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file)
-        {
-            var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
-            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
 
-            // Şimdilik maksimum 1 video kısıtı
-            const int MaxVideos = 1;
-            var existingCount = await _context.ShopVideos.CountAsync(v => v.ShopId == shopId);
-            if (existingCount >= MaxVideos)
-                throw new InvalidOperationException($"Bir salon en fazla {MaxVideos} tanıtım videosu ekleyebilir.");
-
-            var videoUrl = await _imageService.UploadVideoAsync(file, "shops/videos");
-
-            var shopVideo = new ShopVideo
-            {
-                ShopId = shopId,
-                Url = videoUrl,
-                DisplayOrder = existingCount
-            };
-            _context.ShopVideos.Add(shopVideo);
-            await _context.SaveChangesAsync();
-
-            return new ShopVideoDto { Id = shopVideo.Id, Url = shopVideo.Url, DisplayOrder = shopVideo.DisplayOrder, CreatedAt = shopVideo.CreatedAt };
-        }
-
-        public async Task DeleteShopVideoAsync(Guid videoId, string userId)
-        {
-            var video = await _context.ShopVideos.Include(v => v.Shop).FirstOrDefaultAsync(v => v.Id == videoId);
-            if (video == null) throw new NotFoundException("Video bulunamadı.");
-            if (video.Shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu videoyu silme yetkiniz yok.");
-
-            await _imageService.DeleteVideoAsync(video.Url);
-            _context.ShopVideos.Remove(video);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task<List<ShopVideoDto>> GetShopVideosAsync(Guid shopId)
-        {
-            return await _context.ShopVideos
-                .Where(v => v.ShopId == shopId)
-                .OrderBy(v => v.DisplayOrder)
-                .Select(v => new ShopVideoDto { Id = v.Id, Url = v.Url, DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt })
-                .ToListAsync();
-        }
-
-        public async Task<string> UploadPromoVideoAsync(Guid shopId, string userId, IFormFile file)
-        {
-            var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
-            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
-
-            if (!string.IsNullOrEmpty(shop.PromoVideoUrl))
-            {
-                await _imageService.DeleteVideoAsync(shop.PromoVideoUrl);
-            }
-
-            var videoUrl = await _imageService.UploadVideoAsync(file, "shops/videos");
-            
-            shop.PromoVideoUrl = videoUrl;
-            await _shopRepository.UpdateAsync(shop);
-
-            return videoUrl;
-        }
-
-        public async Task DeletePromoVideoAsync(Guid shopId, string userId)
-        {
-            var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
-            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
-
-            if (!string.IsNullOrEmpty(shop.PromoVideoUrl))
-            {
-                await _imageService.DeleteVideoAsync(shop.PromoVideoUrl);
-                shop.PromoVideoUrl = string.Empty;
-                await _shopRepository.UpdateAsync(shop);
-            }
-        }
 
         public async Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files)
         {
@@ -772,7 +683,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 BookingDaysAhead = shop.BookingDaysAhead,
                 CancellationHours = shop.CancellationHours,
                 CoverImagePath = shop.CoverImagePath,
-                PromoVideoUrl = shop.PromoVideoUrl,
+                PromoVideoUrl = null,
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
