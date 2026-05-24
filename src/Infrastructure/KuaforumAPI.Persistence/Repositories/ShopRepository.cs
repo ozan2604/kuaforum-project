@@ -22,6 +22,7 @@ namespace KuaforumAPI.Persistence.Repositories
             return await _context.Shops
                 .Include(s => s.Categories)
                 .Include(s => s.ClosureDates)
+                .Include(s => s.Videos)
                 .FirstOrDefaultAsync(s => s.OwnerId == ownerId);
         }
 
@@ -29,6 +30,7 @@ namespace KuaforumAPI.Persistence.Repositories
         {
             return await _context.Shops
                 .Include(s => s.Categories)
+                .Include(s => s.Videos)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
 
@@ -47,7 +49,7 @@ namespace KuaforumAPI.Persistence.Repositories
 
         public async Task<IEnumerable<Shop>> GetAllWithDetailsAsync(string? city = null, string? district = null, string? neighborhood = null)
         {
-            var query = _context.Shops.Include(s => s.Owner).Include(s => s.Categories).AsQueryable();
+            var query = _context.Shops.Include(s => s.Owner).Include(s => s.Categories).Include(s => s.Videos).AsQueryable();
 
             if (!string.IsNullOrEmpty(city))
                 query = query.Where(s => s.City.ToLower() == city.ToLower());
@@ -67,6 +69,7 @@ namespace KuaforumAPI.Persistence.Repositories
             var query = _context.Shops
                 .Include(s => s.Owner)
                 .Include(s => s.Categories)
+                .Include(s => s.Videos)
                 .Where(s => s.IsActive)
                 .AsQueryable();
 
