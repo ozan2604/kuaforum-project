@@ -40,6 +40,20 @@ namespace KuaforumAPI.Infrastructure.Services
             _logger = logger;
         }
 
+        private string GetOptimizedVideoUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return url;
+            if (url.Contains("res.cloudinary.com") && url.Contains("/video/upload/"))
+            {
+                int lastDot = url.LastIndexOf('.');
+                if (lastDot > 0 && lastDot > url.LastIndexOf('/'))
+                {
+                    return url.Substring(0, lastDot) + ".mp4";
+                }
+            }
+            return url;
+        }
+
         public async Task CreateShopAsync(string userId, CreateShopDto request)
         {
             var validationResult = await _validator.ValidateAsync(request);
@@ -110,8 +124,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = shop.ClosureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
-                PromoVideoUrl = shop.PromoVideoUrl,
-                Videos = shop.Videos?.OrderBy(v => v.DisplayOrder).Select(v => new ShopVideoDto { Id = v.Id, Url = v.Url, DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList() ?? new List<ShopVideoDto>(),
+                PromoVideoUrl = shop.Videos != null && shop.Videos.Any() ? GetOptimizedVideoUrl(shop.Videos.OrderBy(v => v.DisplayOrder).First().Url) : shop.PromoVideoUrl,
+                Videos = shop.Videos?.OrderBy(v => v.DisplayOrder).Select(v => new ShopVideoDto { Id = v.Id, Url = GetOptimizedVideoUrl(v.Url), DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList() ?? new List<ShopVideoDto>(),
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
@@ -361,8 +375,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 WeeklyOffDays = ParseWeeklyOffDays(shop.WeeklyOffDays),
                 ClosureDates = closureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
-                PromoVideoUrl = shop.PromoVideoUrl,
-                Videos = (await _context.ShopVideos.Where(v => v.ShopId == shop.Id).OrderBy(v => v.DisplayOrder).ToListAsync()).Select(v => new ShopVideoDto { Id = v.Id, Url = v.Url, DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList(),
+                PromoVideoUrl = shop.Videos != null && shop.Videos.Any() ? GetOptimizedVideoUrl(shop.Videos.OrderBy(v => v.DisplayOrder).First().Url) : shop.PromoVideoUrl,
+                Videos = (await _context.ShopVideos.Where(v => v.ShopId == shop.Id).OrderBy(v => v.DisplayOrder).ToListAsync()).Select(v => new ShopVideoDto { Id = v.Id, Url = GetOptimizedVideoUrl(v.Url), DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList(),
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
