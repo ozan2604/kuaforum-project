@@ -102,7 +102,12 @@ namespace KuaforumAPI.Infrastructure.Services
             var uploadParams = new VideoUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = folderName
+                Folder = folderName,
+                EagerTransforms = new List<Transformation>
+                {
+                    new Transformation().FetchFormat("mp4").Quality("auto").VideoCodec("h264")
+                },
+                EagerAsync = false // Senkron bekle, video hazır olmadan link dönme!
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -113,8 +118,15 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new InvalidOperationException($"Video yüklenemedi: {uploadResult.Error.Message}");
             }
 
-            _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, uploadResult.SecureUrl);
-            return uploadResult.SecureUrl.ToString();
+            // Eager transformasyon başarılıysa, web-safe (H.264 MP4) URL'i dön
+            string finalUrl = uploadResult.SecureUrl.ToString();
+            if (uploadResult.Eager != null && uploadResult.Eager.Length > 0)
+            {
+                finalUrl = uploadResult.Eager[0].SecureUrl.ToString();
+            }
+
+            _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, finalUrl);
+            return finalUrl;
         }
 
         public async Task DeleteImageAsync(string imageUrl)
