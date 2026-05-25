@@ -31,7 +31,7 @@ namespace KuaforumAPI.Application.Validators
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.Price)
-                .GreaterThan(0).WithMessage("Price must be greater than 0.");
+                .GreaterThanOrEqualTo(0).WithMessage("Price must be greater than or equal to 0.");
 
             RuleFor(x => x.Duration)
                 .GreaterThan(0).WithMessage("Duration must be greater than 0.");
