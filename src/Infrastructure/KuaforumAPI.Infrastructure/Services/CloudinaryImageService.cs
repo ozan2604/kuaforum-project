@@ -102,7 +102,12 @@ namespace KuaforumAPI.Infrastructure.Services
             var uploadParams = new VideoUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = folderName
+                Folder = folderName,
+                EagerTransforms = new List<Transformation>
+                {
+                    new Transformation().FetchFormat("mp4").Quality("auto").VideoCodec("h264")
+                },
+                EagerAsync = true // Cloudinary arka planda çevirsin
             };
 
             var uploadResult = await _cloudinary.UploadLargeAsync(uploadParams);
@@ -114,6 +119,11 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             string finalUrl = uploadResult.SecureUrl.ToString();
+            // Garantili web-safe url oluştur (Cloudinary henüz çevirmemiş olsa bile bu link geçerli olacak)
+            if (finalUrl.Contains("/upload/"))
+            {
+                finalUrl = finalUrl.Replace("/upload/", "/upload/f_mp4,q_auto,vc_h264/");
+            }
 
             _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, finalUrl);
             return finalUrl;
