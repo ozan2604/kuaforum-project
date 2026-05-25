@@ -110,7 +110,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 EagerAsync = true // Cloudinary arka planda çevirsin
             };
 
-            var uploadResult = await _cloudinary.UploadLargeAsync(uploadParams);
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
             if (uploadResult.Error != null)
             {
