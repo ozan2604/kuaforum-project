@@ -15,7 +15,7 @@ namespace KuaforumAPI.Application.DTOs.Service
         [MaxLength(250, ErrorMessage = "Açıklama en fazla 250 karakter olabilir.")]
         public string? Description { get; set; }
 
-        [Range(0.01, 100000, ErrorMessage = "Fiyat 0.01 ile 100.000 arasında olmalıdır.")]
+        [Range(0, 100000, ErrorMessage = "Fiyat 0 ile 100.000 arasında olmalıdır.")]
         public decimal Price { get; set; }
 
         [Range(5, 480, ErrorMessage = "Süre 5 dakika ile 480 dakika (8 saat) arasında olmalıdır.")]
