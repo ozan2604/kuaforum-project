@@ -102,15 +102,10 @@ namespace KuaforumAPI.Infrastructure.Services
             var uploadParams = new VideoUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = folderName,
-                EagerTransforms = new List<Transformation>
-                {
-                    new Transformation().FetchFormat("mp4").Quality("auto").VideoCodec("h264")
-                },
-                EagerAsync = false // Senkron bekle, video hazır olmadan link dönme!
+                Folder = folderName
             };
 
-            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            var uploadResult = await _cloudinary.UploadLargeAsync(uploadParams);
 
             if (uploadResult.Error != null)
             {
@@ -118,16 +113,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new InvalidOperationException($"Video yüklenemedi: {uploadResult.Error.Message}");
             }
 
-            // Eager transformasyon başarılıysa, web-safe (H.264 MP4) URL'i dön
             string finalUrl = uploadResult.SecureUrl.ToString();
-            if (uploadResult.JsonObj != null && uploadResult.JsonObj["eager"] != null && uploadResult.JsonObj["eager"].HasValues)
-            {
-                var eagerUrl = uploadResult.JsonObj["eager"][0]["secure_url"]?.ToString();
-                if (!string.IsNullOrEmpty(eagerUrl))
-                {
-                    finalUrl = eagerUrl;
-                }
-            }
 
             _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, finalUrl);
             return finalUrl;
