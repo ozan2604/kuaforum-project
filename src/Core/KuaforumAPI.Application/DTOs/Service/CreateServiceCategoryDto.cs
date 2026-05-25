@@ -8,8 +8,7 @@ namespace KuaforumAPI.Application.DTOs.Service
         [MaxLength(50, ErrorMessage = "Kategori adı en fazla 50 karakter olabilir.")]
         public string Name { get; set; }
 
-        [Required(ErrorMessage = "Açıklama zorunludur.")]
         [MaxLength(250, ErrorMessage = "Açıklama en fazla 250 karakter olabilir.")]
-        public string Description { get; set; }
+        public string? Description { get; set; }
     }
 }

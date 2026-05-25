@@ -77,6 +77,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 ShopId = shop.Id,
                 CategoryId = request.CategoryId,
                 Name = request.Name,
+                Description = request.Description,
                 Price = request.Price,
                 Duration = request.Duration,
                 IsActive = true
@@ -131,6 +132,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new FluentValidation.ValidationException("Service not found.");
 
             service.Name = request.Name;
+            service.Description = request.Description;
             service.Price = request.Price;
             service.Duration = request.Duration;
             service.IsActive = request.IsActive;
@@ -201,6 +203,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     {
                         Id = s.Id,
                         Name = s.Name,
+                        Description = s.Description,
                         Price = s.Price,
                         Duration = s.Duration,
                         IsActive = s.IsActive,
@@ -257,6 +260,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     {
                         Id = s.Id,
                         Name = s.Name,
+                        Description = s.Description,
                         Price = s.Price,
                         Duration = s.Duration,
                         IsActive = s.IsActive,

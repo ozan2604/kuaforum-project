@@ -13,6 +13,7 @@ namespace KuaforumAPI.Domain.Entities
         public virtual ServiceCategory Category { get; set; }
 
         public string Name { get; set; } // e.g., Haircut, Fön
+        public string? Description { get; set; }
         public decimal Price { get; set; }
         public int Duration { get; set; } = 15; // In minutes, default 15
         public bool IsActive { get; set; } = true;
