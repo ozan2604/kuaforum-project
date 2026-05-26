@@ -112,7 +112,6 @@ namespace KuaforumAPI.Infrastructure.Services
                 _logger.LogError("Cloudinary video yükleme başarısız. Klasör: {Folder}, Hata: {Error}", folderName, uploadResult.Error.Message);
                 throw new InvalidOperationException($"Video yüklenemedi: {uploadResult.Error.Message}");
             }
-            //test
             // URL-based transformation: Cloudinary ilk istek geldiğinde anında MP4/H.264'e dönüştürür ve cache'ler.
             // Eager (arka plan) transformation kullanmıyoruz — o asenkron olduğu için yükleme sonrası 404 veriyordu.
             // Bu yöntemde ise dönüşüm on-demand olur, asla 404 olmaz; ilk oynatma birkaç sn yavaş olabilir.
