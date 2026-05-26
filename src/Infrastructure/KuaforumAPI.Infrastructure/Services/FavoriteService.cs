@@ -58,7 +58,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 .AsNoTracking()
                 .Where(f => f.CircleUserId == userId && f.Shop.IsActive)
                 .Include(f => f.Shop)
-                .ThenInclude(s => s.Images)
+                    .ThenInclude(s => s.Images)
+                .Include(f => f.Shop)
+                    .ThenInclude(s => s.Categories)
                 .Select(f => f.Shop)
                 .ToListAsync();
 
@@ -75,7 +77,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 Longitude = shop.Longitude,
                 IsActive = shop.IsActive,
                 CoverImagePath = shop.CoverImagePath,
-                Images = shop.Images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList(),
+                Images = shop.Images?.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url }).ToList() ?? new(),
+                Categories = shop.Categories?.Select(c => c.CategoryValue).ToList() ?? new(),
+                AverageRating = shop.AverageRating,
+                OpenTime = shop.OpenTime?.ToString(@"hh\:mm"),
+                CloseTime = shop.CloseTime?.ToString(@"hh\:mm"),
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             }).ToList();
