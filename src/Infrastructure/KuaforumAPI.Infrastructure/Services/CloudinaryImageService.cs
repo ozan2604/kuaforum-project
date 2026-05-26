@@ -113,7 +113,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new InvalidOperationException($"Video yüklenemedi: {uploadResult.Error.Message}");
             }
 
-            string finalUrl = uploadResult.SecureUrl.ToString();
+            // URL-based transformation: Cloudinary ilk istek geldiğinde anında MP4/H.264'e dönüştürür ve cache'ler.
+            // Eager (arka plan) transformation kullanmıyoruz — o asenkron olduğu için yükleme sonrası 404 veriyordu.
+            // Bu yöntemde ise dönüşüm on-demand olur, asla 404 olmaz; ilk oynatma birkaç sn yavaş olabilir.
+            string rawUrl = uploadResult.SecureUrl.ToString();
+            string finalUrl = rawUrl.Replace("/upload/", "/upload/f_mp4,vc_h264,q_auto/");
 
             _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, finalUrl);
             return finalUrl;
