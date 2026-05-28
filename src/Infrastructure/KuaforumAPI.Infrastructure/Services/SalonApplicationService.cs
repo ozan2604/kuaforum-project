@@ -206,6 +206,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 Latitude = application.Latitude,
                 Longitude = application.Longitude,
                 CoverImagePath = string.Empty,
+                PromoVideoUrl = string.Empty,
                 CreatedAt = _dateTimeService.Now,
                 UpdatedAt = _dateTimeService.Now
             };
