@@ -488,8 +488,8 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? employeeId = null, Guid? serviceId = null)
         {
             pageSize = Math.Clamp(pageSize, 1, 100);
-             var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
-             if (shop == null || shop.Id != shopId) throw new ValidationException("Yetkisiz erişim veya salon bulunamadı.");
+             var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && s.OwnerId == ownerId);
+             if (shop == null) throw new ValidationException("Yetkisiz erişim veya salon bulunamadı.");
 
              var query = _context.Appointments
                 .AsNoTracking()
@@ -558,8 +558,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (appointment == null) throw new ValidationException("Appointment not found.");
 
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
-            if (shop == null || shop.Id != appointment.ShopId) throw new ValidationException("Yetkisiz erişim.");
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == appointment.ShopId && s.OwnerId == ownerId);
+            if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             ValidateStatusTransition(appointment.Status, request.Status);
 
@@ -1126,7 +1126,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<NoShowResultDto?> UpdateGroupStatusAsync(string ownerId, Guid groupId, UpdateAppointmentStatusDto request)
         {
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
+            var firstAppointment = await _context.Appointments.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.GroupId == groupId);
+            if (firstAppointment == null) throw new ValidationException("Grup randevusu bulunamadı.");
+
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == firstAppointment.ShopId && s.OwnerId == ownerId);
             if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             var appointments = await _context.Appointments
