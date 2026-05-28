@@ -38,22 +38,45 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(shop);
         }
 
-        [HttpPut]
+        [HttpGet("my-shops")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> UpdateShop([FromBody] CreateShopDto request)
+        public async Task<IActionResult> GetMyShops()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _shopService.UpdateShopAsync(userId, request);
-            return Ok(new { Message = "Shop updated successfully." });
+            var shops = await _shopService.GetMyShopsAsync(userId);
+            return Ok(shops);
         }
 
-        [HttpGet("my-shop/dashboard-stats")]
+        [HttpPut("{shopId}")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> GetDashboardStats()
+        public async Task<IActionResult> UpdateShop(Guid shopId, [FromBody] CreateShopDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var stats = await _shopService.GetDashboardStatsAsync(userId);
-            return Ok(stats);
+            try
+            {
+                await _shopService.UpdateShopAsync(shopId, userId, request);
+                return Ok(new { Message = "Shop updated successfully." });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
+        [HttpGet("{shopId}/dashboard-stats")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        public async Task<IActionResult> GetDashboardStats(Guid shopId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            try
+            {
+                var stats = await _shopService.GetDashboardStatsAsync(shopId, userId);
+                return Ok(stats);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
         }
         [HttpGet("admin/all")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.Admin)]
@@ -107,8 +130,8 @@ namespace KuaforumAPI.WebAPI.Controllers
             if (!User.IsInRole("Admin"))
             {
                 var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                var userShop = await _shopService.GetShopByOwnerIdAsync(userId);
-                if (userShop == null || userShop.Id != id)
+                var targetShop = await _shopService.GetShopByIdAsync(id);
+                if (targetShop == null || targetShop.OwnerId != userId)
                     return Forbid();
             }
 
@@ -192,8 +215,8 @@ namespace KuaforumAPI.WebAPI.Controllers
             if (!User.IsInRole("Admin"))
             {
                 var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                var userShop = await _shopService.GetShopByOwnerIdAsync(userId);
-                if (userShop == null || userShop.Id != id)
+                var targetShop = await _shopService.GetShopByIdAsync(id);
+                if (targetShop == null || targetShop.OwnerId != userId)
                     return Forbid();
             }
 

@@ -9,13 +9,16 @@ namespace KuaforumAPI.Application.Interfaces.Services
     public interface IShopService
     {
         Task CreateShopAsync(string userId, CreateShopDto request);
+        // Backward-compat: sahibin ilk salonunu döndürür
         Task<ShopDto> GetShopByOwnerIdAsync(string userId);
-        Task UpdateShopAsync(string userId, CreateShopDto request);
+        // Sahibin tüm salonlarını döndürür
+        Task<List<ShopDto>> GetMyShopsAsync(string userId);
+        Task UpdateShopAsync(Guid shopId, string userId, CreateShopDto request);
         Task<IEnumerable<ShopDto>> GetAllShopsAsync(string? city = null, string? district = null, string? neighborhood = null);
         Task<PagedResult<ShopDto>> GetPublicShopsPagedAsync(string? city, string? district, string? neighborhood, int pageNumber, int pageSize);
         Task DeleteShopAsync(Guid id);
         Task<ShopDto> GetShopByIdAsync(Guid id);
-        
+
         Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file);
         Task DeleteCoverImageAsync(Guid shopId, string userId);
 
@@ -30,7 +33,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task AddClosureDateAsync(string ownerId, Guid shopId, DateTime date, string? reason);
         Task RemoveClosureDateAsync(string ownerId, Guid closureDateId);
 
-        Task<ShopDashboardStatsDto> GetDashboardStatsAsync(string ownerId);
+        Task<ShopDashboardStatsDto> GetDashboardStatsAsync(Guid shopId, string ownerId);
         Task<(int TotalCount, IEnumerable<ShopDto> Shops)> GetAllShopsAdminAsync(string? search, int page, int pageSize);
 
         Task<ShopImageTagDto> AddImageTagAsync(string ownerId, Guid imageId, string name);

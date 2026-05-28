@@ -33,6 +33,7 @@ namespace KuaforumAPI.Infrastructure
 
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ISalonApplicationService, SalonApplicationService>();
+            services.AddScoped<IShopCodeGeneratorService, ShopCodeGeneratorService>();
             services.AddScoped<IShopService, ShopService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IServiceManagementService, ServiceManagementService>();
@@ -50,6 +51,7 @@ namespace KuaforumAPI.Infrastructure
 
             // Background Services
             services.AddHostedService<Services.Background.AppointmentAutoCompleterService>();
+            services.AddHostedService<Services.Background.ShopCodeSeederService>();
         }
     }
 }

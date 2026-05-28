@@ -14,8 +14,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using KuaforumAPI.Infrastructure.Services;
-using KuaforumAPI.Application.Interfaces.Services;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -50,25 +48,19 @@ namespace KuaforumAPI.Infrastructure.Services
             _logger = logger;
         }
 
-        public async Task<AddEmployeeResult> AddEmployeeAsync(string ownerId, CreateEmployeeDto request)
+        public async Task<AddEmployeeResult> AddEmployeeAsync(Guid shopId, string ownerId, CreateEmployeeDto request)
         {
             var validationResult = await _validator.ValidateAsync(request);
             if (!validationResult.IsValid)
-            {
                 throw new FluentValidation.ValidationException(validationResult.Errors);
-            }
 
-            // 1. Get Shop
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null)
-            {
-                throw new FluentValidation.ValidationException("You must have a shop to add employees.");
-            }
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new KuaforumAPI.Application.Exceptions.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // 2. Check if User Exists by Phone
                 var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
                 bool isNewUser = false;
                 string? tempPassword = null;
@@ -76,7 +68,6 @@ namespace KuaforumAPI.Infrastructure.Services
                 if (user == null)
                 {
                     isNewUser = true;
-                    // Create New User
                     user = new ApplicationUser
                     {
                         UserName = request.PhoneNumber,
@@ -97,36 +88,29 @@ namespace KuaforumAPI.Infrastructure.Services
                     }
                 }
 
-                // 3. Tek dükkan kuralı: başka aktif dükkanı var mı?
+                // Tek dükkan kuralı: başka aktif dükkanı var mı?
                 var activeInOtherShop = await _context.ShopEmployees
-                    .AnyAsync(se => se.UserId == user.Id && !se.IsDeleted && se.ShopId != shop.Id);
+                    .AnyAsync(se => se.UserId == user.Id && !se.IsDeleted && se.ShopId != shopId);
                 if (activeInOtherShop)
                     throw new KuaforumAPI.Application.Exceptions.ValidationException("Bu kullanıcı başka bir dükkanın aktif çalışanıdır.");
 
-                // 4. Assign Role if not already
                 if (!await _userManager.IsInRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee))
-                {
                     await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee);
-                }
 
-                // 5. Ensure not already an employee in this shop
-                var existingEmployee = await _context.ShopEmployees.FirstOrDefaultAsync(se => se.ShopId == shop.Id && se.UserId == user.Id);
+                var existingEmployee = await _context.ShopEmployees.FirstOrDefaultAsync(se => se.ShopId == shopId && se.UserId == user.Id);
                 if (existingEmployee != null)
                 {
                     if (!existingEmployee.IsDeleted)
                         throw new KuaforumAPI.Application.Exceptions.ValidationException("Bu kullanıcı zaten dükkanınızda çalışan olarak ekli.");
 
-                    // Silinmiş kayıt varsa reaktive et
                     existingEmployee.IsDeleted = false;
                     existingEmployee.IsActive = true;
                     existingEmployee.Title = request.Title;
                     existingEmployee.StartDate = _dateTimeService.Now;
                     await _shopEmployeeRepository.UpdateAsync(existingEmployee);
-                    
+
                     if (!await _userManager.IsInRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee))
-                    {
                         await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Employee);
-                    }
 
                     await transaction.CommitAsync();
 
@@ -146,10 +130,9 @@ namespace KuaforumAPI.Infrastructure.Services
                     };
                 }
 
-                // 4. Link to Shop
                 var shopEmployee = new ShopEmployee
                 {
-                    ShopId = shop.Id,
+                    ShopId = shopId,
                     UserId = user.Id,
                     Title = request.Title,
                     StartDate = _dateTimeService.Now,
@@ -157,7 +140,6 @@ namespace KuaforumAPI.Infrastructure.Services
                 };
 
                 await _shopEmployeeRepository.AddAsync(shopEmployee);
-
                 await transaction.CommitAsync();
 
                 try
@@ -214,13 +196,13 @@ namespace KuaforumAPI.Infrastructure.Services
                                    .ToArray());
         }
 
-        public async Task<List<EmployeeListDto>> GetEmployeesAsync(string ownerId)
+        public async Task<List<EmployeeListDto>> GetEmployeesAsync(Guid shopId, string ownerId)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) return new List<EmployeeListDto>();
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId) return new List<EmployeeListDto>();
 
             var employees = await _context.ShopEmployees
-                .Where(se => se.ShopId == shop.Id)
+                .Where(se => se.ShopId == shopId)
                 .Include(se => se.User)
                 .ToListAsync();
 
@@ -266,46 +248,31 @@ namespace KuaforumAPI.Infrastructure.Services
             }).ToList();
         }
 
-        public async Task AssignServicesAsync(string ownerId, Guid shopEmployeeId, List<Guid> serviceIds)
+        public async Task AssignServicesAsync(Guid shopId, string ownerId, Guid shopEmployeeId, List<Guid> serviceIds)
         {
-            // 1. Validate Owner and Employee
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
-            // Use generic repo to find employee, but ensure it belongs to shop
-            // Or use a specific method in ShopEmployeeRepo if existed. 
-            // For now, load by ID and check ShopId. 
             var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
-            if (employee == null || employee.ShopId != shop.Id)
-            {
-                throw new FluentValidation.ValidationException("Employee not found in your shop.");
-            }
+            if (employee == null || employee.ShopId != shopId)
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
-            // 2. Validate Services (Brief check: ensure they belong to shop)
-            // Ideally we should check strict validity. 
-            // We can fetch all services of the shop and compare IDs.
-            var shopServicesCursor = _context.ShopServices.Where(s => s.ShopId == shop.Id && s.IsActive && !s.IsDeleted).Select(s => s.Id);
-            // Verify all requested IDs exist in shop's services
-            // If list is empty, we are clearing assignments, which is valid.
+            var shopServicesCursor = _context.ShopServices.Where(s => s.ShopId == shopId && s.IsActive && !s.IsDeleted).Select(s => s.Id);
             if (serviceIds != null && serviceIds.Any())
             {
                 var validIds = await shopServicesCursor.ToListAsync();
                 var invalidIds = serviceIds.Except(validIds).ToList();
                 if (invalidIds.Any())
-                {
-                    throw new FluentValidation.ValidationException($"Invalid services: {string.Join(", ", invalidIds)}");
-                }
+                    throw new FluentValidation.ValidationException($"Geçersiz hizmetler: {string.Join(", ", invalidIds)}");
             }
 
-            // 3. Update Assignments (Full Replacement Strategy)
-            // Remove existing
             var existingAssignments = await _context.ShopEmployeeServices
                 .Where(ses => ses.ShopEmployeeId == shopEmployeeId)
                 .ToListAsync();
-            
+
             _context.ShopEmployeeServices.RemoveRange(existingAssignments);
 
-            // Add new
             if (serviceIds != null && serviceIds.Any())
             {
                 var newAssignments = serviceIds.Select(sid => new ShopEmployeeService
@@ -319,27 +286,22 @@ namespace KuaforumAPI.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<ShopServiceDto>> GetEmployeeServicesAsync(string ownerId, Guid shopEmployeeId)
+        public async Task<List<ShopServiceDto>> GetEmployeeServicesAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
-             // 1. Validate Owner
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
-            // 2. Validate Employee
             var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
-            if (employee == null || employee.ShopId != shop.Id)
-            {
-                throw new FluentValidation.ValidationException("Employee not found in your shop.");
-            }
+            if (employee == null || employee.ShopId != shopId)
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
-            // 3. Get Services
             var assignedServices = await _context.ShopEmployeeServices
                 .Where(ses => ses.ShopEmployeeId == shopEmployeeId)
                 .Include(ses => ses.ShopService)
                 .Select(ses => ses.ShopService)
                 .ToListAsync();
 
-            // 4. Map
             return assignedServices.Select(s => new ShopServiceDto
             {
                 Id = s.Id,
@@ -350,19 +312,18 @@ namespace KuaforumAPI.Infrastructure.Services
             }).ToList();
         }
 
-        public async Task UpdateEmployeeAsync(string ownerId, Guid shopEmployeeId, UpdateEmployeeOwnerDto request)
+        public async Task UpdateEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId, UpdateEmployeeOwnerDto request)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
                 .Include(se => se.User)
-                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shopId);
 
             if (employee == null)
-            {
-                throw new FluentValidation.ValidationException("Employee not found in your shop.");
-            }
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
             employee.Title = request.Title;
             employee.IsActive = request.IsActive;
@@ -373,23 +334,22 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var identityResult = await _userManager.UpdateAsync(user);
             if (!identityResult.Succeeded)
-            {
-                throw new FluentValidation.ValidationException("Failed to update user profile.");
-            }
+                throw new FluentValidation.ValidationException("Kullanıcı profili güncellenemedi.");
 
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteEmployeeAsync(string ownerId, Guid shopEmployeeId)
+        public async Task DeleteEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
                 .Include(se => se.User)
-                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shopId);
             if (employee == null)
-                throw new FluentValidation.ValidationException("Employee not found in your shop.");
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -397,7 +357,6 @@ namespace KuaforumAPI.Infrastructure.Services
             employee.IsDeleted = true;
             await _shopEmployeeRepository.UpdateAsync(employee);
 
-            // Çalışan silinince Employee rolü kaldırılır
             var removeResult = await _userManager.RemoveFromRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee);
             if (!removeResult.Succeeded)
                 throw new FluentValidation.ValidationException("Çalışan rolü kaldırılamadı.");
@@ -412,16 +371,17 @@ namespace KuaforumAPI.Infrastructure.Services
             catch { }
         }
 
-        public async Task RestoreEmployeeAsync(string ownerId, Guid shopEmployeeId)
+        public async Task RestoreEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
                 .Include(se => se.User)
-                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shopId);
             if (employee == null)
-                throw new FluentValidation.ValidationException("Employee not found in your shop.");
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
             if (!employee.IsDeleted)
                 throw new KuaforumAPI.Application.Exceptions.ValidationException("Bu çalışan zaten aktif.");
@@ -432,7 +392,6 @@ namespace KuaforumAPI.Infrastructure.Services
             employee.IsActive = true;
             await _shopEmployeeRepository.UpdateAsync(employee);
 
-            // Geri yüklenince Employee rolü yeniden atanır
             if (!await _userManager.IsInRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee))
             {
                 var addResult = await _userManager.AddToRoleAsync(employee.User, KuaforumAPI.Application.Constants.Roles.Employee);
@@ -450,20 +409,16 @@ namespace KuaforumAPI.Infrastructure.Services
             catch { }
         }
 
-        public async Task UpdateScheduleAsync(string ownerId, Guid shopEmployeeId, UpdateScheduleDto request)
+        public async Task UpdateScheduleAsync(Guid shopId, string ownerId, Guid shopEmployeeId, UpdateScheduleDto request)
         {
-             // 1. Validate Owner
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
-            // 2. Validate Employee
             var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
-            if (employee == null || employee.ShopId != shop.Id)
-            {
-                throw new FluentValidation.ValidationException("Employee not found in your shop.");
-            }
+            if (employee == null || employee.ShopId != shopId)
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
-            // 3. Update Logic (Replace all)
             var existingSchedules = await _context.EmployeeSchedules
                 .Where(es => es.ShopEmployeeId == shopEmployeeId)
                 .ToListAsync();
@@ -477,30 +432,27 @@ namespace KuaforumAPI.Infrastructure.Services
                     ShopEmployeeId = shopEmployeeId,
                     DayOfWeek = (DayOfWeek)s.DayOfWeek,
                     IsWorking = s.IsWorking,
-                    StartTime = TimeSpan.Parse(s.StartTime ?? "09:00"), // Default if null, or handle validation
+                    StartTime = TimeSpan.Parse(s.StartTime ?? "09:00"),
                     EndTime = TimeSpan.Parse(s.EndTime ?? "18:00"),
                     BreakStartTime = string.IsNullOrEmpty(s.BreakStartTime) ? null : TimeSpan.Parse(s.BreakStartTime),
                     BreakEndTime = string.IsNullOrEmpty(s.BreakEndTime) ? null : TimeSpan.Parse(s.BreakEndTime)
                 }).ToList();
-                
+
                 await _context.EmployeeSchedules.AddRangeAsync(newSchedules);
             }
 
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<ScheduleDto>> GetScheduleAsync(string ownerId, Guid shopEmployeeId)
+        public async Task<List<ScheduleDto>> GetScheduleAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
-             // 1. Validate Owner
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
-            // 2. Validate Employee
             var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
-            if (employee == null || employee.ShopId != shop.Id)
-            {
-                throw new FluentValidation.ValidationException("Employee not found in your shop.");
-            }
+            if (employee == null || employee.ShopId != shopId)
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
             var schedules = await _context.EmployeeSchedules
                 .Where(es => es.ShopEmployeeId == shopEmployeeId)
@@ -526,9 +478,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
 
             if (employee == null)
-            {
-                throw new FluentValidation.ValidationException("Employee profile not found.");
-            }
+                throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
 
             return new EmployeeProfileDto
             {
@@ -579,35 +529,21 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var employee = await _context.ShopEmployees
                 .Include(se => se.User)
-                .FirstOrDefaultAsync(se => se.UserId == userId); // Allow updating even if inactive? Usually yes.
+                .FirstOrDefaultAsync(se => se.UserId == userId);
 
             if (employee == null)
-            {
-                throw new FluentValidation.ValidationException("Employee profile not found.");
-            }
+                throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
 
-            // Update Employee specific fields
             employee.Title = request.Title;
 
-            // Update User fields
             var user = employee.User;
             user.FirstName = request.FirstName;
             user.LastName = request.LastName;
 
-            // We are using DbContext for ShopEmployee and Identity UserManager for User usually,
-            // but since we included User navigation prop and tracked it via context, EF might update it.
-            // However, Identity best practice is to use UserManager for user updates to handle security stamps etc.
-            // But for simple name change, context update often works if concurrent edits aren't an issue.
-            // Let's try standard context save first. 
-            // Better: Use UserManager to be safe and consistent with Identity.
-            
             var identityResult = await _userManager.UpdateAsync(user);
             if (!identityResult.Succeeded)
-            {
-                 throw new FluentValidation.ValidationException("Failed to update user profile.");
-            }
+                throw new FluentValidation.ValidationException("Kullanıcı profili güncellenemedi.");
 
-            // Save changes to ShopEmployee
             await _context.SaveChangesAsync();
         }
 
@@ -670,15 +606,17 @@ namespace KuaforumAPI.Infrastructure.Services
 
         // ─── LEAVE DATES ─────────────────────────────────────────────────────────
 
-        public async Task<List<EmployeeLeaveDateDto>> GetLeaveDatesAsync(string ownerId, Guid shopEmployeeId)
+        public async Task<List<EmployeeLeaveDateDto>> GetLeaveDatesAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
                 .Include(se => se.User)
-                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
-            if (employee == null) throw new FluentValidation.ValidationException("Employee not found in your shop.");
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shopId);
+            if (employee == null)
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
             var leaveDates = await _context.EmployeeLeaveDates
                 .Where(l => l.ShopEmployeeId == shopEmployeeId)
@@ -695,14 +633,16 @@ namespace KuaforumAPI.Infrastructure.Services
             }).ToList();
         }
 
-        public async Task AddLeaveDateAsync(string ownerId, Guid shopEmployeeId, string leaveDate, string? reason)
+        public async Task AddLeaveDateAsync(Guid shopId, string ownerId, Guid shopEmployeeId, string leaveDate, string? reason)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
-                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shop.Id);
-            if (employee == null) throw new FluentValidation.ValidationException("Employee not found in your shop.");
+                .FirstOrDefaultAsync(se => se.Id == shopEmployeeId && se.ShopId == shopId);
+            if (employee == null)
+                throw new FluentValidation.ValidationException("Çalışan bu salonda bulunamadı.");
 
             if (!DateTime.TryParseExact(leaveDate, "yyyy-MM-dd",
                     System.Globalization.CultureInfo.InvariantCulture,
@@ -714,30 +654,32 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var alreadyExists = await _context.EmployeeLeaveDates
                 .AnyAsync(l => l.ShopEmployeeId == shopEmployeeId && l.LeaveDate.Date == parsedDate.Date);
-            if (alreadyExists) throw new FluentValidation.ValidationException("Bu çalışan için bu tarihte zaten izin tanımlanmış.");
+            if (alreadyExists)
+                throw new FluentValidation.ValidationException("Bu çalışan için bu tarihte zaten izin tanımlanmış.");
 
-            var leave = new EmployeeLeaveDate
+            await _context.EmployeeLeaveDates.AddAsync(new EmployeeLeaveDate
             {
                 ShopEmployeeId = shopEmployeeId,
                 LeaveDate = parsedDate,
                 Reason = reason
-            };
-
-            await _context.EmployeeLeaveDates.AddAsync(leave);
+            });
             await _context.SaveChangesAsync();
         }
 
-        public async Task RemoveLeaveDateAsync(string ownerId, Guid leaveDateId)
+        public async Task RemoveLeaveDateAsync(Guid shopId, string ownerId, Guid leaveDateId)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null) throw new FluentValidation.ValidationException("Shop not found.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId)
+                throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var leave = await _context.EmployeeLeaveDates
                 .Include(l => l.ShopEmployee)
                 .FirstOrDefaultAsync(l => l.Id == leaveDateId);
 
-            if (leave == null) throw new FluentValidation.ValidationException("İzin günü bulunamadı.");
-            if (leave.ShopEmployee.ShopId != shop.Id) throw new FluentValidation.ValidationException("Yetkisiz erişim.");
+            if (leave == null)
+                throw new FluentValidation.ValidationException("İzin günü bulunamadı.");
+            if (leave.ShopEmployee.ShopId != shopId)
+                throw new FluentValidation.ValidationException("Yetkisiz erişim.");
 
             _context.EmployeeLeaveDates.Remove(leave);
             await _context.SaveChangesAsync();
@@ -772,7 +714,8 @@ namespace KuaforumAPI.Infrastructure.Services
             var employee = await _context.ShopEmployees
                 .Include(se => se.User)
                 .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
-            if (employee == null) throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
+            if (employee == null)
+                throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
 
             var leaveDates = await _context.EmployeeLeaveDates
                 .Where(l => l.ShopEmployeeId == employee.Id)
@@ -793,7 +736,8 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var employee = await _context.ShopEmployees
                 .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
-            if (employee == null) throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
+            if (employee == null)
+                throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
 
             if (!DateTime.TryParseExact(leaveDate, "yyyy-MM-dd",
                     System.Globalization.CultureInfo.InvariantCulture,
@@ -805,7 +749,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var alreadyExists = await _context.EmployeeLeaveDates
                 .AnyAsync(l => l.ShopEmployeeId == employee.Id && l.LeaveDate.Date == parsedDate.Date);
-            if (alreadyExists) throw new FluentValidation.ValidationException("Bu tarihte zaten izin günü tanımlı.");
+            if (alreadyExists)
+                throw new FluentValidation.ValidationException("Bu tarihte zaten izin günü tanımlı.");
 
             await _context.EmployeeLeaveDates.AddAsync(new EmployeeLeaveDate
             {
@@ -820,11 +765,13 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var employee = await _context.ShopEmployees
                 .FirstOrDefaultAsync(se => se.UserId == userId && se.IsActive && !se.IsDeleted);
-            if (employee == null) throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
+            if (employee == null)
+                throw new FluentValidation.ValidationException("Çalışan profili bulunamadı.");
 
             var leave = await _context.EmployeeLeaveDates
                 .FirstOrDefaultAsync(l => l.Id == leaveDateId && l.ShopEmployeeId == employee.Id);
-            if (leave == null) throw new FluentValidation.ValidationException("İzin günü bulunamadı.");
+            if (leave == null)
+                throw new FluentValidation.ValidationException("İzin günü bulunamadı.");
 
             _context.EmployeeLeaveDates.Remove(leave);
             await _context.SaveChangesAsync();

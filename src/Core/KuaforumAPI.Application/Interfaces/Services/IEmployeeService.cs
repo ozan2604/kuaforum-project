@@ -7,18 +7,18 @@ namespace KuaforumAPI.Application.Interfaces.Services
 {
     public interface IEmployeeService
     {
-        Task<AddEmployeeResult> AddEmployeeAsync(string ownerId, CreateEmployeeDto request);
-        Task<List<EmployeeListDto>> GetEmployeesAsync(string ownerId); // For Owner
+        Task<AddEmployeeResult> AddEmployeeAsync(Guid shopId, string ownerId, CreateEmployeeDto request);
+        Task<List<EmployeeListDto>> GetEmployeesAsync(Guid shopId, string ownerId); // For Owner
         Task<List<EmployeeListDto>> GetEmployeesByShopIdAsync(Guid shopId); // For Public
-        Task AssignServicesAsync(string ownerId, Guid shopEmployeeId, List<Guid> serviceIds);
-        Task<List<ShopServiceDto>> GetEmployeeServicesAsync(string ownerId, Guid shopEmployeeId);
-        
-        Task UpdateEmployeeAsync(string ownerId, Guid shopEmployeeId, UpdateEmployeeOwnerDto request);
-        Task DeleteEmployeeAsync(string ownerId, Guid shopEmployeeId);
-        Task RestoreEmployeeAsync(string ownerId, Guid shopEmployeeId);
-        
-        Task UpdateScheduleAsync(string ownerId, Guid shopEmployeeId, UpdateScheduleDto request);
-        Task<List<ScheduleDto>> GetScheduleAsync(string ownerId, Guid shopEmployeeId);
+        Task AssignServicesAsync(Guid shopId, string ownerId, Guid shopEmployeeId, List<Guid> serviceIds);
+        Task<List<ShopServiceDto>> GetEmployeeServicesAsync(Guid shopId, string ownerId, Guid shopEmployeeId);
+
+        Task UpdateEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId, UpdateEmployeeOwnerDto request);
+        Task DeleteEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId);
+        Task RestoreEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId);
+
+        Task UpdateScheduleAsync(Guid shopId, string ownerId, Guid shopEmployeeId, UpdateScheduleDto request);
+        Task<List<ScheduleDto>> GetScheduleAsync(Guid shopId, string ownerId, Guid shopEmployeeId);
 
         Task<List<PublicEmployeeScheduleDto>> GetPublicShopSchedulesAsync(Guid shopId);
 
@@ -29,9 +29,9 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task UpdateMyScheduleAsync(string userId, UpdateScheduleDto request);
 
         // Leave dates (owner-managed)
-        Task<List<EmployeeLeaveDateDto>> GetLeaveDatesAsync(string ownerId, Guid shopEmployeeId);
-        Task AddLeaveDateAsync(string ownerId, Guid shopEmployeeId, string leaveDate, string? reason);
-        Task RemoveLeaveDateAsync(string ownerId, Guid leaveDateId);
+        Task<List<EmployeeLeaveDateDto>> GetLeaveDatesAsync(Guid shopId, string ownerId, Guid shopEmployeeId);
+        Task AddLeaveDateAsync(Guid shopId, string ownerId, Guid shopEmployeeId, string leaveDate, string? reason);
+        Task RemoveLeaveDateAsync(Guid shopId, string ownerId, Guid leaveDateId);
         Task<List<EmployeeLeaveDateDto>> GetPublicEmployeeLeaveDatesAsync(Guid shopEmployeeId);
 
         // Leave dates (self-managed by employee)

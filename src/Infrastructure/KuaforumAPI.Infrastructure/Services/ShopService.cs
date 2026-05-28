@@ -27,8 +27,9 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeService _dateTimeService;
         private readonly ILogger<ShopService> _logger;
+        private readonly IShopCodeGeneratorService _codeGenerator;
 
-        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService, ILogger<ShopService> logger)
+        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService, ILogger<ShopService> logger, IShopCodeGeneratorService codeGenerator)
         {
             _shopRepository = shopRepository;
             _shopImageRepository = shopImageRepository;
@@ -38,6 +39,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _context = context;
             _dateTimeService = dateTimeService;
             _logger = logger;
+            _codeGenerator = codeGenerator;
         }
 
 
@@ -46,15 +48,9 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var validationResult = await _validator.ValidateAsync(request);
             if (!validationResult.IsValid)
-            {
                 throw new FluentValidation.ValidationException(validationResult.Errors);
-            }
 
-            var existingShop = await _shopRepository.GetByOwnerIdAsync(userId);
-            if (existingShop != null)
-            {
-                throw new FluentValidation.ValidationException("User already has a shop.");
-            }
+            var code = await _codeGenerator.GenerateAsync(request.City ?? "");
 
             var shop = new Shop
             {
@@ -74,6 +70,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 GenderPreference = request.GenderPreference,
                 OpenTime = ParseTime(request.OpenTime),
                 CloseTime = ParseTime(request.CloseTime),
+                Code = code,
                 IsActive = true
             };
 
@@ -84,12 +81,13 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var shop = await _shopRepository.GetByOwnerIdAsync(userId);
             if (shop == null) return null;
-            
+
             var images = await _shopImageRepository.GetByShopIdAsync(shop.Id);
 
             return new ShopDto
             {
                 Id = shop.Id,
+                OwnerId = shop.OwnerId,
                 Name = shop.Name,
                 Description = shop.Description,
                 Address = shop.Address,
@@ -118,24 +116,58 @@ namespace KuaforumAPI.Infrastructure.Services
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
+                Code = shop.Code,
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             };
         }
 
-        public async Task UpdateShopAsync(string userId, CreateShopDto request)
+        public async Task<List<ShopDto>> GetMyShopsAsync(string userId)
+        {
+            var shops = await _shopRepository.GetAllByOwnerIdAsync(userId);
+
+            var result = new List<ShopDto>();
+            foreach (var shop in shops)
+            {
+                result.Add(new ShopDto
+                {
+                    Id = shop.Id,
+                    OwnerId = shop.OwnerId,
+                    Name = shop.Name,
+                    Description = shop.Description,
+                    Address = shop.Address,
+                    City = shop.City,
+                    District = shop.District,
+                    Neighborhood = shop.Neighborhood,
+                    PhoneNumber = shop.PhoneNumber,
+                    Latitude = shop.Latitude,
+                    Longitude = shop.Longitude,
+                    Categories = shop.Categories.Select(c => c.CategoryValue).ToList(),
+                    GenderPreference = shop.GenderPreference,
+                    IsActive = shop.IsActive,
+                    IsAutoProcessEnabled = shop.IsAutoProcessEnabled,
+                    BookingDaysAhead = shop.BookingDaysAhead,
+                    CancellationHours = shop.CancellationHours,
+                    CoverImagePath = shop.CoverImagePath,
+                    AverageRating = shop.AverageRating,
+                    ReviewCount = shop.ReviewCount,
+                    Code = shop.Code,
+                    CreatedAt = shop.CreatedAt,
+                    UpdatedAt = shop.UpdatedAt
+                });
+            }
+            return result;
+        }
+
+        public async Task UpdateShopAsync(Guid shopId, string userId, CreateShopDto request)
         {
             var validationResult = await _validator.ValidateAsync(request);
             if (!validationResult.IsValid)
-            {
                 throw new FluentValidation.ValidationException(validationResult.Errors);
-            }
 
-            var shop = await _shopRepository.GetByOwnerIdAsync(userId);
-            if (shop == null)
-            {
-                throw new NotFoundException("Shop not found.");
-            }
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salonu düzenleme yetkiniz yok.");
 
             shop.Name = request.Name;
             shop.Description = request.Description;
@@ -342,6 +374,7 @@ namespace KuaforumAPI.Infrastructure.Services
             return new ShopDto
             {
                 Id = shop.Id,
+                OwnerId = shop.OwnerId,
                 Name = shop.Name,
                 Description = shop.Description,
                 Address = shop.Address,
@@ -370,6 +403,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
+                Code = shop.Code,
                 SaturdayClosingTime = saturdayClosingTime,
                 WeeklySchedule = weeklySchedule.OrderBy(s => s.DayOfWeek == 0 ? 7 : s.DayOfWeek).ToList(),
                 CreatedAt = shop.CreatedAt,
@@ -487,8 +521,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (!isAdmin)
             {
-                var shop = await _shopRepository.GetByOwnerIdAsync(userId);
-                if (shop == null || shop.Id != image.ShopId)
+                var shop = await _shopRepository.GetByIdAsync(image.ShopId);
+                if (shop == null || shop.OwnerId != userId)
                     throw new UnauthorizedAccessException("Bu görseli silme yetkiniz yok.");
             }
 
@@ -498,8 +532,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task UpdateAutoProcessAsync(string ownerId, Guid shopId, bool isEnabled)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null || shop.Id != shopId) throw new FluentValidation.ValidationException("Shop not found or unauthorized.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId) throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             shop.IsAutoProcessEnabled = isEnabled;
             await _shopRepository.UpdateAsync(shop);
@@ -516,8 +550,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task AddClosureDateAsync(string ownerId, Guid shopId, DateTime date, string? reason)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null || shop.Id != shopId) throw new FluentValidation.ValidationException("Shop not found or unauthorized.");
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null || shop.OwnerId != ownerId) throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             if (date.Date < _dateTimeService.Now.Date)
                 throw new FluentValidation.ValidationException("Geçmiş bir tarihe kapalı gün eklenemez.");
@@ -541,18 +575,17 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Include(c => c.Shop)
                 .FirstOrDefaultAsync(c => c.Id == closureDateId);
             if (closure == null) throw new NotFoundException("Kapalı gün bulunamadı.");
-
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null || shop.Id != closure.ShopId) throw new FluentValidation.ValidationException("Unauthorized.");
+            if (closure.Shop.OwnerId != ownerId) throw new FluentValidation.ValidationException("Bu kapalı günü silme yetkiniz yok.");
 
             _context.ShopClosureDates.Remove(closure);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<ShopDashboardStatsDto> GetDashboardStatsAsync(string ownerId)
+        public async Task<ShopDashboardStatsDto> GetDashboardStatsAsync(Guid shopId, string ownerId)
         {
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
+            var shop = await _shopRepository.GetByIdAsync(shopId);
             if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+            if (shop.OwnerId != ownerId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
 
             var now = _dateTimeService.Now;
             var today = now.Date;
@@ -713,6 +746,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var shops = pagedShops.Select(shop => new ShopDto
             {
                 Id = shop.Id,
+                OwnerId = shop.OwnerId,
                 Name = shop.Name,
                 Description = shop.Description,
                 Address = shop.Address,
@@ -760,9 +794,7 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var image = await _context.ShopImages.Include(i => i.Shop).FirstOrDefaultAsync(i => i.Id == imageId);
             if (image == null) throw new NotFoundException("Fotoğraf bulunamadı.");
-
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null || shop.Id != image.ShopId)
+            if (image.Shop.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bu fotoğrafa etiket ekleme yetkiniz yok.");
 
             var tag = new ShopImageTag { ShopImageId = imageId, Name = name.Trim() };
@@ -774,11 +806,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task UpdateImageTagAsync(string ownerId, Guid tagId, string name)
         {
-            var tag = await _context.ShopImageTags.Include(t => t.ShopImage).FirstOrDefaultAsync(t => t.Id == tagId);
+            var tag = await _context.ShopImageTags
+                .Include(t => t.ShopImage).ThenInclude(i => i.Shop)
+                .FirstOrDefaultAsync(t => t.Id == tagId);
             if (tag == null) throw new NotFoundException("Etiket bulunamadı.");
-
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null || shop.Id != tag.ShopImage.ShopId)
+            if (tag.ShopImage.Shop.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bu etiketi düzenleme yetkiniz yok.");
 
             tag.Name = name.Trim();
@@ -787,11 +819,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task DeleteImageTagAsync(string ownerId, Guid tagId)
         {
-            var tag = await _context.ShopImageTags.Include(t => t.ShopImage).FirstOrDefaultAsync(t => t.Id == tagId);
+            var tag = await _context.ShopImageTags
+                .Include(t => t.ShopImage).ThenInclude(i => i.Shop)
+                .FirstOrDefaultAsync(t => t.Id == tagId);
             if (tag == null) throw new NotFoundException("Etiket bulunamadı.");
-
-            var shop = await _shopRepository.GetByOwnerIdAsync(ownerId);
-            if (shop == null || shop.Id != tag.ShopImage.ShopId)
+            if (tag.ShopImage.Shop.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bu etiketi silme yetkiniz yok.");
 
             _context.ShopImageTags.Remove(tag);

@@ -48,11 +48,12 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.Property(e => e.City).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.District).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.PhoneNumber).IsRequired().HasMaxLength(20);
-                
+                entity.Property(e => e.Code).HasMaxLength(10);
+
                 entity.HasOne(s => s.Owner)
                     .WithMany()
                     .HasForeignKey(s => s.OwnerId)
-                    .OnDelete(DeleteBehavior.Restrict); 
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // ShopImage Configuration
@@ -367,11 +368,12 @@ namespace KuaforumAPI.Persistence.Contexts
                 .HasIndex(s => new { s.OwnerId, s.IsActive })
                 .HasDatabaseName("IX_Shops_Owner_Active");
 
-            // Bir kullanıcı yalnızca bir salon sahibi olabilir (race condition koruması)
+            // Salon kodu benzersizliği (filtered: sadece NULL olmayan kodlar)
             builder.Entity<Shop>()
-                .HasIndex(s => s.OwnerId)
+                .HasIndex(s => s.Code)
                 .IsUnique()
-                .HasDatabaseName("UQ_Shops_OwnerId");
+                .HasFilter("[Code] IS NOT NULL")
+                .HasDatabaseName("UQ_Shops_Code");
 
             // Yorum sorguları
             builder.Entity<Review>()

@@ -20,92 +20,92 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpPost]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> AddEmployee([FromBody] CreateEmployeeDto request)
+        public async Task<IActionResult> AddEmployee([FromQuery] Guid shopId, [FromBody] CreateEmployeeDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _employeeService.AddEmployeeAsync(userId, request);
+            var result = await _employeeService.AddEmployeeAsync(shopId, userId, request);
 
             string message = result.IsNewUser
                 ? $"{result.FirstName} {result.LastName} sisteme başarıyla kaydedildi ve çalışan olarak eklendi. Giriş bilgileri — Telefon: {result.PhoneNumber} | Geçici Şifre: {result.TemporaryPassword}"
                 : $"{result.FirstName} {result.LastName} zaten sistemde kayıtlıydı, çalışan rolü başarıyla eklendi.";
 
-            return Ok(new 
-            { 
+            return Ok(new
+            {
                 message = message,
                 temporaryPassword = result.TemporaryPassword,
                 isNewUser = result.IsNewUser
             });
         }
 
-        [HttpPost("{id}/services")]
-        [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> AssignServices(Guid id, [FromBody] AssignServicesDto request)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _employeeService.AssignServicesAsync(userId, id, request.ServiceIds);
-            return Ok(new { Message = "Services assigned successfully." });
-        }
-
         [HttpGet]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> GetEmployees()
+        public async Task<IActionResult> GetEmployees([FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _employeeService.GetEmployeesAsync(userId);
+            var result = await _employeeService.GetEmployeesAsync(shopId, userId);
             return Ok(result);
         }
 
         [HttpPut("{id}")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> UpdateEmployee(Guid id, [FromBody] UpdateEmployeeOwnerDto request)
+        public async Task<IActionResult> UpdateEmployee(Guid id, [FromQuery] Guid shopId, [FromBody] UpdateEmployeeOwnerDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _employeeService.UpdateEmployeeAsync(userId, id, request);
-            return Ok(new { Message = "Employee updated successfully." });
+            await _employeeService.UpdateEmployeeAsync(shopId, userId, id, request);
+            return Ok(new { Message = "Çalışan güncellendi." });
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> DeleteEmployee(Guid id)
+        public async Task<IActionResult> DeleteEmployee(Guid id, [FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _employeeService.DeleteEmployeeAsync(userId, id);
-            return Ok(new { Message = "Employee deleted successfully." });
+            await _employeeService.DeleteEmployeeAsync(shopId, userId, id);
+            return Ok(new { Message = "Çalışan silindi." });
         }
 
         [HttpPatch("{id}/restore")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> RestoreEmployee(Guid id)
+        public async Task<IActionResult> RestoreEmployee(Guid id, [FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _employeeService.RestoreEmployeeAsync(userId, id);
+            await _employeeService.RestoreEmployeeAsync(shopId, userId, id);
             return Ok(new { Message = "Çalışan başarıyla geri yüklendi." });
+        }
+
+        [HttpPost("{id}/services")]
+        [Authorize(Roles = Roles.SalonOwner)]
+        public async Task<IActionResult> AssignServices(Guid id, [FromQuery] Guid shopId, [FromBody] AssignServicesDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _employeeService.AssignServicesAsync(shopId, userId, id, request.ServiceIds);
+            return Ok(new { Message = "Hizmetler atandı." });
         }
 
         [HttpGet("{id}/services")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> GetServices(Guid id)
+        public async Task<IActionResult> GetServices(Guid id, [FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _employeeService.GetEmployeeServicesAsync(userId, id);
+            var result = await _employeeService.GetEmployeeServicesAsync(shopId, userId, id);
             return Ok(result);
         }
 
         [HttpPut("{id}/schedule")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> UpdateSchedule(Guid id, [FromBody] UpdateScheduleDto request)
+        public async Task<IActionResult> UpdateSchedule(Guid id, [FromQuery] Guid shopId, [FromBody] UpdateScheduleDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _employeeService.UpdateScheduleAsync(userId, id, request);
-            return Ok(new { Message = "Schedule updated successfully." });
+            await _employeeService.UpdateScheduleAsync(shopId, userId, id, request);
+            return Ok(new { Message = "Çalışma saatleri güncellendi." });
         }
 
         [HttpGet("{id}/schedule")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> GetSchedule(Guid id)
+        public async Task<IActionResult> GetSchedule(Guid id, [FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _employeeService.GetScheduleAsync(userId, id);
+            var result = await _employeeService.GetScheduleAsync(shopId, userId, id);
             return Ok(result);
         }
 
@@ -124,6 +124,7 @@ namespace KuaforumAPI.WebAPI.Controllers
             var result = await _employeeService.GetPublicShopSchedulesAsync(shopId);
             return Ok(result);
         }
+
         [HttpGet("me")]
         [Authorize(Roles = Roles.Employee)]
         public async Task<IActionResult> GetMyProfile()
@@ -139,7 +140,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             await _employeeService.UpdateMyProfileAsync(userId, request);
-            return Ok(new { Message = "Profile updated successfully." });
+            return Ok(new { Message = "Profil güncellendi." });
         }
 
         [HttpGet("me/schedule")]
@@ -164,28 +165,28 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpGet("{id}/leave-dates")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> GetLeaveDates(Guid id)
+        public async Task<IActionResult> GetLeaveDates(Guid id, [FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _employeeService.GetLeaveDatesAsync(userId, id);
+            var result = await _employeeService.GetLeaveDatesAsync(shopId, userId, id);
             return Ok(result);
         }
 
         [HttpPost("{id}/leave-dates")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> AddLeaveDate(Guid id, [FromBody] AddLeaveDateRequest request)
+        public async Task<IActionResult> AddLeaveDate(Guid id, [FromQuery] Guid shopId, [FromBody] AddLeaveDateRequest request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _employeeService.AddLeaveDateAsync(userId, id, request.LeaveDate, request.Reason);
+            await _employeeService.AddLeaveDateAsync(shopId, userId, id, request.LeaveDate, request.Reason);
             return Ok(new { Message = "İzin günü eklendi." });
         }
 
         [HttpDelete("leave-dates/{leaveDateId}")]
         [Authorize(Roles = Roles.SalonOwner)]
-        public async Task<IActionResult> RemoveLeaveDate(Guid leaveDateId)
+        public async Task<IActionResult> RemoveLeaveDate(Guid leaveDateId, [FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _employeeService.RemoveLeaveDateAsync(userId, leaveDateId);
+            await _employeeService.RemoveLeaveDateAsync(shopId, userId, leaveDateId);
             return Ok(new { Message = "İzin günü silindi." });
         }
 

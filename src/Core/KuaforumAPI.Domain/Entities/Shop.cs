@@ -45,6 +45,9 @@ namespace KuaforumAPI.Domain.Entities
 
         public TargetGender GenderPreference { get; set; } = TargetGender.Unisex;
 
+        // Plaka + 6 harf, örn: 34PPGMRN — onay sırasında üretilir
+        public string? Code { get; set; }
+
         public bool IsActive { get; set; } = true;
 
         public bool IsAutoProcessEnabled { get; set; } = false;

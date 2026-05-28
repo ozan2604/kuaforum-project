@@ -26,6 +26,17 @@ namespace KuaforumAPI.Persistence.Repositories
                 .FirstOrDefaultAsync(s => s.OwnerId == ownerId);
         }
 
+        public async Task<List<Shop>> GetAllByOwnerIdAsync(string ownerId)
+        {
+            return await _context.Shops
+                .Include(s => s.Categories)
+                .Include(s => s.ClosureDates)
+                .Include(s => s.Videos)
+                .Where(s => s.OwnerId == ownerId)
+                .OrderByDescending(s => s.CreatedAt)
+                .ToListAsync();
+        }
+
         public override async Task<Shop> GetByIdAsync(Guid id)
         {
             return await _context.Shops
@@ -167,21 +178,22 @@ namespace KuaforumAPI.Persistence.Repositories
             // Delete Shop Images
             _context.ShopImages.RemoveRange(galleryImages);
 
-            // Delete Applications
-            var applications = await _context.SalonOwnerApplications.Where(a => a.UserId == shop.OwnerId).ToListAsync();
-            _context.SalonOwnerApplications.RemoveRange(applications);
-
-            // Remove Roles (SalonOwner and Employee) to prevent panel access after shop deletion
+            // Remove Employee role from this shop's employees
             if (shop != null)
             {
                 var ownerId = shop.OwnerId;
                 var employeeUserIds = employees.Where(e => e.UserId != null).Select(e => e.UserId).ToList();
 
-                var salonOwnerRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == KuaforumAPI.Application.Constants.Roles.SalonOwner);
-                if (salonOwnerRole != null)
+                // SalonOwner rolünü yalnızca sahibin başka aktif salonu kalmadığında kaldır
+                var remainingShopCount = await _context.Shops.CountAsync(s => s.OwnerId == ownerId && s.Id != shopId);
+                if (remainingShopCount == 0)
                 {
-                    var ownerRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == ownerId && ur.RoleId == salonOwnerRole.Id);
-                    if (ownerRole != null) _context.UserRoles.Remove(ownerRole);
+                    var salonOwnerRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == KuaforumAPI.Application.Constants.Roles.SalonOwner);
+                    if (salonOwnerRole != null)
+                    {
+                        var ownerRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == ownerId && ur.RoleId == salonOwnerRole.Id);
+                        if (ownerRole != null) _context.UserRoles.Remove(ownerRole);
+                    }
                 }
 
                 var employeeRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == KuaforumAPI.Application.Constants.Roles.Employee);

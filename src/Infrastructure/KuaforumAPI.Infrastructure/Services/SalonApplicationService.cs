@@ -10,6 +10,7 @@ using KuaforumAPI.Persistence.Contexts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -22,8 +23,9 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly ApplicationDbContext _context;
         private readonly ISmsService _smsService;
         private readonly ILogger<SalonApplicationService> _logger;
+        private readonly IShopCodeGeneratorService _codeGenerator;
 
-        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager, IDateTimeService dateTimeService, ApplicationDbContext context, ISmsService smsService, ILogger<SalonApplicationService> logger)
+        public SalonApplicationService(ISalonOwnerApplicationRepository repository, IShopRepository shopRepository, UserManager<ApplicationUser> userManager, IDateTimeService dateTimeService, ApplicationDbContext context, ISmsService smsService, ILogger<SalonApplicationService> logger, IShopCodeGeneratorService codeGenerator)
         {
             _repository = repository;
             _shopRepository = shopRepository;
@@ -32,15 +34,17 @@ namespace KuaforumAPI.Infrastructure.Services
             _context = context;
             _smsService = smsService;
             _logger = logger;
+            _codeGenerator = codeGenerator;
         }
 
         public async Task ApplyAsync(string userId, CreateSalonApplicationDto request)
         {
-            var existingShop = await _shopRepository.GetByOwnerIdAsync(userId);
-            if (existingShop != null)
-            {
-                throw new ValidationException("Zaten kayıtlı bir salonunuz bulunmaktadır. Yeni bir başvuru yapamazsınız.");
-            }
+            // Aynı kullanıcının halihazırda bekleyen bir başvurusu varsa engelleyelim (onaylanmış/reddedilmiş olanlar sorun değil)
+            var hasPendingApplication = await _context.SalonOwnerApplications
+                .AnyAsync(a => a.UserId == userId && a.Status == ApplicationStatus.Pending);
+            if (hasPendingApplication)
+                throw new ValidationException("Bekleyen bir başvurunuz zaten var. Sonuçlanmadan yeni başvuru yapamazsınız.");
+
             var application = new SalonOwnerApplication
             {
                 UserId = userId,
@@ -176,16 +180,12 @@ namespace KuaforumAPI.Infrastructure.Services
             var application = await _repository.GetByIdAsync(applicationId);
             if (application == null) throw new NotFoundException("Başvuru bulunamadı.");
 
-            // Check if user already has a shop to prevent duplicates (optional but good safety)
-            var existingShop = await _shopRepository.GetByOwnerIdAsync(application.UserId);
-            if (existingShop != null)
-            {
-                throw new ValidationException("Bu kullanıcının zaten bir salonu var.");
-            }
-
-            var fullAddress = !string.IsNullOrWhiteSpace(application.Address) 
-                ? application.Address 
+            var fullAddress = !string.IsNullOrWhiteSpace(application.Address)
+                ? application.Address
                 : $"{application.Neighborhood} Mah., {application.Street} Sok., No: {application.BuildingNumber}, {application.District}/{application.City}";
+
+            // Salon kodu üret
+            var code = await _codeGenerator.GenerateAsync(application.City ?? "");
 
             // Create Shop
             var shop = new Shop
@@ -205,6 +205,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 GenderPreference = application.GenderPreference,
                 Latitude = application.Latitude,
                 Longitude = application.Longitude,
+                Code = code,
                 CoverImagePath = string.Empty,
                 PromoVideoUrl = string.Empty,
                 CreatedAt = _dateTimeService.Now,
@@ -215,13 +216,17 @@ namespace KuaforumAPI.Infrastructure.Services
 
             // Update Application Status
             application.Status = ApplicationStatus.Approved;
-            
-            // Assign Role
+
+            // Rol ataması: kullanıcı zaten SalonOwner değilse ekle, Customer rolünü kaldır
             var user = await _userManager.FindByIdAsync(application.UserId);
             if (user != null)
             {
-                await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.SalonOwner);
-                await _userManager.RemoveFromRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Customer);
+                var isSalonOwner = await _userManager.IsInRoleAsync(user, KuaforumAPI.Application.Constants.Roles.SalonOwner);
+                if (!isSalonOwner)
+                {
+                    await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.SalonOwner);
+                    await _userManager.RemoveFromRoleAsync(user, KuaforumAPI.Application.Constants.Roles.Customer);
+                }
             }
 
             await _repository.UpdateAsync(application);

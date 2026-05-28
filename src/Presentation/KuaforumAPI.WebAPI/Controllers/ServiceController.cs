@@ -20,64 +20,64 @@ namespace KuaforumAPI.WebAPI.Controllers
 
         [HttpPost("categories")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> CreateCategory([FromBody] CreateServiceCategoryDto request)
+        public async Task<IActionResult> CreateCategory([FromQuery] Guid shopId, [FromBody] CreateServiceCategoryDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _serviceManagementService.CreateCategoryAsync(userId, request);
-            return Ok(new { Message = "Category created successfully." });
+            await _serviceManagementService.CreateCategoryAsync(shopId, userId, request);
+            return Ok(new { Message = "Kategori oluşturuldu." });
         }
 
         [HttpPost("operations")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> CreateService([FromBody] CreateShopServiceDto request)
+        public async Task<IActionResult> CreateService([FromQuery] Guid shopId, [FromBody] CreateShopServiceDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _serviceManagementService.CreateServiceAsync(userId, request);
-            return Ok(new { Message = "Service created successfully." });
+            await _serviceManagementService.CreateServiceAsync(shopId, userId, request);
+            return Ok(new { Message = "Hizmet oluşturuldu." });
         }
 
         [HttpPut("categories/{id}")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] UpdateServiceCategoryDto request)
+        public async Task<IActionResult> UpdateCategory(Guid id, [FromQuery] Guid shopId, [FromBody] UpdateServiceCategoryDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _serviceManagementService.UpdateCategoryAsync(userId, id, request);
-            return Ok(new { Message = "Category updated successfully." });
+            await _serviceManagementService.UpdateCategoryAsync(shopId, userId, id, request);
+            return Ok(new { Message = "Kategori güncellendi." });
         }
 
         [HttpDelete("categories/{id}")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> DeleteCategory(Guid id)
+        public async Task<IActionResult> DeleteCategory(Guid id, [FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _serviceManagementService.DeleteCategoryAsync(userId, id);
-            return Ok(new { Message = "Category deleted successfully." });
+            await _serviceManagementService.DeleteCategoryAsync(shopId, userId, id);
+            return Ok(new { Message = "Kategori silindi." });
         }
 
         [HttpPut("{id}")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> UpdateService(Guid id, [FromBody] UpdateShopServiceDto request)
+        public async Task<IActionResult> UpdateService(Guid id, [FromQuery] Guid shopId, [FromBody] UpdateShopServiceDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _serviceManagementService.UpdateServiceAsync(userId, id, request);
-            return Ok(new { Message = "Service updated successfully." });
+            await _serviceManagementService.UpdateServiceAsync(shopId, userId, id, request);
+            return Ok(new { Message = "Hizmet güncellendi." });
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> DeleteService(Guid id)
+        public async Task<IActionResult> DeleteService(Guid id, [FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _serviceManagementService.DeleteServiceAsync(userId, id);
-            return Ok(new { Message = "Service deleted successfully." });
+            await _serviceManagementService.DeleteServiceAsync(shopId, userId, id);
+            return Ok(new { Message = "Hizmet silindi." });
         }
 
         [HttpGet("my-shop")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
-        public async Task<IActionResult> GetMyShopServices()
+        public async Task<IActionResult> GetMyShopServices([FromQuery] Guid shopId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _serviceManagementService.GetShopServicesAsync(userId);
+            var result = await _serviceManagementService.GetShopServicesAsync(shopId, userId);
             return Ok(result);
         }
 
