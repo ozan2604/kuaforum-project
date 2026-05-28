@@ -49,8 +49,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task UnblockCustomerAsync(string ownerId, Guid shopId, string customerId)
         {
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
-            if (shop == null || shop.Id != shopId) throw new ValidationException("Yetkisiz erişim.");
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && s.OwnerId == ownerId);
+            if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             var block = await _context.ShopBlockedCustomers
                 .FirstOrDefaultAsync(b => b.ShopId == shopId && b.CustomerId == customerId);
@@ -62,8 +62,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<List<BlockedCustomerDto>> GetBlockedCustomersAsync(string ownerId, Guid shopId)
         {
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
-            if (shop == null || shop.Id != shopId) throw new ValidationException("Yetkisiz erişim.");
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && s.OwnerId == ownerId);
+            if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             return await _context.ShopBlockedCustomers
                 .Where(b => b.ShopId == shopId)
@@ -83,8 +83,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<CustomerShopInfoDto?> GetCustomerByPhoneAsync(string ownerId, Guid shopId, string phone)
         {
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
-            if (shop == null || shop.Id != shopId) throw new ValidationException("Yetkisiz erişim.");
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && s.OwnerId == ownerId);
+            if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             var normalizedPhone = phone.Trim();
             var user = await _userManager.Users

@@ -265,9 +265,9 @@ namespace KuaforumAPI.Infrastructure.Services
             await UpdateShopRating(review.ShopId);
         }
 
-        public async Task<IEnumerable<Review>> GetMyShopReviewsAsync(string ownerId)
+        public async Task<IEnumerable<Review>> GetMyShopReviewsAsync(string ownerId, Guid shopId)
         {
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == ownerId);
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && s.OwnerId == ownerId);
             if (shop == null) return Enumerable.Empty<Review>();
 
             return await _context.Reviews
