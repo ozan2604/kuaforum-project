@@ -171,8 +171,26 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<SalonOwnerApplication> GetApplicationByUserIdAsync(string userId)
         {
             var applications = await _repository.GetByUserIdAsync(userId);
-            // Assuming one active application per user for now, or get the latest
-            return applications.OrderByDescending(a => a.CreatedAt).FirstOrDefault();
+            if (!applications.Any()) return null;
+
+            // Pending varsa önce onu göster
+            var pending = applications.OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefault(a => a.Status == ApplicationStatus.Pending);
+            if (pending != null) return pending;
+
+            // Approved varsa yalnızca kullanıcının hâlâ aktif salonu varsa göster
+            var approved = applications.OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefault(a => a.Status == ApplicationStatus.Approved);
+            if (approved != null)
+            {
+                var hasShops = await _context.Shops.AnyAsync(s => s.OwnerId == userId);
+                if (hasShops) return approved;
+                // Salon yok → yeni başvuru yapılabilsin, aşağıya düş
+            }
+
+            // En son reddedilmiş başvuruyu göster (varsa)
+            return applications.OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefault(a => a.Status == ApplicationStatus.Rejected);
         }
 
         public async Task ApproveApplicationAsync(Guid applicationId)
