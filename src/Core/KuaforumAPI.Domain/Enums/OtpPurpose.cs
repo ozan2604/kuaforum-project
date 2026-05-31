@@ -4,6 +4,7 @@ namespace KuaforumAPI.Domain.Enums
     {
         Login = 0,
         Register = 1,
-        PasswordReset = 2
+        PasswordReset = 2,
+        GuestBooking = 3
     }
 }

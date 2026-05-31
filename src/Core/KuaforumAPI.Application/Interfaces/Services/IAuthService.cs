@@ -23,5 +23,9 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<SendOtpResponse> SendForgotPasswordOtpAsync(SendForgotPasswordOtpRequest request);
         Task ResetPasswordWithOtpAsync(ResetPasswordWithOtpRequest request);
         Task LogoutAsync(string userId);
+
+        // Misafir randevu kimlik doğrulama (telefon OTP ile — yeni veya mevcut hesap)
+        Task<SendOtpResponse> SendGuestAuthOtpAsync(SendGuestAuthOtpRequest request);
+        Task<AuthResponse> VerifyGuestAuthOtpAsync(VerifyGuestAuthOtpRequest request);
     }
 }

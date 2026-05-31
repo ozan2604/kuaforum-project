@@ -107,6 +107,26 @@ namespace KuaforumAPI.WebAPI.Controllers
             return NoContent();
         }
 
+        // ─── OTP: Misafir Kimlik Doğrulama ───────────────────────────────────────
+
+        [HttpPost("guest/send-otp")]
+        [AllowAnonymous]
+        [EnableRateLimiting("send-otp")]
+        public async Task<ActionResult<SendOtpResponse>> SendGuestAuthOtp(SendGuestAuthOtpRequest request)
+        {
+            var result = await _authService.SendGuestAuthOtpAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("guest/verify-otp")]
+        [AllowAnonymous]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<AuthResponse>> VerifyGuestAuthOtp(VerifyGuestAuthOtpRequest request)
+        {
+            var result = await _authService.VerifyGuestAuthOtpAsync(request);
+            return Ok(result);
+        }
+
         [HttpPost("forgot-password/send-otp")]
         [EnableRateLimiting("auth")]
         public async Task<IActionResult> SendForgotPasswordOtp(SendForgotPasswordOtpRequest request)

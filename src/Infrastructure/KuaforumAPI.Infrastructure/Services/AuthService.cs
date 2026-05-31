@@ -591,6 +591,81 @@ namespace KuaforumAPI.Infrastructure.Services
             catch { }
         }
 
+        // ─── OTP: Misafir Kimlik Doğrulama ───────────────────────────────────────
+
+        public async Task<SendOtpResponse> SendGuestAuthOtpAsync(SendGuestAuthOtpRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.PhoneNumber))
+                throw new AppValidationException("Telefon numarası boş olamaz.");
+
+            await CheckOtpRateLimitAsync(request.PhoneNumber, OtpPurpose.GuestBooking);
+            await InvalidateExistingOtpsAsync(request.PhoneNumber, OtpPurpose.GuestBooking);
+
+            var code = GenerateOtpCode();
+            var otpEntry = new OtpCode
+            {
+                PhoneNumber = request.PhoneNumber,
+                CodeHash = HashOtp(code),
+                Purpose = OtpPurpose.GuestBooking,
+                ExpiresAt = _dateTimeService.Now.AddMinutes(OtpExpiryMinutes)
+            };
+            _context.OtpCodes.Add(otpEntry);
+            await _context.SaveChangesAsync();
+
+            await _smsService.SendSmsAsync(request.PhoneNumber,
+                $"SALONBİR doğrulama kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
+
+            return new SendOtpResponse
+            {
+                Message = $"Doğrulama kodu {MaskPhone(request.PhoneNumber)} numarasına gönderildi.",
+                ExpiresInSeconds = OtpExpiryMinutes * 60
+            };
+        }
+
+        public async Task<AuthResponse> VerifyGuestAuthOtpAsync(VerifyGuestAuthOtpRequest request)
+        {
+            await ValidateAndConsumeOtpAsync(request.PhoneNumber, request.OtpCode, OtpPurpose.GuestBooking);
+
+            // Mevcut kullanıcı var mı?
+            var existingUser = await FindUserByPhoneAsync(request.PhoneNumber);
+            if (existingUser != null)
+            {
+                // Mevcut kullanıcı olarak giriş yaptır
+                var refreshToken = await CreateRefreshTokenAsync(existingUser.Id);
+                return BuildAuthResponse(existingUser, await GenerateJwtToken(existingUser), refreshToken);
+            }
+
+            // Yeni Customer hesabı oluştur
+            var nameParts = request.Name.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            var firstName = nameParts.Length > 0 ? nameParts[0] : "Misafir";
+            var lastName  = nameParts.Length > 1 ? nameParts[1] : "";
+
+            var newUser = new ApplicationUser
+            {
+                FirstName = firstName,
+                LastName = lastName,
+                UserName = request.PhoneNumber,
+                PhoneNumber = request.PhoneNumber,
+                PhoneNumberConfirmed = true
+            };
+
+            // Rastgele şifre — kullanıcı isterse daha sonra sıfırlayabilir
+            var password = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(12))
+                               .Replace("=", "!").Replace("+", "@").Replace("/", "#")[..12];
+
+            var createResult = await _userManager.CreateAsync(newUser, password);
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                throw new AppValidationException($"Hesap oluşturulamadı: {errors}");
+            }
+
+            await _userManager.AddToRoleAsync(newUser, Application.Constants.Roles.Customer);
+
+            var newRefreshToken = await CreateRefreshTokenAsync(newUser.Id);
+            return BuildAuthResponse(newUser, await GenerateJwtToken(newUser), newRefreshToken);
+        }
+
         // ─── Logout ───────────────────────────────────────────────────────────────
 
         public async Task LogoutAsync(string userId)
