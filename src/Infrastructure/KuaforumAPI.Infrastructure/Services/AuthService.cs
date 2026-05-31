@@ -662,6 +662,13 @@ namespace KuaforumAPI.Infrastructure.Services
 
             await _userManager.AddToRoleAsync(newUser, Application.Constants.Roles.Customer);
 
+            // Şifre SMS ile gönder — kullanıcı daha sonra "Şifremi Unuttum" ile değiştirebilir
+            try
+            {
+                await _smsService.SendSmsAsync(request.PhoneNumber, SmsTemplates.GuestAccountCreated(password));
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Misafir hesap SMS gönderilemedi (ana işlem etkilenmedi)."); }
+
             var newRefreshToken = await CreateRefreshTokenAsync(newUser.Id);
             return BuildAuthResponse(newUser, await GenerateJwtToken(newUser), newRefreshToken);
         }

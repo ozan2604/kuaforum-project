@@ -14,10 +14,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
-using KuaforumAPI.Infrastructure.Services;
-using KuaforumAPI.Application.Interfaces.Services;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -27,19 +23,13 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IDateTimeService _dateTimeService;
         private readonly ISmsService _smsService;
         private readonly ILogger<AppointmentService> _logger;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IMemoryCache _cache;
 
-        private static string OtpKey(string phone) => $"guest_otp:{phone}";
-
-        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService, ISmsService smsService, ILogger<AppointmentService> logger, UserManager<ApplicationUser> userManager, IMemoryCache cache)
+        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService, ISmsService smsService, ILogger<AppointmentService> logger)
         {
             _context = context;
             _dateTimeService = dateTimeService;
             _smsService = smsService;
             _logger = logger;
-            _userManager = userManager;
-            _cache = cache;
         }
 
         public async Task CreateAsync(string userId, CreateAppointmentDto request)
@@ -359,98 +349,6 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
-        }
-
-        public async Task<string> SendGuestOtpAsync(string phone)
-        {
-            // Numara kayıtlı mı?
-            var exists = await _userManager.Users.AnyAsync(u => u.PhoneNumber == phone);
-            if (exists) return "PHONE_EXISTS";
-
-            // 6 haneli OTP üret ve cache'e yaz (5 dakika TTL)
-            var otp = Random.Shared.Next(100_000, 999_999).ToString();
-            _cache.Set(OtpKey(phone), otp, TimeSpan.FromMinutes(5));
-
-            try { await _smsService.SendSmsAsync(phone, SmsTemplates.GuestOtp(otp)); }
-            catch (Exception ex) { _logger.LogWarning(ex, "OTP SMS gönderilemedi."); }
-
-            return "OTP_SENT";
-        }
-
-        public async Task CreateGuestAsync(CreateGuestAppointmentDto request)
-        {
-            // 1. OTP doğrula
-            if (!_cache.TryGetValue(OtpKey(request.CustomerPhone), out string? storedOtp) || storedOtp != request.Otp)
-                throw new ValidationException("Geçersiz veya süresi dolmuş doğrulama kodu. Lütfen yeni kod isteyin.");
-            _cache.Remove(OtpKey(request.CustomerPhone)); // tek kullanımlık
-
-            // 2. Telefon zaten kayıtlı mı? (OTP gönderme ile randevu oluşturma arasında kayıt olmuş olabilir)
-            var existing = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.PhoneNumber == request.CustomerPhone);
-            if (existing != null)
-                throw new ValidationException("PHONE_EXISTS");
-
-            // 2. Yeni Customer hesabı oluştur
-            var nameParts = request.CustomerName.Trim().Split(' ', 2);
-            var user = new ApplicationUser
-            {
-                UserName = request.CustomerPhone,
-                PhoneNumber = request.CustomerPhone,
-                FirstName = nameParts[0],
-                LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty,
-            };
-
-            var tempPassword = GenerateGuestPassword();
-            var createResult = await _userManager.CreateAsync(user, tempPassword);
-            if (!createResult.Succeeded)
-                throw new ValidationException(string.Join(", ", createResult.Errors.Select(e => e.Description)));
-
-            await _userManager.AddToRoleAsync(user, Roles.Customer);
-
-            // 3. Randevuyu mevcut CreateAsync mantığıyla kaydet; hata olursa kullanıcıyı geri al
-            try
-            {
-                await CreateAsync(user.Id, new CreateAppointmentDto
-                {
-                    ShopId = request.ShopId,
-                    ServiceIds = request.ServiceIds,
-                    ShopEmployeeId = request.ShopEmployeeId,
-                    StartTime = request.StartTime,
-                    Note = request.Note,
-                });
-            }
-            catch
-            {
-                await _userManager.DeleteAsync(user);
-                throw;
-            }
-
-            // 4. Hesap bilgilerini SMS ile gönder (randevu SMS'i CreateAsync içinden gönderildi)
-            try
-            {
-                await _smsService.SendSmsAsync(request.CustomerPhone, SmsTemplates.GuestAccountCreated(tempPassword));
-            }
-            catch (Exception ex) { _logger.LogWarning(ex, "Misafir hesap SMS gönderilemedi."); }
-        }
-
-        private static string GenerateGuestPassword()
-        {
-            const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-            const string lower = "abcdefghjkmnpqrstuvwxyz";
-            const string digits = "23456789";
-            const string special = "!@#$";
-
-            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-            char Pick(string s) { var b = new byte[1]; rng.GetBytes(b); return s[b[0] % s.Length]; }
-
-            var chars = new[]
-            {
-                Pick(upper), Pick(upper),
-                Pick(lower), Pick(lower), Pick(lower),
-                Pick(digits), Pick(digits),
-                Pick(special)
-            };
-            return new string(chars.OrderBy(_ => Guid.NewGuid()).ToArray());
         }
 
         public async Task<PagedResult<AppointmentDto>> GetMyAppointmentsAsync(string userId, int page = 1, int pageSize = 20)

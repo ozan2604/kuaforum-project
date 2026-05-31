@@ -145,18 +145,6 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         }));
 
-    // Misafir randevu oluşturma: her IP'ye 1 dakikada 3, saatte 10 istek
-    options.AddPolicy("guest-appointments", ctx => RateLimitPartition.GetSlidingWindowLimiter(
-        partitionKey: GetIp(ctx),
-        factory: _ => new SlidingWindowRateLimiterOptions
-        {
-            PermitLimit = 3,
-            Window = TimeSpan.FromMinutes(1),
-            SegmentsPerWindow = 3,
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = 0
-        }));
-
     // Salon başvurusu: her IP'ye 1 saatte 3 istek
     options.AddPolicy("application", ctx => RateLimitPartition.GetFixedWindowLimiter(
         partitionKey: GetIp(ctx),

@@ -98,11 +98,14 @@ namespace KuaforumAPI.Infrastructure.Services
 
             using var stream = file.OpenReadStream();
 
-            // Cloudinary'e orijinal formatıyla yükle (MP4 dönüşümü asenkron olduğu için 404 hatasına sebep oluyordu)
+            // Orijinal formatıyla yükle — eager transformation kullanma (asenkron olduğu için 404 verir)
+            // UseFilename=true: Cloudinary public ID'de orijinal dosya adını (.mp4 uzantısıyla) kullanır
             var uploadParams = new VideoUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = folderName
+                Folder = folderName,
+                UseFilename = true,
+                UniqueFilename = true
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -112,7 +115,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 _logger.LogError("Cloudinary video yükleme başarısız. Klasör: {Folder}, Hata: {Error}", folderName, uploadResult.Error.Message);
                 throw new InvalidOperationException($"Video yüklenemedi: {uploadResult.Error.Message}");
             }
-            string finalUrl = uploadResult.SecureUrl.ToString();
+
+            // URL'e f_mp4 delivery dönüşümü ekle: kaynak zaten MP4 ise sıfır maliyet passthrough,
+            // tarayıcılar doğru Content-Type alır. Eager/arka plan dönüşümü DEĞİL, on-demand delivery.
+            string rawUrl = uploadResult.SecureUrl.ToString();
+            string finalUrl = rawUrl.Replace("/video/upload/", "/video/upload/f_mp4/");
 
             _logger.LogInformation("Video yüklendi. Klasör: {Folder}, URL: {Url}", folderName, finalUrl);
             return finalUrl;

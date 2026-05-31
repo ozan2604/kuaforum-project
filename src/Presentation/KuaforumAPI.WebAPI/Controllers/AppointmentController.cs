@@ -111,28 +111,6 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Randevu iptal edildi." });
         }
 
-        [HttpPost("guest/send-otp")]
-        [AllowAnonymous]
-        [EnableRateLimiting("send-otp")]
-        public async Task<IActionResult> SendGuestOtp([FromBody] SendGuestOtpDto request)
-        {
-            if (string.IsNullOrWhiteSpace(request.Phone) ||
-                !System.Text.RegularExpressions.Regex.IsMatch(request.Phone, @"^05[0-9]{9}$"))
-                return BadRequest(new { Message = "Telefon numarası 05XXXXXXXXX formatında olmalıdır." });
-
-            var status = await _appointmentService.SendGuestOtpAsync(request.Phone);
-            return Ok(new { Status = status });
-        }
-
-        [HttpPost("guest")]
-        [AllowAnonymous]
-        [EnableRateLimiting("guest-appointments")]
-        public async Task<IActionResult> CreateGuest([FromBody] CreateGuestAppointmentDto request)
-        {
-            await _appointmentService.CreateGuestAsync(request);
-            return Ok(new { Message = "Randevunuz oluşturuldu, hesabınız hazır." });
-        }
-
         [HttpGet("availability")]
         [AllowAnonymous]
         public async Task<IActionResult> GetAvailability([FromQuery] Guid employeeId, [FromQuery] string date)

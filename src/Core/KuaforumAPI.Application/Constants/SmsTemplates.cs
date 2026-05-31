@@ -109,6 +109,6 @@ namespace KuaforumAPI.Application.Constants
             $"SALONBİR doğrulama kodunuz: {otp} — Kod 5 dakika geçerlidir. Paylaşmayın.";
 
         public static string GuestAccountCreated(string tempPassword) =>
-            $"SALONBİR hesabınız oluşturuldu. Kullanıcı adınız telefon numaranız, geçici şifreniz: {tempPassword} — salonbir.com adresinden giriş yapabilirsiniz.";
+            $"SALONBİR hesabınız oluşturuldu. Kullanıcı adınız telefon numaranız, geçici şifreniz: {tempPassword} — Guvenliginiz icin profilinizden sifrenizi degistirmenizi oneririz. salonbir.com";
     }
 }
