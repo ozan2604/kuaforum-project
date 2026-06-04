@@ -11,7 +11,7 @@ namespace KuaforumAPI.Domain.Enums
         CiltBakimMerkezi = 8,
         LazerEpilasyon = 9,
         MasajSalonu = 10,
-        Solaryum = 11,
+        SacKaynakProtez = 11,
         MakyajKasKirpikStudyosu = 12,
         Diger = 99
     }
