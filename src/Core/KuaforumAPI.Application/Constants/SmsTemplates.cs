@@ -100,6 +100,14 @@ namespace KuaforumAPI.Application.Constants
         public static string EmployeeRestored(string shopName) =>
             $"{shopName} salonuna yeniden aktif edildiniz. Panelinize erişebilirsiniz.";
 
+        // ── Admin tarafından oluşturulan salon SMS'leri ──────────────────────
+
+        public static string AdminCreatedNewSalonOwner(string shopName, string tempPassword) =>
+            $"SALONBİR: {shopName} salonu için hesabınız oluşturuldu. Salon sahibi olarak tanımlandınız. Geçici şifreniz: {tempPassword} - salonbir.com adresinden giriş yapabilirsiniz.";
+
+        public static string AdminAssignedExistingSalonOwner(string shopName) =>
+            $"SALONBİR: {shopName} salonu hesabınıza tanımlandı. Salon panelinize erişebilirsiniz.";
+
         // ── Kimlik / güvenlik SMS'leri ───────────────────────────────────────
 
         public static string PasswordChanged() =>
