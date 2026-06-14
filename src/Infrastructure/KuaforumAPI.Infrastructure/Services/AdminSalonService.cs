@@ -62,7 +62,9 @@ namespace KuaforumAPI.Infrastructure.Services
                         Email = $"{request.PhoneNumber}@salonbir.dummy",
                         PhoneNumber = request.PhoneNumber,
                         EmailConfirmed = true,
-                        PhoneNumberConfirmed = true
+                        PhoneNumberConfirmed = true,
+                        FirstName = request.FirstName ?? string.Empty,
+                        LastName = request.LastName ?? string.Empty,
                     };
 
                     var createResult = await _userManager.CreateAsync(user, tempPassword);

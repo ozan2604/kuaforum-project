@@ -41,5 +41,11 @@ namespace KuaforumAPI.Application.DTOs.AdminSalon
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+
+        [MaxLength(50)]
+        public string? FirstName { get; set; }
+
+        [MaxLength(50)]
+        public string? LastName { get; set; }
     }
 }
