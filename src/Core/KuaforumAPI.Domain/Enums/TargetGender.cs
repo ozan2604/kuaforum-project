@@ -4,6 +4,7 @@ namespace KuaforumAPI.Domain.Enums
     {
         Kadin = 1,
         Erkek = 2,
-        Unisex = 3
+        Unisex = 3,
+        Pet = 4
     }
 }

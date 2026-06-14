@@ -10,7 +10,7 @@ namespace KuaforumAPI.Domain.Enums
         TirnakSalonu = 7,
         CiltBakimMerkezi = 8,
         LazerEpilasyon = 9,
-        MasajSalonu = 10,
+        PetKuafor = 10,
         SacKaynakProtez = 11,
         MakyajKasKirpikStudyosu = 12,
         Diger = 99
