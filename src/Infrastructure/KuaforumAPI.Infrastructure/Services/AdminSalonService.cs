@@ -92,6 +92,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     Name = request.ShopName,
                     Description = null,
                     PhoneNumber = request.PhoneNumber,
+                    ContactEmail = string.Empty,
                     City = request.City ?? "",
                     District = request.District ?? "",
                     Neighborhood = request.Neighborhood,
