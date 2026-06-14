@@ -68,6 +68,12 @@ builder.Services.AddHttpClient("nominatim", c =>
     c.DefaultRequestHeaders.Add("Accept-Language", "tr");
 });
 
+builder.Services.AddHttpClient("turkiyeapi", c =>
+{
+    c.BaseAddress = new Uri("https://api.turkiyeapi.dev/");
+    c.Timeout = TimeSpan.FromSeconds(15);
+});
+
 builder.Services.AddHttpClient("netgsm", c =>
 {
     c.BaseAddress = new Uri("https://api.netgsm.com.tr");
