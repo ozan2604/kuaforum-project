@@ -136,11 +136,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
         private static string GenerateTempPassword()
         {
-            const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-            const string lower = "abcdefghjkmnpqrstuvwxyz";
-            const string digits = "23456789";
-            var rng = Random.Shared;
-            return $"S{upper[rng.Next(upper.Length)]}{lower[rng.Next(lower.Length)]}{digits[rng.Next(digits.Length)]}{digits[rng.Next(digits.Length)]}{lower[rng.Next(lower.Length)]}{upper[rng.Next(upper.Length)]}!";
+            const string chars = "abcdefghijkmnpqrstuvwxyz23456789";
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+            var bytes = new byte[6];
+            rng.GetBytes(bytes);
+            return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
         }
     }
 }

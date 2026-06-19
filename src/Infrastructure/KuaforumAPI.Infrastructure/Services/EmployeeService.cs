@@ -172,28 +172,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
         private static string GenerateTemporaryPassword()
         {
-            const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-            const string lower = "abcdefghjkmnpqrstuvwxyz";
-            const string digits = "23456789";
-            const string special = "!@#$";
-
+            const string chars = "abcdefghijkmnpqrstuvwxyz23456789";
             using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-            char Pick(string s) { var b = new byte[1]; rng.GetBytes(b); return s[b[0] % s.Length]; }
-
-            var chars = new[]
-            {
-                Pick(upper), Pick(upper),
-                Pick(lower), Pick(lower), Pick(lower),
-                Pick(digits), Pick(digits),
-                Pick(special)
-            };
-
-            var orderBytes = new byte[chars.Length * 4];
-            rng.GetBytes(orderBytes);
-            return new string(chars.Select((c, i) => (c, BitConverter.ToInt32(orderBytes, i * 4)))
-                                   .OrderBy(x => x.Item2)
-                                   .Select(x => x.c)
-                                   .ToArray());
+            var bytes = new byte[6];
+            rng.GetBytes(bytes);
+            return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
         }
 
         public async Task<List<EmployeeListDto>> GetEmployeesAsync(Guid shopId, string ownerId)
