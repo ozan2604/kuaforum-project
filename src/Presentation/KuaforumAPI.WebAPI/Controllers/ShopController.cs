@@ -48,10 +48,10 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPut("{shopId}")]
-        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> UpdateShop(Guid shopId, [FromBody] CreateShopDto request)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             try
             {
                 await _shopService.UpdateShopAsync(shopId, userId, request);
@@ -64,10 +64,10 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpGet("{shopId}/dashboard-stats")]
-        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> GetDashboardStats(Guid shopId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             try
             {
                 var stats = await _shopService.GetDashboardStatsAsync(shopId, userId);
@@ -260,13 +260,13 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPost("gallery-images/{imageId}/tags")]
-        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> AddImageTag(Guid imageId, [FromBody] string name)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return BadRequest(new { message = "Etiket adı boş olamaz." });
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             try
             {
                 var tag = await _shopService.AddImageTagAsync(userId, imageId, name);
@@ -283,13 +283,13 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPut("gallery-images/tags/{tagId}")]
-        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> UpdateImageTag(Guid tagId, [FromBody] string name)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return BadRequest(new { message = "Etiket adı boş olamaz." });
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             try
             {
                 await _shopService.UpdateImageTagAsync(userId, tagId, name);
@@ -306,10 +306,10 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpDelete("gallery-images/tags/{tagId}")]
-        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> DeleteImageTag(Guid tagId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             try
             {
                 await _shopService.DeleteImageTagAsync(userId, tagId);
@@ -326,10 +326,10 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPatch("{id}/auto-process")]
-        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> UpdateAutoProcess(Guid id, [FromBody] bool isEnabled)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             await _shopService.UpdateAutoProcessAsync(userId, id, isEnabled);
             return Ok(new { Message = "Auto process setting updated." });
         }
@@ -343,19 +343,19 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPost("{shopId}/closure-dates")]
-        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> AddClosureDate(Guid shopId, [FromBody] AddClosureDateRequest request)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             await _shopService.AddClosureDateAsync(userId, shopId, request.Date, request.Reason);
             return Ok(new { Message = "Kapalı gün eklendi." });
         }
 
         [HttpDelete("closure-dates/{id}")]
-        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.SalonOwner)]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> RemoveClosureDate(Guid id)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             await _shopService.RemoveClosureDateAsync(userId, id);
             return Ok(new { Message = "Kapalı gün silindi." });
         }

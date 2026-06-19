@@ -55,7 +55,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new FluentValidation.ValidationException(validationResult.Errors);
 
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new KuaforumAPI.Application.Exceptions.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -199,7 +199,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<List<EmployeeListDto>> GetEmployeesAsync(Guid shopId, string ownerId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId) return new List<EmployeeListDto>();
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId)) return new List<EmployeeListDto>();
 
             var employees = await _context.ShopEmployees
                 .Where(se => se.ShopId == shopId)
@@ -251,7 +251,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task AssignServicesAsync(Guid shopId, string ownerId, Guid shopEmployeeId, List<Guid> serviceIds)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
@@ -289,7 +289,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<List<ShopServiceDto>> GetEmployeeServicesAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
@@ -315,7 +315,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task UpdateEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId, UpdateEmployeeOwnerDto request)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
@@ -342,7 +342,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task DeleteEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
@@ -374,7 +374,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task RestoreEmployeeAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
@@ -412,7 +412,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task UpdateScheduleAsync(Guid shopId, string ownerId, Guid shopEmployeeId, UpdateScheduleDto request)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
@@ -447,7 +447,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<List<ScheduleDto>> GetScheduleAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _shopEmployeeRepository.GetByIdAsync(shopEmployeeId);
@@ -609,7 +609,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<List<EmployeeLeaveDateDto>> GetLeaveDatesAsync(Guid shopId, string ownerId, Guid shopEmployeeId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
@@ -636,7 +636,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task AddLeaveDateAsync(Guid shopId, string ownerId, Guid shopEmployeeId, string leaveDate, string? reason)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var employee = await _context.ShopEmployees
@@ -669,7 +669,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task RemoveLeaveDateAsync(Guid shopId, string ownerId, Guid leaveDateId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var leave = await _context.EmployeeLeaveDates

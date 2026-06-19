@@ -133,7 +133,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         [Authorize]
         public async Task<IActionResult> GetMyShopReviews([FromQuery] Guid shopId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             var reviews = await _reviewService.GetMyShopReviewsAsync(userId, shopId);
 
             var dtos = reviews.Select(r => new ReviewListDto

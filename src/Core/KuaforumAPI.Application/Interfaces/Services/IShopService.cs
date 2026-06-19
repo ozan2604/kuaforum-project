@@ -13,7 +13,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<ShopDto> GetShopByOwnerIdAsync(string userId);
         // Sahibin tüm salonlarını döndürür
         Task<List<ShopDto>> GetMyShopsAsync(string userId);
-        Task UpdateShopAsync(Guid shopId, string userId, CreateShopDto request);
+        Task UpdateShopAsync(Guid shopId, string? userId, CreateShopDto request);
         Task<IEnumerable<ShopDto>> GetAllShopsAsync(string? city = null, string? district = null, string? neighborhood = null);
         Task<PagedResult<ShopDto>> GetPublicShopsPagedAsync(string? city, string? district, string? neighborhood, int pageNumber, int pageSize);
         Task DeleteShopAsync(Guid id);
@@ -27,13 +27,13 @@ namespace KuaforumAPI.Application.Interfaces.Services
 
         Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files);
         Task DeleteGalleryImageAsync(Guid imageId, string userId, bool isAdmin);
-        Task UpdateAutoProcessAsync(string ownerId, Guid shopId, bool isEnabled);
+        Task UpdateAutoProcessAsync(string? ownerId, Guid shopId, bool isEnabled);
 
         Task<List<ShopClosureDateDto>> GetClosureDatesAsync(Guid shopId);
-        Task AddClosureDateAsync(string ownerId, Guid shopId, DateTime date, string? reason);
-        Task RemoveClosureDateAsync(string ownerId, Guid closureDateId);
+        Task AddClosureDateAsync(string? ownerId, Guid shopId, DateTime date, string? reason);
+        Task RemoveClosureDateAsync(string? ownerId, Guid closureDateId);
 
-        Task<ShopDashboardStatsDto> GetDashboardStatsAsync(Guid shopId, string ownerId);
+        Task<ShopDashboardStatsDto> GetDashboardStatsAsync(Guid shopId, string? ownerId);
         Task<(int TotalCount, IEnumerable<ShopDto> Shops)> GetAllShopsAdminAsync(string? search, int page, int pageSize);
 
         Task<ShopImageTagDto> AddImageTagAsync(string ownerId, Guid imageId, string name);

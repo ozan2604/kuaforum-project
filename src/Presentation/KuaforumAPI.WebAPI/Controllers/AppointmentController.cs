@@ -86,19 +86,19 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpGet("shop/{shopId}")]
-        [Authorize(Roles = Roles.SalonOwner)]
+        [Authorize(Roles = $"{Roles.SalonOwner},{Roles.Admin}")]
         public async Task<IActionResult> GetShopAppointments(Guid shopId, [FromQuery] AppointmentStatus? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null, [FromQuery] DateTime? date = null, [FromQuery] Guid? employeeId = null, [FromQuery] Guid? serviceId = null)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             var result = await _appointmentService.GetShopAppointmentsAsync(userId, shopId, status, page, pageSize, searchTerm, date, employeeId, serviceId);
             return Ok(result);
         }
 
         [HttpPut("{id}/status")]
-        [Authorize(Roles = Roles.SalonOwner)]
+        [Authorize(Roles = $"{Roles.SalonOwner},{Roles.Admin}")]
         public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateAppointmentStatusDto request)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             var noShowResult = await _appointmentService.UpdateStatusAsync(userId, id, request);
             return Ok(new { Message = "Appointment status updated.", noShowResult });
         }
@@ -136,10 +136,10 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPut("group/{groupId}/status")]
-        [Authorize(Roles = Roles.SalonOwner)]
+        [Authorize(Roles = $"{Roles.SalonOwner},{Roles.Admin}")]
         public async Task<IActionResult> UpdateGroupStatus(Guid groupId, [FromBody] UpdateAppointmentStatusDto request)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
             var noShowResult = await _appointmentService.UpdateGroupStatusAsync(userId, groupId, request);
             return Ok(new { Message = "Grup randevu durumu güncellendi.", noShowResult });
         }

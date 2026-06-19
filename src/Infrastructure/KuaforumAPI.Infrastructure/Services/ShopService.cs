@@ -159,7 +159,7 @@ namespace KuaforumAPI.Infrastructure.Services
             return result;
         }
 
-        public async Task UpdateShopAsync(Guid shopId, string userId, CreateShopDto request)
+        public async Task UpdateShopAsync(Guid shopId, string? userId, CreateShopDto request)
         {
             var validationResult = await _validator.ValidateAsync(request);
             if (!validationResult.IsValid)
@@ -167,7 +167,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var shop = await _shopRepository.GetByIdAsync(shopId);
             if (shop == null) throw new NotFoundException("Salon bulunamadı.");
-            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salonu düzenleme yetkiniz yok.");
+            if (userId != null && shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salonu düzenleme yetkiniz yok.");
 
             shop.Name = request.Name;
             shop.Description = request.Description;
@@ -530,10 +530,10 @@ namespace KuaforumAPI.Infrastructure.Services
             await _shopImageRepository.DeleteAsync(image);
         }
 
-        public async Task UpdateAutoProcessAsync(string ownerId, Guid shopId, bool isEnabled)
+        public async Task UpdateAutoProcessAsync(string? ownerId, Guid shopId, bool isEnabled)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId) throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId)) throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             shop.IsAutoProcessEnabled = isEnabled;
             await _shopRepository.UpdateAsync(shop);
@@ -548,10 +548,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 .ToListAsync();
         }
 
-        public async Task AddClosureDateAsync(string ownerId, Guid shopId, DateTime date, string? reason)
+        public async Task AddClosureDateAsync(string? ownerId, Guid shopId, DateTime date, string? reason)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId) throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId)) throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             if (date.Date < _dateTimeService.Now.Date)
                 throw new FluentValidation.ValidationException("Geçmiş bir tarihe kapalı gün eklenemez.");
@@ -569,23 +569,23 @@ namespace KuaforumAPI.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task RemoveClosureDateAsync(string ownerId, Guid closureDateId)
+        public async Task RemoveClosureDateAsync(string? ownerId, Guid closureDateId)
         {
             var closure = await _context.ShopClosureDates
                 .Include(c => c.Shop)
                 .FirstOrDefaultAsync(c => c.Id == closureDateId);
             if (closure == null) throw new NotFoundException("Kapalı gün bulunamadı.");
-            if (closure.Shop.OwnerId != ownerId) throw new FluentValidation.ValidationException("Bu kapalı günü silme yetkiniz yok.");
+            if (ownerId != null && closure.Shop.OwnerId != ownerId) throw new FluentValidation.ValidationException("Bu kapalı günü silme yetkiniz yok.");
 
             _context.ShopClosureDates.Remove(closure);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<ShopDashboardStatsDto> GetDashboardStatsAsync(Guid shopId, string ownerId)
+        public async Task<ShopDashboardStatsDto> GetDashboardStatsAsync(Guid shopId, string? ownerId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
             if (shop == null) throw new NotFoundException("Salon bulunamadı.");
-            if (shop.OwnerId != ownerId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
+            if (ownerId != null && shop.OwnerId != ownerId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
 
             var now = _dateTimeService.Now;
             var today = now.Date;

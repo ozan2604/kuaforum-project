@@ -45,7 +45,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!validationResult.IsValid) throw new FluentValidation.ValidationException(validationResult.Errors);
 
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var category = new ServiceCategory
@@ -64,7 +64,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (!validationResult.IsValid) throw new FluentValidation.ValidationException(validationResult.Errors);
 
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var category = await _categoryRepository.GetByIdAsync(request.CategoryId);
@@ -88,7 +88,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task UpdateCategoryAsync(Guid shopId, string ownerId, Guid categoryId, UpdateServiceCategoryDto request)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var category = await _categoryRepository.GetByIdAsync(categoryId);
@@ -105,7 +105,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task DeleteCategoryAsync(Guid shopId, string ownerId, Guid categoryId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var category = await _categoryRepository.GetByIdAsync(categoryId);
@@ -125,7 +125,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task UpdateServiceAsync(Guid shopId, string ownerId, Guid serviceId, UpdateShopServiceDto request)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var service = await _serviceRepository.GetByIdAsync(serviceId);
@@ -144,7 +144,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task DeleteServiceAsync(Guid shopId, string ownerId, Guid serviceId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId)
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId))
                 throw new FluentValidation.ValidationException("Salon bulunamadı veya yetkiniz yok.");
 
             var service = await _serviceRepository.GetByIdAsync(serviceId);
@@ -171,7 +171,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<List<ServiceCategoryDto>> GetShopServicesAsync(Guid shopId, string ownerId)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
-            if (shop == null || shop.OwnerId != ownerId) return new List<ServiceCategoryDto>();
+            if (shop == null || (ownerId != null && shop.OwnerId != ownerId)) return new List<ServiceCategoryDto>();
 
             var categories = await _context.ServiceCategories
                 .Where(c => c.ShopId == shopId)

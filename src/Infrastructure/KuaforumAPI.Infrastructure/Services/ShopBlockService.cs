@@ -20,17 +20,19 @@ namespace KuaforumAPI.Infrastructure.Services
             _userManager = userManager;
         }
 
-        public async Task BlockCustomerAsync(string staffUserId, Guid shopId, BlockCustomerDto dto)
+        public async Task BlockCustomerAsync(string? staffUserId, Guid shopId, BlockCustomerDto dto)
         {
             var shop = await _context.Shops.FindAsync(shopId);
             if (shop == null || !shop.IsActive) throw new ValidationException("Salon bulunamadı.");
 
-            var isOwner = shop.OwnerId == staffUserId;
-            var isEmployee = await _context.ShopEmployees
-                .AnyAsync(e => e.ShopId == shopId && e.UserId == staffUserId && !e.IsDeleted && e.IsActive);
-
-            if (!isOwner && !isEmployee)
-                throw new ValidationException("Bu salon için müşteri engelleme yetkiniz yok.");
+            if (staffUserId != null)
+            {
+                var isOwner = shop.OwnerId == staffUserId;
+                var isEmployee = await _context.ShopEmployees
+                    .AnyAsync(e => e.ShopId == shopId && e.UserId == staffUserId && !e.IsDeleted && e.IsActive);
+                if (!isOwner && !isEmployee)
+                    throw new ValidationException("Bu salon için müşteri engelleme yetkiniz yok.");
+            }
 
             var alreadyBlocked = await _context.ShopBlockedCustomers
                 .AnyAsync(b => b.ShopId == shopId && b.CustomerId == dto.CustomerId);
@@ -47,9 +49,9 @@ namespace KuaforumAPI.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task UnblockCustomerAsync(string ownerId, Guid shopId, string customerId)
+        public async Task UnblockCustomerAsync(string? ownerId, Guid shopId, string customerId)
         {
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && s.OwnerId == ownerId);
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && (ownerId == null || s.OwnerId == ownerId));
             if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             var block = await _context.ShopBlockedCustomers
@@ -60,9 +62,9 @@ namespace KuaforumAPI.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<BlockedCustomerDto>> GetBlockedCustomersAsync(string ownerId, Guid shopId)
+        public async Task<List<BlockedCustomerDto>> GetBlockedCustomersAsync(string? ownerId, Guid shopId)
         {
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && s.OwnerId == ownerId);
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && (ownerId == null || s.OwnerId == ownerId));
             if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             return await _context.ShopBlockedCustomers
@@ -81,9 +83,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 .ToListAsync();
         }
 
-        public async Task<CustomerShopInfoDto?> GetCustomerByPhoneAsync(string ownerId, Guid shopId, string phone)
+        public async Task<CustomerShopInfoDto?> GetCustomerByPhoneAsync(string? ownerId, Guid shopId, string phone)
         {
-            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && s.OwnerId == ownerId);
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && (ownerId == null || s.OwnerId == ownerId));
             if (shop == null) throw new ValidationException("Yetkisiz erişim.");
 
             var normalizedPhone = phone.Trim();
