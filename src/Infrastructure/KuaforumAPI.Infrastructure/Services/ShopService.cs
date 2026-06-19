@@ -794,7 +794,7 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var image = await _context.ShopImages.Include(i => i.Shop).FirstOrDefaultAsync(i => i.Id == imageId);
             if (image == null) throw new NotFoundException("Fotoğraf bulunamadı.");
-            if (image.Shop.OwnerId != ownerId)
+            if (ownerId != null && image.Shop.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bu fotoğrafa etiket ekleme yetkiniz yok.");
 
             var tag = new ShopImageTag { ShopImageId = imageId, Name = name.Trim() };
@@ -810,7 +810,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Include(t => t.ShopImage).ThenInclude(i => i.Shop)
                 .FirstOrDefaultAsync(t => t.Id == tagId);
             if (tag == null) throw new NotFoundException("Etiket bulunamadı.");
-            if (tag.ShopImage.Shop.OwnerId != ownerId)
+            if (ownerId != null && tag.ShopImage.Shop.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bu etiketi düzenleme yetkiniz yok.");
 
             tag.Name = name.Trim();
@@ -823,7 +823,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Include(t => t.ShopImage).ThenInclude(i => i.Shop)
                 .FirstOrDefaultAsync(t => t.Id == tagId);
             if (tag == null) throw new NotFoundException("Etiket bulunamadı.");
-            if (tag.ShopImage.Shop.OwnerId != ownerId)
+            if (ownerId != null && tag.ShopImage.Shop.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bu etiketi silme yetkiniz yok.");
 
             _context.ShopImageTags.Remove(tag);
