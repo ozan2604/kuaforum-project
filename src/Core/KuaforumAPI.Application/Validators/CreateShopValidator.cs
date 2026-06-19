@@ -13,19 +13,19 @@ namespace KuaforumAPI.Application.Validators
                 .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
 
             RuleFor(x => x.Address)
-                .NotEmpty().WithMessage("Adres zorunludur.")
                 .MaximumLength(250).WithMessage("Adres en fazla 250 karakter olabilir.")
-                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
+                .Must(x => x == null || (!x.Contains('<') && !x.Contains('>'))).WithMessage("Geçersiz karakter içeriyor.")
+                .When(x => x.Address != null);
 
             RuleFor(x => x.City)
-                .NotEmpty().WithMessage("İl zorunludur.")
                 .MaximumLength(50).WithMessage("İl en fazla 50 karakter olabilir.")
-                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
+                .Must(x => x == null || (!x.Contains('<') && !x.Contains('>'))).WithMessage("Geçersiz karakter içeriyor.")
+                .When(x => x.City != null);
 
             RuleFor(x => x.District)
-                .NotEmpty().WithMessage("İlçe zorunludur.")
                 .MaximumLength(50).WithMessage("İlçe en fazla 50 karakter olabilir.")
-                .Must(x => !x.Contains('<') && !x.Contains('>')).WithMessage("Geçersiz karakter içeriyor.");
+                .Must(x => x == null || (!x.Contains('<') && !x.Contains('>'))).WithMessage("Geçersiz karakter içeriyor.")
+                .When(x => x.District != null);
 
             RuleFor(x => x.PhoneNumber)
                 .NotEmpty().WithMessage("Telefon numarası zorunludur.")

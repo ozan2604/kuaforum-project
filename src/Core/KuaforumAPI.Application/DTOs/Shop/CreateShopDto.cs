@@ -12,29 +12,23 @@ namespace KuaforumAPI.Application.DTOs.Shop
         [MaxLength(2000, ErrorMessage = "Açıklama en fazla 2000 karakter olabilir.")]
         public string? Description { get; set; }
 
-        [Required(ErrorMessage = "Adres zorunludur.")]
         [MaxLength(250, ErrorMessage = "Adres en fazla 250 karakter olabilir.")]
-        public string Address { get; set; }
+        public string? Address { get; set; }
 
-        [Required(ErrorMessage = "İl zorunludur.")]
         [MaxLength(50, ErrorMessage = "İl en fazla 50 karakter olabilir.")]
-        public string City { get; set; }
+        public string? City { get; set; }
 
-        [Required(ErrorMessage = "İlçe zorunludur.")]
         [MaxLength(50, ErrorMessage = "İlçe en fazla 50 karakter olabilir.")]
-        public string District { get; set; }
+        public string? District { get; set; }
 
-        [Required(ErrorMessage = "Mahalle zorunludur.")]
         [MaxLength(200, ErrorMessage = "Mahalle en fazla 200 karakter olabilir.")]
-        public string Neighborhood { get; set; }
+        public string? Neighborhood { get; set; }
 
-        [Required(ErrorMessage = "Sokak zorunludur.")]
         [MaxLength(200, ErrorMessage = "Sokak en fazla 200 karakter olabilir.")]
-        public string Street { get; set; }
+        public string? Street { get; set; }
 
-        [Required(ErrorMessage = "Bina numarası zorunludur.")]
         [MaxLength(20, ErrorMessage = "Bina numarası en fazla 20 karakter olabilir.")]
-        public string BuildingNumber { get; set; }
+        public string? BuildingNumber { get; set; }
 
         [Required(ErrorMessage = "Telefon numarası zorunludur.")]
         [RegularExpression(@"^05[0-9]{9}$", ErrorMessage = "Telefon numarası 05XXXXXXXXX formatında olmalıdır.")]

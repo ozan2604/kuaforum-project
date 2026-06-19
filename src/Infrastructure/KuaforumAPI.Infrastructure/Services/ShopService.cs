@@ -57,12 +57,12 @@ namespace KuaforumAPI.Infrastructure.Services
                 OwnerId = userId,
                 Name = request.Name,
                 Description = request.Description,
-                Address = request.Address,
-                City = request.City,
-                District = request.District,
-                Neighborhood = request.Neighborhood,
-                Street = request.Street,
-                BuildingNumber = request.BuildingNumber,
+                Address = request.Address ?? string.Empty,
+                City = request.City ?? string.Empty,
+                District = request.District ?? string.Empty,
+                Neighborhood = request.Neighborhood ?? string.Empty,
+                Street = request.Street ?? string.Empty,
+                BuildingNumber = request.BuildingNumber ?? string.Empty,
                 PhoneNumber = request.PhoneNumber,
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
@@ -171,12 +171,12 @@ namespace KuaforumAPI.Infrastructure.Services
 
             shop.Name = request.Name;
             shop.Description = request.Description ?? shop.Description;
-            shop.Address = request.Address;
-            shop.City = request.City;
-            shop.District = request.District;
-            shop.Neighborhood = request.Neighborhood;
-            shop.Street = request.Street;
-            shop.BuildingNumber = request.BuildingNumber;
+            shop.Address = !string.IsNullOrEmpty(request.Address) ? request.Address : shop.Address;
+            shop.City = !string.IsNullOrEmpty(request.City) ? request.City : shop.City;
+            shop.District = !string.IsNullOrEmpty(request.District) ? request.District : shop.District;
+            shop.Neighborhood = !string.IsNullOrEmpty(request.Neighborhood) ? request.Neighborhood : shop.Neighborhood;
+            shop.Street = !string.IsNullOrEmpty(request.Street) ? request.Street : shop.Street;
+            shop.BuildingNumber = !string.IsNullOrEmpty(request.BuildingNumber) ? request.BuildingNumber : shop.BuildingNumber;
             shop.PhoneNumber = request.PhoneNumber;
             shop.Latitude = request.Latitude;
             shop.Longitude = request.Longitude;
