@@ -170,7 +170,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (userId != null && shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salonu düzenleme yetkiniz yok.");
 
             shop.Name = request.Name;
-            shop.Description = request.Description;
+            shop.Description = request.Description ?? shop.Description;
             shop.Address = request.Address;
             shop.City = request.City;
             shop.District = request.District;

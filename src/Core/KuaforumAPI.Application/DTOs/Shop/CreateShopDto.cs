@@ -9,9 +9,8 @@ namespace KuaforumAPI.Application.DTOs.Shop
         [MaxLength(100, ErrorMessage = "Salon adı en fazla 100 karakter olabilir.")]
         public string Name { get; set; }
 
-        [Required(ErrorMessage = "Açıklama zorunludur.")]
         [MaxLength(2000, ErrorMessage = "Açıklama en fazla 2000 karakter olabilir.")]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [Required(ErrorMessage = "Adres zorunludur.")]
         [MaxLength(250, ErrorMessage = "Adres en fazla 250 karakter olabilir.")]
