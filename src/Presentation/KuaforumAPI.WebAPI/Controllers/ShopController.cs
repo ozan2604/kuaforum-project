@@ -97,6 +97,18 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Shop deleted successfully." });
         }
 
+        [HttpGet("public/media-highlights")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetMediaHighlights(
+            [FromQuery] string? city = null,
+            [FromQuery] string? district = null,
+            [FromQuery] string? neighborhood = null,
+            [FromQuery] int limit = 40)
+        {
+            var result = await _shopService.GetMediaHighlightsAsync(city, district, neighborhood, limit);
+            return Ok(result);
+        }
+
         [HttpGet("public/all")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPublicShops(

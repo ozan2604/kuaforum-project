@@ -829,5 +829,52 @@ namespace KuaforumAPI.Infrastructure.Services
             _context.ShopImageTags.Remove(tag);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<List<MediaHighlightDto>> GetMediaHighlightsAsync(string? city, string? district, string? neighborhood, int limit = 40)
+        {
+            limit = Math.Clamp(limit, 1, 80);
+
+            var imageQuery = _context.ShopImages
+                .Include(i => i.Tags)
+                .Include(i => i.Shop)
+                .Where(i => i.Shop.IsActive);
+
+            if (!string.IsNullOrWhiteSpace(city))
+                imageQuery = imageQuery.Where(i => i.Shop.City == city);
+            if (!string.IsNullOrWhiteSpace(district))
+                imageQuery = imageQuery.Where(i => i.Shop.District == district);
+            if (!string.IsNullOrWhiteSpace(neighborhood))
+                imageQuery = imageQuery.Where(i => i.Shop.Neighborhood == neighborhood);
+
+            var images = await imageQuery
+                .Select(i => new { i.Id, i.Url, i.ShopId, ShopName = i.Shop.Name, Tags = i.Tags.Select(t => t.Name).ToList() })
+                .ToListAsync();
+
+            var videoQuery = _context.ShopVideos
+                .Include(v => v.Shop)
+                .Where(v => v.Shop.IsActive);
+
+            if (!string.IsNullOrWhiteSpace(city))
+                videoQuery = videoQuery.Where(v => v.Shop.City == city);
+            if (!string.IsNullOrWhiteSpace(district))
+                videoQuery = videoQuery.Where(v => v.Shop.District == district);
+            if (!string.IsNullOrWhiteSpace(neighborhood))
+                videoQuery = videoQuery.Where(v => v.Shop.Neighborhood == neighborhood);
+
+            var videos = await videoQuery
+                .Select(v => new { v.Id, v.Url, v.ShopId, ShopName = v.Shop.Name })
+                .ToListAsync();
+
+            var rng = new Random();
+            var result = new List<MediaHighlightDto>();
+
+            foreach (var img in images.OrderBy(_ => rng.Next()).Take(limit))
+                result.Add(new MediaHighlightDto { Type = "image", Url = img.Url, ShopId = img.ShopId.ToString(), ShopName = img.ShopName, Tags = img.Tags });
+
+            foreach (var vid in videos.OrderBy(_ => rng.Next()).Take(limit / 3))
+                result.Add(new MediaHighlightDto { Type = "video", Url = vid.Url, ShopId = vid.ShopId.ToString(), ShopName = vid.ShopName, Tags = new List<string>() });
+
+            return result.OrderBy(_ => rng.Next()).ToList();
+        }
     }
 }
