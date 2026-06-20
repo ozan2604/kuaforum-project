@@ -5,7 +5,7 @@ namespace KuaforumAPI.Domain.Enums
         ErkekKuafor = 1,
         Kuafor = 2,
         GuzellikMerkezi = 3,
-        GenelKuafor = 4,
+        KuaforTag = 4,
         DovmePiercingStudyosu = 5,
         TirnakSalonu = 7,
         CiltBakimMerkezi = 8,
