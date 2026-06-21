@@ -41,6 +41,7 @@ namespace KuaforumAPI.Infrastructure
             services.AddScoped<IAppointmentService, AppointmentService>();
             services.AddScoped<IShopBlockService, ShopBlockService>();
             services.AddScoped<IFavoriteService, FavoriteService>();
+            services.AddScoped<IMediaLikeService, MediaLikeService>();
             services.AddScoped<IReviewService, ReviewService>();
             services.AddScoped<IAdminSalonService, AdminSalonService>();
             // Timezone & Localization

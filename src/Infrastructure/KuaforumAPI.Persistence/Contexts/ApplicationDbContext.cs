@@ -28,6 +28,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<ShopBlockedCustomer> ShopBlockedCustomers { get; set; }
         public DbSet<ShopVideo> ShopVideos { get; set; }
         public DbSet<MobileShopServiceArea> MobileShopServiceAreas { get; set; }
+        public DbSet<MediaLike> MediaLikes { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
@@ -354,6 +355,26 @@ namespace KuaforumAPI.Persistence.Contexts
                     .HasForeignKey(b => b.CustomerId)
                     .OnDelete(DeleteBehavior.Cascade);
                 entity.HasIndex(b => new { b.ShopId, b.CustomerId }).IsUnique();
+            });
+
+            // MediaLike Configuration
+            builder.Entity<MediaLike>(entity =>
+            {
+                entity.Property(e => e.UserId).IsRequired().HasMaxLength(450);
+                entity.Property(e => e.MediaItemType).IsRequired().HasMaxLength(10);
+
+                entity.HasOne(l => l.User)
+                    .WithMany()
+                    .HasForeignKey(l => l.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Her kullanıcı bir medya öğesine yalnızca bir kez beğeni atabilir
+                entity.HasIndex(l => new { l.UserId, l.MediaItemId, l.MediaItemType })
+                    .IsUnique()
+                    .HasDatabaseName("UQ_MediaLikes_User_Item");
+
+                entity.HasIndex(l => new { l.MediaItemId, l.MediaItemType })
+                    .HasDatabaseName("IX_MediaLikes_Item");
             });
 
             // ── Performance Indexes ────────────────────────────────────────────

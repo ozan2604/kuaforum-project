@@ -106,7 +106,8 @@ namespace KuaforumAPI.WebAPI.Controllers
             [FromQuery] string? neighborhood = null,
             [FromQuery] int limit = 40)
         {
-            var result = await _shopService.GetMediaHighlightsAsync(city, district, neighborhood, limit);
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var result = await _shopService.GetMediaHighlightsAsync(city, district, neighborhood, limit, userId);
             return Ok(result);
         }
 

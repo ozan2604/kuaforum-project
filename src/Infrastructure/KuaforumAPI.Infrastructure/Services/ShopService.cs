@@ -849,7 +849,7 @@ namespace KuaforumAPI.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<MediaHighlightDto>> GetMediaHighlightsAsync(string? city, string? district, string? neighborhood, int limit = 40)
+        public async Task<List<MediaHighlightDto>> GetMediaHighlightsAsync(string? city, string? district, string? neighborhood, int limit = 40, string? userId = null)
         {
             limit = Math.Clamp(limit, 1, 80);
 
@@ -885,13 +885,55 @@ namespace KuaforumAPI.Infrastructure.Services
                 .ToListAsync();
 
             var rng = new Random();
+            var selectedImages = images.OrderBy(_ => rng.Next()).Take(limit).ToList();
+            var selectedVideos = videos.OrderBy(_ => rng.Next()).Take(limit / 3).ToList();
+
+            // Like bilgilerini tek sorguda çek
+            var allSelectedIds = selectedImages.Select(i => i.Id).Concat(selectedVideos.Select(v => v.Id)).ToList();
+
+            var likeCounts = await _context.MediaLikes
+                .Where(l => allSelectedIds.Contains(l.MediaItemId))
+                .GroupBy(l => l.MediaItemId)
+                .Select(g => new { Id = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Count);
+
+            HashSet<Guid>? likedByUser = null;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var liked = await _context.MediaLikes
+                    .Where(l => l.UserId == userId && allSelectedIds.Contains(l.MediaItemId))
+                    .Select(l => l.MediaItemId)
+                    .ToListAsync();
+                likedByUser = liked.ToHashSet();
+            }
+
             var result = new List<MediaHighlightDto>();
 
-            foreach (var img in images.OrderBy(_ => rng.Next()).Take(limit))
-                result.Add(new MediaHighlightDto { Type = "image", Url = img.Url, ShopId = img.ShopId.ToString(), ShopName = img.ShopName, Tags = img.Tags });
+            foreach (var img in selectedImages)
+                result.Add(new MediaHighlightDto
+                {
+                    Id = img.Id.ToString(),
+                    Type = "image",
+                    Url = img.Url,
+                    ShopId = img.ShopId.ToString(),
+                    ShopName = img.ShopName,
+                    Tags = img.Tags,
+                    LikeCount = likeCounts.GetValueOrDefault(img.Id, 0),
+                    IsLikedByCurrentUser = likedByUser?.Contains(img.Id) ?? false
+                });
 
-            foreach (var vid in videos.OrderBy(_ => rng.Next()).Take(limit / 3))
-                result.Add(new MediaHighlightDto { Type = "video", Url = vid.Url, ShopId = vid.ShopId.ToString(), ShopName = vid.ShopName, Tags = new List<string>() });
+            foreach (var vid in selectedVideos)
+                result.Add(new MediaHighlightDto
+                {
+                    Id = vid.Id.ToString(),
+                    Type = "video",
+                    Url = vid.Url,
+                    ShopId = vid.ShopId.ToString(),
+                    ShopName = vid.ShopName,
+                    Tags = new List<string>(),
+                    LikeCount = likeCounts.GetValueOrDefault(vid.Id, 0),
+                    IsLikedByCurrentUser = likedByUser?.Contains(vid.Id) ?? false
+                });
 
             return result.OrderBy(_ => rng.Next()).ToList();
         }
