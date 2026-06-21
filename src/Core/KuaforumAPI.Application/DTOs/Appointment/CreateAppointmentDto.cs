@@ -20,5 +20,8 @@ namespace KuaforumAPI.Application.DTOs.Appointment
 
         [MaxLength(500, ErrorMessage = "Not en fazla 500 karakter olabilir.")]
         public string? Note { get; set; }
+
+        [MaxLength(500)]
+        public string? CustomerAddress { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 using KuaforumAPI.Domain.Enums;
+using System.Collections.Generic;
 
 namespace KuaforumAPI.Application.DTOs.Shop
 {
@@ -42,6 +43,9 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public List<ShopClosureDateDto> ClosureDates { get; set; } = new List<ShopClosureDateDto>();
 
         public string? Code { get; set; }
+
+        public ShopType ShopType { get; set; }
+        public List<ServiceAreaDto> ServiceAreas { get; set; } = new List<ServiceAreaDto>();
 
         public string OwnerId { get; set; }
         public string OwnerName { get; set; }

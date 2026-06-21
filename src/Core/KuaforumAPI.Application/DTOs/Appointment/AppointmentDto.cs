@@ -31,5 +31,6 @@ namespace KuaforumAPI.Application.DTOs.Appointment
         public bool HasReview { get; set; }
         public string? CancellationReason { get; set; }
         public int ShopCancellationHours { get; set; }
+        public string? CustomerAddress { get; set; }
     }
 }

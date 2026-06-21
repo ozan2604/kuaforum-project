@@ -1,4 +1,5 @@
 using KuaforumAPI.Domain.Enums;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace KuaforumAPI.Application.DTOs.Shop
@@ -60,5 +61,10 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public int CancellationHours { get; set; } = 2;
 
         public List<int>? WeeklyOffDays { get; set; }
+
+        public ShopType ShopType { get; set; } = ShopType.Fixed;
+
+        // Mobile ise en az 1 bölge zorunlu
+        public List<ServiceAreaDto>? ServiceAreas { get; set; }
     }
 }

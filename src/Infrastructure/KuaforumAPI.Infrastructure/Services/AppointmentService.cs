@@ -146,7 +146,8 @@ namespace KuaforumAPI.Infrastructure.Services
                         EndTime = currentEndTime,
                         Status = shop.IsAutoProcessEnabled ? AppointmentStatus.Confirmed : AppointmentStatus.Pending,
                         Note = request.Note,
-                        GroupId = groupId
+                        GroupId = groupId,
+                        CustomerAddress = string.IsNullOrWhiteSpace(request.CustomerAddress) ? null : request.CustomerAddress.Trim()
                     };
 
                     await _context.Appointments.AddAsync(appointment);
@@ -581,7 +582,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 GroupId = a.GroupId,
                 HasReview = hasReview,
                 CancellationReason = a.CancellationReason,
-                ShopCancellationHours = a.Shop?.CancellationHours ?? 2
+                ShopCancellationHours = a.Shop?.CancellationHours ?? 2,
+                CustomerAddress = a.CustomerAddress
             };
         }
         public async Task<EmployeeAvailabilityDto> GetEmployeeAvailabilityAsync(Guid employeeId, DateTime date)

@@ -1,5 +1,7 @@
+using KuaforumAPI.Application.DTOs.Shop;
 using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Domain.Entities;
+using KuaforumAPI.Domain.Enums;
 using KuaforumAPI.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
@@ -23,6 +25,7 @@ namespace KuaforumAPI.Persistence.Repositories
                 .Include(s => s.Categories)
                 .Include(s => s.ClosureDates)
                 .Include(s => s.Videos)
+                .Include(s => s.ServiceAreas)
                 .FirstOrDefaultAsync(s => s.OwnerId == ownerId);
         }
 
@@ -32,6 +35,7 @@ namespace KuaforumAPI.Persistence.Repositories
                 .Include(s => s.Categories)
                 .Include(s => s.ClosureDates)
                 .Include(s => s.Videos)
+                .Include(s => s.ServiceAreas)
                 .Where(s => s.OwnerId == ownerId)
                 .OrderByDescending(s => s.CreatedAt)
                 .ToListAsync();
@@ -42,6 +46,7 @@ namespace KuaforumAPI.Persistence.Repositories
             return await _context.Shops
                 .Include(s => s.Categories)
                 .Include(s => s.Videos)
+                .Include(s => s.ServiceAreas)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
 
@@ -60,7 +65,12 @@ namespace KuaforumAPI.Persistence.Repositories
 
         public async Task<IEnumerable<Shop>> GetAllWithDetailsAsync(string? city = null, string? district = null, string? neighborhood = null)
         {
-            var query = _context.Shops.Include(s => s.Owner).Include(s => s.Categories).Include(s => s.Videos).AsQueryable();
+            var query = _context.Shops
+                .Include(s => s.Owner)
+                .Include(s => s.Categories)
+                .Include(s => s.Videos)
+                .Include(s => s.ServiceAreas)
+                .AsQueryable();
 
             if (!string.IsNullOrEmpty(city))
                 query = query.Where(s => s.City.ToLower() == city.ToLower());
@@ -75,29 +85,91 @@ namespace KuaforumAPI.Persistence.Repositories
         }
 
         public async Task<(List<Shop> Items, int TotalCount)> GetPagedWithDetailsAsync(
-            string? city, string? district, string? neighborhood, int pageNumber, int pageSize)
+            string? city, string? district, string? neighborhood, int pageNumber, int pageSize, ShopType? shopType = null)
         {
-            var query = _context.Shops
+            var baseQuery = _context.Shops
                 .Include(s => s.Owner)
                 .Include(s => s.Categories)
                 .Include(s => s.Videos)
+                .Include(s => s.ServiceAreas)
                 .Where(s => s.IsActive)
                 .AsQueryable();
 
-            if (!string.IsNullOrEmpty(city))
+            if (shopType.HasValue)
+                baseQuery = baseQuery.Where(s => s.ShopType == shopType.Value);
+
+            IQueryable<Shop> query;
+
+            if (shopType == ShopType.Mobile || (!shopType.HasValue && !string.IsNullOrEmpty(city)))
             {
-                var cityLower = city.Trim().ToLower();
-                query = query.Where(s => s.City != null && s.City.ToLower().Contains(cityLower));
+                // Seyyar berberler: ServiceAreas üzerinden filtrele
+                var mobileQuery = baseQuery.Where(s => s.ShopType == ShopType.Mobile);
+                if (!string.IsNullOrEmpty(city))
+                {
+                    var cityLower = city.Trim().ToLower();
+                    mobileQuery = mobileQuery.Where(s =>
+                        s.ServiceAreas.Any(a => a.City.ToLower().Contains(cityLower)));
+                }
+                if (!string.IsNullOrEmpty(district))
+                {
+                    var districtLower = district.Trim().ToLower();
+                    mobileQuery = mobileQuery.Where(s =>
+                        s.ServiceAreas.Any(a => a.District.ToLower().Contains(districtLower)));
+                }
+                if (!string.IsNullOrEmpty(neighborhood))
+                {
+                    var neighborhoodLower = neighborhood.Trim().ToLower();
+                    mobileQuery = mobileQuery.Where(s =>
+                        s.ServiceAreas.Any(a => a.Neighborhood != null && a.Neighborhood.ToLower().Contains(neighborhoodLower)));
+                }
+
+                if (shopType == ShopType.Mobile)
+                {
+                    query = mobileQuery;
+                }
+                else
+                {
+                    // Sabit salonlar: City/District/Neighborhood alanları üzerinden filtrele
+                    var fixedQuery = baseQuery.Where(s => s.ShopType == ShopType.Fixed);
+                    if (!string.IsNullOrEmpty(city))
+                    {
+                        var cityLower = city.Trim().ToLower();
+                        fixedQuery = fixedQuery.Where(s => s.City != null && s.City.ToLower().Contains(cityLower));
+                    }
+                    if (!string.IsNullOrEmpty(district))
+                    {
+                        var districtLower = district.Trim().ToLower();
+                        fixedQuery = fixedQuery.Where(s => s.District != null && s.District.ToLower().Contains(districtLower));
+                    }
+                    if (!string.IsNullOrEmpty(neighborhood))
+                    {
+                        var neighborhoodLower = neighborhood.Trim().ToLower();
+                        fixedQuery = fixedQuery.Where(s => s.Neighborhood != null && s.Neighborhood.ToLower().Contains(neighborhoodLower));
+                    }
+
+                    // Her iki tipi birleştir
+                    query = fixedQuery.Union(mobileQuery);
+                }
             }
-            if (!string.IsNullOrEmpty(district))
+            else
             {
-                var districtLower = district.Trim().ToLower();
-                query = query.Where(s => s.District != null && s.District.ToLower().Contains(districtLower));
-            }
-            if (!string.IsNullOrEmpty(neighborhood))
-            {
-                var neighborhoodLower = neighborhood.Trim().ToLower();
-                query = query.Where(s => s.Neighborhood != null && s.Neighborhood.ToLower().Contains(neighborhoodLower));
+                // Sadece Fixed (ya da filtre yoksa tüm tipler için eski mantık)
+                query = baseQuery;
+                if (!string.IsNullOrEmpty(city))
+                {
+                    var cityLower = city.Trim().ToLower();
+                    query = query.Where(s => s.City != null && s.City.ToLower().Contains(cityLower));
+                }
+                if (!string.IsNullOrEmpty(district))
+                {
+                    var districtLower = district.Trim().ToLower();
+                    query = query.Where(s => s.District != null && s.District.ToLower().Contains(districtLower));
+                }
+                if (!string.IsNullOrEmpty(neighborhood))
+                {
+                    var neighborhoodLower = neighborhood.Trim().ToLower();
+                    query = query.Where(s => s.Neighborhood != null && s.Neighborhood.ToLower().Contains(neighborhoodLower));
+                }
             }
 
             var total = await query.CountAsync();
@@ -108,6 +180,27 @@ namespace KuaforumAPI.Persistence.Repositories
                 .ToListAsync();
 
             return (items, total);
+        }
+
+        public async Task UpdateMobileServiceAreasAsync(Guid shopId, List<ServiceAreaDto> areas)
+        {
+            var existing = await _context.MobileShopServiceAreas
+                .Where(a => a.ShopId == shopId)
+                .ToListAsync();
+            _context.MobileShopServiceAreas.RemoveRange(existing);
+
+            foreach (var area in areas)
+            {
+                _context.MobileShopServiceAreas.Add(new MobileShopServiceArea
+                {
+                    ShopId = shopId,
+                    City = area.City,
+                    District = area.District,
+                    Neighborhood = area.Neighborhood
+                });
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task<List<string>> DeleteShopWithDependenciesAsync(Guid shopId)
@@ -170,6 +263,10 @@ namespace KuaforumAPI.Persistence.Repositories
             // Delete Service Categories
             var categories = await _context.ServiceCategories.Where(sc => sc.ShopId == shopId).ToListAsync();
             _context.ServiceCategories.RemoveRange(categories);
+
+            // Delete Mobile Service Areas
+            var serviceAreas = await _context.MobileShopServiceAreas.Where(a => a.ShopId == shopId).ToListAsync();
+            _context.MobileShopServiceAreas.RemoveRange(serviceAreas);
 
             // Delete User Favorite Shops
             var favorites = await _context.UserFavoriteShops.Where(f => f.ShopId == shopId).ToListAsync();

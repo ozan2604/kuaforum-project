@@ -36,5 +36,10 @@ namespace KuaforumAPI.Domain.Entities
         // Manuel (walk-in / telefon) randevular için — UserId null olduğunda geçerli
         public string? GuestCustomerName { get; set; }
         public string? GuestCustomerPhone { get; set; }
+
+        // Seyyar berber randevuları için müşteri adresi — Fixed salonlarda null kalır
+        public string? CustomerAddress { get; set; }
+        public double? CustomerLatitude { get; set; }
+        public double? CustomerLongitude { get; set; }
     }
 }

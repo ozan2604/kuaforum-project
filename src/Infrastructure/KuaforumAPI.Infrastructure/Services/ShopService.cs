@@ -52,6 +52,10 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var code = await _codeGenerator.GenerateAsync(request.City ?? "");
 
+            if (request.ShopType == KuaforumAPI.Domain.Enums.ShopType.Mobile &&
+                (request.ServiceAreas == null || request.ServiceAreas.Count == 0))
+                throw new FluentValidation.ValidationException("Seyyar berber için en az bir hizmet bölgesi belirtilmelidir.");
+
             var shop = new Shop
             {
                 OwnerId = userId,
@@ -71,10 +75,14 @@ namespace KuaforumAPI.Infrastructure.Services
                 OpenTime = ParseTime(request.OpenTime),
                 CloseTime = ParseTime(request.CloseTime),
                 Code = code,
-                IsActive = true
+                IsActive = true,
+                ShopType = request.ShopType
             };
 
             await _shopRepository.AddAsync(shop);
+
+            if (request.ShopType == KuaforumAPI.Domain.Enums.ShopType.Mobile && request.ServiceAreas != null && request.ServiceAreas.Count > 0)
+                await _shopRepository.UpdateMobileServiceAreasAsync(shop.Id, request.ServiceAreas);
         }
 
         public async Task<ShopDto> GetShopByOwnerIdAsync(string userId)
@@ -117,6 +125,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 Code = shop.Code,
+                ShopType = shop.ShopType,
+                ServiceAreas = shop.ServiceAreas.Select(a => new ServiceAreaDto { City = a.City, District = a.District, Neighborhood = a.Neighborhood }).ToList(),
                 CreatedAt = shop.CreatedAt,
                 UpdatedAt = shop.UpdatedAt
             };
@@ -189,8 +199,13 @@ namespace KuaforumAPI.Infrastructure.Services
                 ? string.Join(",", request.WeeklyOffDays.Distinct().OrderBy(d => d))
                 : null;
 
+            shop.ShopType = request.ShopType;
+
             await _shopRepository.UpdateAsync(shop);
             await _shopRepository.UpdateShopCategoriesAsync(shop.Id, request.CategoryIds);
+
+            if (request.ShopType == KuaforumAPI.Domain.Enums.ShopType.Mobile && request.ServiceAreas != null)
+                await _shopRepository.UpdateMobileServiceAreasAsync(shop.Id, request.ServiceAreas);
         }
 
         public async Task<IEnumerable<ShopDto>> GetAllShopsAsync(string? city = null, string? district = null, string? neighborhood = null)
@@ -239,10 +254,10 @@ namespace KuaforumAPI.Infrastructure.Services
             });
         }
 
-        public async Task<PagedResult<ShopDto>> GetPublicShopsPagedAsync(string? city, string? district, string? neighborhood, int pageNumber, int pageSize)
+        public async Task<PagedResult<ShopDto>> GetPublicShopsPagedAsync(string? city, string? district, string? neighborhood, int pageNumber, int pageSize, KuaforumAPI.Domain.Enums.ShopType? shopType = null)
         {
             pageSize = Math.Clamp(pageSize, 1, 100);
-            var (shops, total) = await _shopRepository.GetPagedWithDetailsAsync(city, district, neighborhood, pageNumber, pageSize);
+            var (shops, total) = await _shopRepository.GetPagedWithDetailsAsync(city, district, neighborhood, pageNumber, pageSize, shopType);
 
             var shopIds = shops.Select(s => s.Id).ToList();
             var minPrices = await _context.ShopServices
@@ -279,6 +294,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 MinServicePrice = minPrices.TryGetValue(shop.Id, out var mp) ? mp : null,
                 OpenTime = FormatTime(shop.OpenTime),
                 CloseTime = FormatTime(shop.CloseTime),
+                ShopType = shop.ShopType,
+                ServiceAreas = shop.ServiceAreas.Select(a => new ServiceAreaDto { City = a.City, District = a.District, Neighborhood = a.Neighborhood }).ToList(),
                 OwnerName = shop.Owner != null ? $"{shop.Owner.FirstName} {shop.Owner.LastName}" : "Unknown",
                 OwnerEmail = null,
                 CreatedAt = shop.CreatedAt,
@@ -404,6 +421,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 Code = shop.Code,
+                ShopType = shop.ShopType,
+                ServiceAreas = shop.ServiceAreas.Select(a => new ServiceAreaDto { City = a.City, District = a.District, Neighborhood = a.Neighborhood }).ToList(),
                 SaturdayClosingTime = saturdayClosingTime,
                 WeeklySchedule = weeklySchedule.OrderBy(s => s.DayOfWeek == 0 ? 7 : s.DayOfWeek).ToList(),
                 CreatedAt = shop.CreatedAt,

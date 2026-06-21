@@ -27,6 +27,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<EmployeeLeaveDate> EmployeeLeaveDates { get; set; }
         public DbSet<ShopBlockedCustomer> ShopBlockedCustomers { get; set; }
         public DbSet<ShopVideo> ShopVideos { get; set; }
+        public DbSet<MobileShopServiceArea> MobileShopServiceAreas { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
@@ -44,9 +45,9 @@ namespace KuaforumAPI.Persistence.Contexts
             {
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Description).HasMaxLength(2000);
-                entity.Property(e => e.Address).IsRequired().HasMaxLength(250);
-                entity.Property(e => e.City).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.District).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Address).HasMaxLength(250);
+                entity.Property(e => e.City).HasMaxLength(50);
+                entity.Property(e => e.District).HasMaxLength(50);
                 entity.Property(e => e.PhoneNumber).IsRequired().HasMaxLength(20);
                 entity.Property(e => e.Code).HasMaxLength(10);
 
@@ -54,6 +55,21 @@ namespace KuaforumAPI.Persistence.Contexts
                     .WithMany()
                     .HasForeignKey(s => s.OwnerId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(s => s.ServiceAreas)
+                    .WithOne(a => a.Shop)
+                    .HasForeignKey(a => a.ShopId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MobileShopServiceArea Configuration
+            builder.Entity<MobileShopServiceArea>(entity =>
+            {
+                entity.Property(e => e.City).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.District).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Neighborhood).HasMaxLength(200);
+                entity.HasIndex(e => new { e.ShopId, e.City, e.District })
+                    .HasDatabaseName("IX_MobileShopServiceAreas_Shop_Location");
             });
 
             // ShopImage Configuration

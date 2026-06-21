@@ -1,5 +1,6 @@
 using KuaforumAPI.Application.DTOs.Shop;
 using KuaforumAPI.Application.Interfaces.Services;
+using KuaforumAPI.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -116,10 +117,11 @@ namespace KuaforumAPI.WebAPI.Controllers
             [FromQuery] string? district = null,
             [FromQuery] string? neighborhood = null,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20,
+            [FromQuery] ShopType? shopType = null)
         {
             if (pageSize > 50) pageSize = 50;
-            var result = await _shopService.GetPublicShopsPagedAsync(city, district, neighborhood, pageNumber, pageSize);
+            var result = await _shopService.GetPublicShopsPagedAsync(city, district, neighborhood, pageNumber, pageSize, shopType);
             return Ok(result);
         }
 

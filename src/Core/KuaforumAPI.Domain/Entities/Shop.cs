@@ -9,6 +9,10 @@ namespace KuaforumAPI.Domain.Entities
 {
     public class Shop : BaseEntity
     {
+        public ShopType ShopType { get; set; } = ShopType.Fixed;
+
+        public virtual ICollection<MobileShopServiceArea> ServiceAreas { get; set; } = new List<MobileShopServiceArea>();
+
         public string OwnerId { get; set; }
 
         public virtual ApplicationUser Owner { get; set; }
