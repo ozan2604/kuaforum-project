@@ -130,7 +130,8 @@ namespace KuaforumAPI.WebAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetShopById(Guid id)
         {
-            var shop = await _shopService.GetShopByIdAsync(id);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var shop = await _shopService.GetShopByIdAsync(id, userId);
             if (shop == null) return NotFound(new { Message = "Shop not found." });
             return Ok(shop);
         }

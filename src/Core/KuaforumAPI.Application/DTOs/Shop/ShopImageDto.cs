@@ -8,5 +8,7 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public Guid Id { get; set; }
         public string Url { get; set; }
         public List<ShopImageTagDto> Tags { get; set; } = new List<ShopImageTagDto>();
+        public int LikeCount { get; set; }
+        public bool IsLikedByCurrentUser { get; set; }
     }
 }

@@ -328,13 +328,35 @@ namespace KuaforumAPI.Infrastructure.Services
             }
         }
 
-        public async Task<ShopDto> GetShopByIdAsync(Guid id)
+        public async Task<ShopDto> GetShopByIdAsync(Guid id, string? userId = null)
         {
             var shop = await _shopRepository.GetByIdAsync(id);
             if (shop == null) return null;
 
             var images = await _shopImageRepository.GetByShopIdAsync(shop.Id);
-            
+            var shopVideos = await _context.ShopVideos.Where(v => v.ShopId == shop.Id).OrderBy(v => v.DisplayOrder).ToListAsync();
+
+            // Like sayıları: tüm resim + video ID'leri için tek sorguda çek
+            var imageIds = images.Select(i => i.Id).ToList();
+            var videoIds = shopVideos.Select(v => v.Id).ToList();
+            var allMediaIds = imageIds.Concat(videoIds).ToList();
+
+            var likeCounts = await _context.MediaLikes
+                .Where(l => allMediaIds.Contains(l.MediaItemId))
+                .GroupBy(l => l.MediaItemId)
+                .Select(g => new { Id = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Count);
+
+            HashSet<Guid>? likedByUser = null;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var liked = await _context.MediaLikes
+                    .Where(l => l.UserId == userId && allMediaIds.Contains(l.MediaItemId))
+                    .Select(l => l.MediaItemId)
+                    .ToListAsync();
+                likedByUser = liked.ToHashSet();
+            }
+
             // Calculate Weekly Schedule
             var employees = await _shopEmployeeRepository.GetByShopIdWithSchedulesAsync(shop.Id);
             var weeklySchedule = new List<ShopScheduleDto>();
@@ -415,9 +437,24 @@ namespace KuaforumAPI.Infrastructure.Services
                 ClosureDates = closureDates.Select(c => new ShopClosureDateDto { Id = c.Id, ClosureDate = c.ClosureDate, Reason = c.Reason }).ToList(),
                 CoverImagePath = shop.CoverImagePath,
                 PromoVideoUrl = null,
-                Videos = (await _context.ShopVideos.Where(v => v.ShopId == shop.Id).OrderBy(v => v.DisplayOrder).ToListAsync())
-                            .Select(v => new ShopVideoDto { Id = v.Id, Url = v.Url, DisplayOrder = v.DisplayOrder, CreatedAt = v.CreatedAt }).ToList(),
-                Images = images.Select(i => new ShopImageDto { Id = i.Id, Url = i.Url, Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList() }).ToList(),
+                Videos = shopVideos.Select(v => new ShopVideoDto
+                {
+                    Id = v.Id,
+                    Url = v.Url,
+                    DisplayOrder = v.DisplayOrder,
+                    CreatedAt = v.CreatedAt,
+                    ViewCount = v.ViewCount,
+                    LikeCount = likeCounts.GetValueOrDefault(v.Id, 0),
+                    IsLikedByCurrentUser = likedByUser?.Contains(v.Id) ?? false
+                }).ToList(),
+                Images = images.Select(i => new ShopImageDto
+                {
+                    Id = i.Id,
+                    Url = i.Url,
+                    Tags = i.Tags.Select(t => new ShopImageTagDto { Id = t.Id, Name = t.Name }).ToList(),
+                    LikeCount = likeCounts.GetValueOrDefault(i.Id, 0),
+                    IsLikedByCurrentUser = likedByUser?.Contains(i.Id) ?? false
+                }).ToList(),
                 AverageRating = shop.AverageRating,
                 ReviewCount = shop.ReviewCount,
                 Code = shop.Code,

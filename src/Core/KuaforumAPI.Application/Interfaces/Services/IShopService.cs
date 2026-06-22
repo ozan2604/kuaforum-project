@@ -18,7 +18,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<IEnumerable<ShopDto>> GetAllShopsAsync(string? city = null, string? district = null, string? neighborhood = null);
         Task<PagedResult<ShopDto>> GetPublicShopsPagedAsync(string? city, string? district, string? neighborhood, int pageNumber, int pageSize, ShopType? shopType = null);
         Task DeleteShopAsync(Guid id);
-        Task<ShopDto> GetShopByIdAsync(Guid id);
+        Task<ShopDto> GetShopByIdAsync(Guid id, string? userId = null);
 
         Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file);
         Task DeleteCoverImageAsync(Guid shopId, string userId);

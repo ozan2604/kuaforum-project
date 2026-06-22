@@ -7,5 +7,7 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public int DisplayOrder { get; set; }
         public DateTime CreatedAt { get; set; }
         public int ViewCount { get; set; }
+        public int LikeCount { get; set; }
+        public bool IsLikedByCurrentUser { get; set; }
     }
 }
