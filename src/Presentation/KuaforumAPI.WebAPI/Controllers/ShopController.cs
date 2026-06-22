@@ -204,6 +204,14 @@ namespace KuaforumAPI.WebAPI.Controllers
             }
         }
 
+        [HttpPost("videos/{videoId}/view")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RecordVideoView(Guid videoId)
+        {
+            var newCount = await _shopService.RecordVideoViewAsync(videoId);
+            return Ok(new { viewCount = newCount });
+        }
+
         [HttpDelete("videos/{videoId}")]
         [Authorize(Roles = "SalonOwner")]
         public async Task<IActionResult> DeleteShopVideo(Guid videoId)

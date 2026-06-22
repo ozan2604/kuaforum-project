@@ -6,5 +6,6 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public string Url { get; set; }
         public int DisplayOrder { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int ViewCount { get; set; }
     }
 }

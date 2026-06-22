@@ -494,7 +494,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _context.ShopVideos.Add(shopVideo);
             await _context.SaveChangesAsync();
 
-            return new ShopVideoDto { Id = shopVideo.Id, Url = shopVideo.Url, DisplayOrder = shopVideo.DisplayOrder, CreatedAt = shopVideo.CreatedAt };
+            return new ShopVideoDto { Id = shopVideo.Id, Url = shopVideo.Url, DisplayOrder = shopVideo.DisplayOrder, CreatedAt = shopVideo.CreatedAt, ViewCount = shopVideo.ViewCount };
         }
 
         public async Task DeleteShopVideoAsync(Guid videoId, string userId)
@@ -506,6 +506,16 @@ namespace KuaforumAPI.Infrastructure.Services
             await _imageService.DeleteVideoAsync(video.Url);
             _context.ShopVideos.Remove(video);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<int> RecordVideoViewAsync(Guid videoId)
+        {
+            var video = await _context.ShopVideos.FirstOrDefaultAsync(v => v.Id == videoId);
+            if (video == null) return 0;
+
+            video.ViewCount++;
+            await _context.SaveChangesAsync();
+            return video.ViewCount;
         }
 
         public async Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files)
@@ -881,7 +891,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 videoQuery = videoQuery.Where(v => v.Shop.Neighborhood == neighborhood);
 
             var videos = await videoQuery
-                .Select(v => new { v.Id, v.Url, v.ShopId, ShopName = v.Shop.Name })
+                .Select(v => new { v.Id, v.Url, v.ShopId, ShopName = v.Shop.Name, v.ViewCount })
                 .ToListAsync();
 
             var rng = new Random();
@@ -932,7 +942,8 @@ namespace KuaforumAPI.Infrastructure.Services
                     ShopName = vid.ShopName,
                     Tags = new List<string>(),
                     LikeCount = likeCounts.GetValueOrDefault(vid.Id, 0),
-                    IsLikedByCurrentUser = likedByUser?.Contains(vid.Id) ?? false
+                    IsLikedByCurrentUser = likedByUser?.Contains(vid.Id) ?? false,
+                    ViewCount = vid.ViewCount
                 });
 
             return result.OrderBy(_ => rng.Next()).ToList();

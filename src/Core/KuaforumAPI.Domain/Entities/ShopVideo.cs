@@ -16,5 +16,8 @@ namespace KuaforumAPI.Domain.Entities
 
         /// <summary>Görüntüleme sırası (ilk video = 0)</summary>
         public int DisplayOrder { get; set; } = 0;
+
+        /// <summary>Videonun toplam izlenme sayısı</summary>
+        public int ViewCount { get; set; } = 0;
     }
 }

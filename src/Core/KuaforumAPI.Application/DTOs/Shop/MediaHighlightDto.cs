@@ -10,5 +10,6 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public List<string> Tags { get; set; } = new();
         public int LikeCount { get; set; }
         public bool IsLikedByCurrentUser { get; set; }
+        public int ViewCount { get; set; }
     }
 }
