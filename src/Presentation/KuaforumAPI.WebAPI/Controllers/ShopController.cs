@@ -193,8 +193,8 @@ namespace KuaforumAPI.WebAPI.Controllers
             try
             {
                 var isAdmin = User.IsInRole("Admin");
-                var path = await _shopService.UploadPromoVideoAsync(id, userId, file, isAdmin);
-                return Ok(new { path });
+                var video = await _shopService.UploadPromoVideoAsync(id, userId, file, isAdmin);
+                return Ok(video);
             }
             catch (Exception ex)
             {

@@ -503,7 +503,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
 
 
-        public async Task<string> UploadPromoVideoAsync(Guid shopId, string userId, IFormFile file, bool isAdmin = false)
+        public async Task<ShopVideoDto> UploadPromoVideoAsync(Guid shopId, string userId, IFormFile file, bool isAdmin = false)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
             if (shop == null) throw new NotFoundException("Salon bulunamadı.");
@@ -515,11 +515,26 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             var videoUrl = await _imageService.UploadVideoAsync(file, "shops/promo");
-            shop.PromoVideoUrl = videoUrl;
+            
+            // Delete existing promo video if exists
+            var existingPromo = await _context.ShopVideos.FirstOrDefaultAsync(v => v.ShopId == shopId && v.DisplayOrder == 0);
+            if (existingPromo != null)
+            {
+                await _imageService.DeleteVideoAsync(existingPromo.Url);
+                _context.ShopVideos.Remove(existingPromo);
+            }
 
-            await _shopRepository.UpdateAsync(shop);
+            var shopVideo = new ShopVideo
+            {
+                ShopId = shopId,
+                Url = videoUrl,
+                DisplayOrder = 0
+            };
 
-            return videoUrl;
+            _context.ShopVideos.Add(shopVideo);
+            await _context.SaveChangesAsync();
+
+            return new ShopVideoDto { Id = shopVideo.Id, Url = shopVideo.Url, DisplayOrder = shopVideo.DisplayOrder, CreatedAt = shopVideo.CreatedAt, ViewCount = shopVideo.ViewCount };
         }
 
         public async Task DeletePromoVideoAsync(Guid shopId, string userId, bool isAdmin = false)
@@ -528,10 +543,13 @@ namespace KuaforumAPI.Infrastructure.Services
             if (shop == null) throw new NotFoundException("Salon bulunamadı.");
             if (!isAdmin && shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
 
-            if (string.IsNullOrEmpty(shop.PromoVideoUrl)) return;
-
-            shop.PromoVideoUrl = null;
-            await _shopRepository.UpdateAsync(shop);
+            var existingPromo = await _context.ShopVideos.FirstOrDefaultAsync(v => v.ShopId == shopId && v.DisplayOrder == 0);
+            if (existingPromo != null)
+            {
+                await _imageService.DeleteVideoAsync(existingPromo.Url);
+                _context.ShopVideos.Remove(existingPromo);
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file, bool isAdmin = false)
@@ -545,7 +563,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new FluentValidation.ValidationException("Video boyutu maksimum 150MB olabilir.");
             }
 
-            var existingCount = await _context.ShopVideos.CountAsync(v => v.ShopId == shopId);
+            var maxOrder = await _context.ShopVideos.Where(v => v.ShopId == shopId).MaxAsync(v => (int?)v.DisplayOrder) ?? 0;
 
             var videoUrl = await _imageService.UploadVideoAsync(file, "shops/videos");
 
@@ -553,7 +571,7 @@ namespace KuaforumAPI.Infrastructure.Services
             {
                 ShopId = shopId,
                 Url = videoUrl,
-                DisplayOrder = existingCount
+                DisplayOrder = maxOrder > 0 ? maxOrder + 1 : 1
             };
 
             _context.ShopVideos.Add(shopVideo);
