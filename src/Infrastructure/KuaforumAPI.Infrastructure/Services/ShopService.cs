@@ -517,8 +517,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var videoUrl = await _imageService.UploadVideoAsync(file, "shops/promo");
             shop.PromoVideoUrl = videoUrl;
 
-            _shopRepository.Update(shop);
-            await _unitOfWork.SaveChangesAsync();
+            await _shopRepository.UpdateAsync(shop);
 
             return videoUrl;
         }
@@ -532,8 +531,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (string.IsNullOrEmpty(shop.PromoVideoUrl)) return;
 
             shop.PromoVideoUrl = null;
-            _shopRepository.Update(shop);
-            await _unitOfWork.SaveChangesAsync();
+            await _shopRepository.UpdateAsync(shop);
         }
 
         public async Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file, bool isAdmin = false)
