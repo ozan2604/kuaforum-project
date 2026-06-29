@@ -32,11 +32,12 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpPost("manual")]
-        [Authorize(Roles = $"{Roles.SalonOwner},{Roles.Employee}")]
+        [Authorize(Roles = $"{Roles.SalonOwner},{Roles.Employee},{Roles.Admin}")]
         public async Task<IActionResult> CreateManual([FromBody] CreateManualAppointmentDto request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _appointmentService.CreateManualAsync(userId, request);
+            var isAdmin = User.IsInRole(Roles.Admin);
+            await _appointmentService.CreateManualAsync(userId, request, isAdmin);
             return Ok(new { Message = "Manuel randevu oluşturuldu." });
         }
 

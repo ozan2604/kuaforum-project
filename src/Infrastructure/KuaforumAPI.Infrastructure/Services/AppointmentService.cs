@@ -199,7 +199,7 @@ namespace KuaforumAPI.Infrastructure.Services
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
 
-        public async Task CreateManualAsync(string staffUserId, CreateManualAppointmentDto request)
+        public async Task CreateManualAsync(string staffUserId, CreateManualAppointmentDto request, bool isAdmin = false)
         {
             // 1. Shop kontrolü — staff bu salona mı ait?
             var shop = await _context.Shops.FindAsync(request.ShopId);
@@ -209,7 +209,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var isEmployee = await _context.ShopEmployees
                 .AnyAsync(e => e.ShopId == request.ShopId && e.UserId == staffUserId && !e.IsDeleted && e.IsActive);
 
-            if (!isOwner && !isEmployee)
+            if (!isOwner && !isEmployee && !isAdmin)
                 throw new ValidationException("Bu salon için randevu oluşturma yetkiniz yok.");
 
             // 2. Personel kontrolü
