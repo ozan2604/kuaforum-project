@@ -502,11 +502,11 @@ namespace KuaforumAPI.Infrastructure.Services
 
 
 
-        public async Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file)
+        public async Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file, bool isAdmin = false)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
             if (shop == null) throw new NotFoundException("Salon bulunamadı.");
-            if (shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
+            if (!isAdmin && shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
 
             if (file.Length > 150L * 1024 * 1024)
             {
@@ -534,11 +534,11 @@ namespace KuaforumAPI.Infrastructure.Services
             return new ShopVideoDto { Id = shopVideo.Id, Url = shopVideo.Url, DisplayOrder = shopVideo.DisplayOrder, CreatedAt = shopVideo.CreatedAt, ViewCount = shopVideo.ViewCount };
         }
 
-        public async Task DeleteShopVideoAsync(Guid videoId, string userId)
+        public async Task DeleteShopVideoAsync(Guid videoId, string userId, bool isAdmin = false)
         {
             var video = await _context.ShopVideos.Include(v => v.Shop).FirstOrDefaultAsync(v => v.Id == videoId);
             if (video == null) throw new NotFoundException("Video bulunamadı.");
-            if (video.Shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu videoyu silme yetkiniz yok.");
+            if (!isAdmin && video.Shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu videoyu silme yetkiniz yok.");
 
             await _imageService.DeleteVideoAsync(video.Url);
             _context.ShopVideos.Remove(video);

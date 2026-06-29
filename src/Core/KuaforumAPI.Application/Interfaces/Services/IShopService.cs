@@ -23,8 +23,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<string> UploadCoverImageAsync(Guid shopId, IFormFile file);
         Task DeleteCoverImageAsync(Guid shopId, string userId);
 
-        Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file);
-        Task DeleteShopVideoAsync(Guid videoId, string userId);
+        Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file, bool isAdmin = false);
+        Task DeleteShopVideoAsync(Guid videoId, string userId, bool isAdmin = false);
         Task<int> RecordVideoViewAsync(Guid videoId);
 
         Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files);

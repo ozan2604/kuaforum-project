@@ -181,7 +181,7 @@ namespace KuaforumAPI.WebAPI.Controllers
 
 
         [HttpPost("{id}/videos")]
-        [Authorize(Roles = "SalonOwner")]
+        [Authorize(Roles = "SalonOwner,Admin")]
         [RequestSizeLimit(200_000_000)]
         [RequestFormLimits(MultipartBodyLengthLimit = 200_000_000)]
         public async Task<IActionResult> UploadShopVideo(Guid id, IFormFile file)
@@ -192,7 +192,8 @@ namespace KuaforumAPI.WebAPI.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             try
             {
-                var result = await _shopService.UploadShopVideoAsync(id, userId, file);
+                var isAdmin = User.IsInRole("Admin");
+                var result = await _shopService.UploadShopVideoAsync(id, userId, file, isAdmin);
                 return Ok(result);
             }
             catch (FluentValidation.ValidationException ex)
@@ -214,13 +215,14 @@ namespace KuaforumAPI.WebAPI.Controllers
         }
 
         [HttpDelete("videos/{videoId}")]
-        [Authorize(Roles = "SalonOwner")]
+        [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> DeleteShopVideo(Guid videoId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             try
             {
-                await _shopService.DeleteShopVideoAsync(videoId, userId);
+                var isAdmin = User.IsInRole("Admin");
+                await _shopService.DeleteShopVideoAsync(videoId, userId, isAdmin);
                 return NoContent();
             }
             catch (UnauthorizedAccessException)
