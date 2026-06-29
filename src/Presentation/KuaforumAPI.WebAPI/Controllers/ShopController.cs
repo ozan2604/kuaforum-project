@@ -180,6 +180,45 @@ namespace KuaforumAPI.WebAPI.Controllers
 
 
 
+        [HttpPost("{id}/promo-video")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        [RequestSizeLimit(200_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 200_000_000)]
+        public async Task<IActionResult> UploadPromoVideo(Guid id, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("Lütfen bir video dosyası seçin.");
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                var isAdmin = User.IsInRole("Admin");
+                var path = await _shopService.UploadPromoVideoAsync(id, userId, file, isAdmin);
+                return Ok(new { path });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}/promo-video")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        public async Task<IActionResult> DeletePromoVideo(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                var isAdmin = User.IsInRole("Admin");
+                await _shopService.DeletePromoVideoAsync(id, userId, isAdmin);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("{id}/videos")]
         [Authorize(Roles = "SalonOwner,Admin")]
         [RequestSizeLimit(200_000_000)]

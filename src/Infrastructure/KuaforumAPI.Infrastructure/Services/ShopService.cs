@@ -503,6 +503,39 @@ namespace KuaforumAPI.Infrastructure.Services
 
 
 
+        public async Task<string> UploadPromoVideoAsync(Guid shopId, string userId, IFormFile file, bool isAdmin = false)
+        {
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+            if (!isAdmin && shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
+
+            if (file.Length > 150L * 1024 * 1024)
+            {
+                throw new FluentValidation.ValidationException("Video boyutu maksimum 150MB olabilir.");
+            }
+
+            var videoUrl = await _imageService.UploadVideoAsync(file, "shops/promo");
+            shop.PromoVideoUrl = videoUrl;
+
+            _shopRepository.Update(shop);
+            await _unitOfWork.SaveChangesAsync();
+
+            return videoUrl;
+        }
+
+        public async Task DeletePromoVideoAsync(Guid shopId, string userId, bool isAdmin = false)
+        {
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+            if (!isAdmin && shop.OwnerId != userId) throw new UnauthorizedAccessException("Bu salona erişim yetkiniz yok.");
+
+            if (string.IsNullOrEmpty(shop.PromoVideoUrl)) return;
+
+            shop.PromoVideoUrl = null;
+            _shopRepository.Update(shop);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         public async Task<ShopVideoDto> UploadShopVideoAsync(Guid shopId, string userId, IFormFile file, bool isAdmin = false)
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
