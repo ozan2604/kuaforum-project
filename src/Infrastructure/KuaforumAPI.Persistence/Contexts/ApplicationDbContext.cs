@@ -27,6 +27,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<EmployeeLeaveDate> EmployeeLeaveDates { get; set; }
         public DbSet<ShopBlockedCustomer> ShopBlockedCustomers { get; set; }
         public DbSet<ShopVideo> ShopVideos { get; set; }
+        public DbSet<ShopVideoTag> ShopVideoTags { get; set; }
         public DbSet<MobileShopServiceArea> MobileShopServiceAreas { get; set; }
         public DbSet<MediaLike> MediaLikes { get; set; }
 
@@ -134,6 +135,16 @@ namespace KuaforumAPI.Persistence.Contexts
                     .OnDelete(DeleteBehavior.Cascade);
                 entity.HasIndex(v => new { v.ShopId, v.DisplayOrder })
                     .HasDatabaseName("IX_ShopVideos_Shop_Order");
+            });
+
+            // ShopVideoTag Configuration
+            builder.Entity<ShopVideoTag>(entity =>
+            {
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
+                entity.HasOne(t => t.ShopVideo)
+                    .WithMany(v => v.Tags)
+                    .HasForeignKey(t => t.ShopVideoId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ShopClosureDate Configuration

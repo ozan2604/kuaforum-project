@@ -334,7 +334,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (shop == null) return null;
 
             var images = await _shopImageRepository.GetByShopIdAsync(shop.Id);
-            var shopVideos = await _context.ShopVideos.Where(v => v.ShopId == shop.Id).OrderBy(v => v.DisplayOrder).ToListAsync();
+            var shopVideos = await _context.ShopVideos.Include(v => v.Tags).Where(v => v.ShopId == shop.Id).OrderBy(v => v.DisplayOrder).ToListAsync();
 
             // Like sayıları: tüm resim + video ID'leri için tek sorguda çek
             var imageIds = images.Select(i => i.Id).ToList();
@@ -445,7 +445,8 @@ namespace KuaforumAPI.Infrastructure.Services
                     CreatedAt = v.CreatedAt,
                     ViewCount = v.ViewCount,
                     LikeCount = likeCounts.GetValueOrDefault(v.Id, 0),
-                    IsLikedByCurrentUser = likedByUser?.Contains(v.Id) ?? false
+                    IsLikedByCurrentUser = likedByUser?.Contains(v.Id) ?? false,
+                    Tags = v.Tags?.Select(t => new ShopVideoTagDto { Id = t.Id, Name = t.Name }).ToList() ?? new List<ShopVideoTagDto>()
                 }).ToList(),
                 Images = images.Select(i => new ShopImageDto
                 {
@@ -514,10 +515,6 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             var existingCount = await _context.ShopVideos.CountAsync(v => v.ShopId == shopId);
-            if (existingCount >= 1)
-            {
-                throw new FluentValidation.ValidationException("Şimdilik en fazla 1 adet tanıtım videosu eklenebilir.");
-            }
 
             var videoUrl = await _imageService.UploadVideoAsync(file, "shops/videos");
 
@@ -553,6 +550,39 @@ namespace KuaforumAPI.Infrastructure.Services
             video.ViewCount++;
             await _context.SaveChangesAsync();
             return video.ViewCount;
+        }
+
+        public async Task<ShopVideoTagDto> AddVideoTagAsync(string ownerId, Guid videoId, string name, bool isAdmin = false)
+        {
+            var video = await _context.ShopVideos.Include(v => v.Shop).FirstOrDefaultAsync(v => v.Id == videoId);
+            if (video == null) throw new NotFoundException("Video bulunamadı.");
+            if (!isAdmin && video.Shop.OwnerId != ownerId) throw new UnauthorizedAccessException("Yetkiniz yok.");
+
+            var tag = new ShopVideoTag { ShopVideoId = videoId, Name = name };
+            _context.ShopVideoTags.Add(tag);
+            await _context.SaveChangesAsync();
+            
+            return new ShopVideoTagDto { Id = tag.Id, Name = tag.Name };
+        }
+
+        public async Task UpdateVideoTagAsync(string ownerId, Guid tagId, string name, bool isAdmin = false)
+        {
+            var tag = await _context.ShopVideoTags.Include(t => t.ShopVideo).ThenInclude(v => v.Shop).FirstOrDefaultAsync(t => t.Id == tagId);
+            if (tag == null) throw new NotFoundException("Etiket bulunamadı.");
+            if (!isAdmin && tag.ShopVideo.Shop.OwnerId != ownerId) throw new UnauthorizedAccessException("Yetkiniz yok.");
+
+            tag.Name = name;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteVideoTagAsync(string ownerId, Guid tagId, bool isAdmin = false)
+        {
+            var tag = await _context.ShopVideoTags.Include(t => t.ShopVideo).ThenInclude(v => v.Shop).FirstOrDefaultAsync(t => t.Id == tagId);
+            if (tag == null) throw new NotFoundException("Etiket bulunamadı.");
+            if (!isAdmin && tag.ShopVideo.Shop.OwnerId != ownerId) throw new UnauthorizedAccessException("Yetkiniz yok.");
+
+            _context.ShopVideoTags.Remove(tag);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<string>> UploadGalleryImagesAsync(Guid shopId, IFormFileCollection files)
@@ -918,6 +948,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var videoQuery = _context.ShopVideos
                 .Include(v => v.Shop)
+                .Include(v => v.Tags)
                 .Where(v => v.Shop.IsActive);
 
             if (!string.IsNullOrWhiteSpace(city))
@@ -928,7 +959,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 videoQuery = videoQuery.Where(v => v.Shop.Neighborhood == neighborhood);
 
             var videos = await videoQuery
-                .Select(v => new { v.Id, v.Url, v.ShopId, ShopName = v.Shop.Name, v.ViewCount })
+                .Select(v => new { v.Id, v.Url, v.ShopId, ShopName = v.Shop.Name, v.ViewCount, Tags = v.Tags.Select(t => t.Name).ToList() })
                 .ToListAsync();
 
             var rng = new Random();
@@ -977,7 +1008,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     Url = vid.Url,
                     ShopId = vid.ShopId.ToString(),
                     ShopName = vid.ShopName,
-                    Tags = new List<string>(),
+                    Tags = vid.Tags,
                     LikeCount = likeCounts.GetValueOrDefault(vid.Id, 0),
                     IsLikedByCurrentUser = likedByUser?.Contains(vid.Id) ?? false,
                     ViewCount = vid.ViewCount

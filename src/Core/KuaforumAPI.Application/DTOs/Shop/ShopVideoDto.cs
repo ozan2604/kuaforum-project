@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace KuaforumAPI.Application.DTOs.Shop
 {
     public class ShopVideoDto
@@ -9,5 +12,6 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public int ViewCount { get; set; }
         public int LikeCount { get; set; }
         public bool IsLikedByCurrentUser { get; set; }
+        public List<ShopVideoTagDto> Tags { get; set; } = new List<ShopVideoTagDto>();
     }
 }

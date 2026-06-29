@@ -231,6 +231,57 @@ namespace KuaforumAPI.WebAPI.Controllers
             }
         }
 
+        [HttpPost("videos/{videoId}/tags")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        public async Task<IActionResult> AddVideoTag(Guid videoId, [FromBody] string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { message = "Etiket adı boş olamaz." });
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                var isAdmin = User.IsInRole("Admin");
+                var result = await _shopService.AddVideoTagAsync(userId, videoId, name, isAdmin);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
+        [HttpPut("videos/tags/{tagId}")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        public async Task<IActionResult> UpdateVideoTag(Guid tagId, [FromBody] string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { message = "Etiket adı boş olamaz." });
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                var isAdmin = User.IsInRole("Admin");
+                await _shopService.UpdateVideoTagAsync(userId, tagId, name, isAdmin);
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
+        [HttpDelete("videos/tags/{tagId}")]
+        [Authorize(Roles = "SalonOwner,Admin")]
+        public async Task<IActionResult> DeleteVideoTag(Guid tagId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            try
+            {
+                var isAdmin = User.IsInRole("Admin");
+                await _shopService.DeleteVideoTagAsync(userId, tagId, isAdmin);
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
         [HttpPost("{id}/gallery-images")]
         [Authorize(Roles = "SalonOwner,Admin")]
         public async Task<IActionResult> UploadGalleryImages(Guid id, System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile> files)

@@ -1,4 +1,5 @@
 using KuaforumAPI.Domain.Common;
+using System.Collections.Generic;
 
 namespace KuaforumAPI.Domain.Entities
 {
@@ -19,5 +20,7 @@ namespace KuaforumAPI.Domain.Entities
 
         /// <summary>Videonun toplam izlenme sayısı</summary>
         public int ViewCount { get; set; } = 0;
+
+        public virtual ICollection<ShopVideoTag> Tags { get; set; } = new List<ShopVideoTag>();
     }
 }
