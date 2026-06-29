@@ -30,6 +30,10 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<MobileShopServiceArea> MobileShopServiceAreas { get; set; }
         public DbSet<MediaLike> MediaLikes { get; set; }
 
+        public DbSet<City> Cities { get; set; }
+        public DbSet<District> Districts { get; set; }
+        public DbSet<Neighborhood> Neighborhoods { get; set; }
+
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, KuaforumAPI.Application.Interfaces.Services.IDateTimeService dateTimeService) : base(options)
@@ -40,6 +44,33 @@ namespace KuaforumAPI.Persistence.Contexts
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            // Location Configuration
+            builder.Entity<City>(entity =>
+            {
+                entity.Property(e => e.Id).ValueGeneratedNever(); // Use IDs from turkiyeapi/custom
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            });
+
+            builder.Entity<District>(entity =>
+            {
+                entity.Property(e => e.Id).ValueGeneratedNever();
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.HasOne(d => d.City)
+                    .WithMany(c => c.Districts)
+                    .HasForeignKey(d => d.CityId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Neighborhood>(entity =>
+            {
+                entity.Property(e => e.Id).ValueGeneratedNever();
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.HasOne(n => n.District)
+                    .WithMany(d => d.Neighborhoods)
+                    .HasForeignKey(n => n.DistrictId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
             // Shop Configuration
             builder.Entity<Shop>(entity =>

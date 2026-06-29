@@ -54,6 +54,7 @@ namespace KuaforumAPI.Infrastructure
             // Background Services
             services.AddHostedService<Services.Background.AppointmentAutoCompleterService>();
             services.AddHostedService<Services.Background.ShopCodeSeederService>();
+            services.AddHostedService<Services.Background.LocationSeederService>();
         }
     }
 }
