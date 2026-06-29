@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace KuaforumAPI.Infrastructure.Services
@@ -49,12 +50,10 @@ namespace KuaforumAPI.Infrastructure.Services
             {
                 var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
                 bool isNewUser = false;
-                string? tempPassword = null;
 
                 if (user == null)
                 {
                     isNewUser = true;
-                    tempPassword = GenerateTempPassword();
 
                     user = new ApplicationUser
                     {
@@ -67,7 +66,11 @@ namespace KuaforumAPI.Infrastructure.Services
                         LastName = request.LastName ?? string.Empty,
                     };
 
-                    var createResult = await _userManager.CreateAsync(user, tempPassword);
+                    // Rastgele iç şifre — kullanıcıya gösterilmez, giriş OTP ile yapılır
+                    var internalPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
+                        .Replace("=", "!").Replace("+", "@").Replace("/", "#")[..16] + "Aa1!";
+
+                    var createResult = await _userManager.CreateAsync(user, internalPassword);
                     if (!createResult.Succeeded)
                     {
                         var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
@@ -117,8 +120,8 @@ namespace KuaforumAPI.Infrastructure.Services
 
                 try
                 {
-                    if (isNewUser && tempPassword != null)
-                        await _smsService.SendSmsAsync(request.PhoneNumber, SmsTemplates.AdminCreatedNewSalonOwner(request.ShopName, tempPassword));
+                    if (isNewUser)
+                        await _smsService.SendSmsAsync(request.PhoneNumber, SmsTemplates.AdminCreatedNewSalonOwner(request.ShopName));
                     else
                         await _smsService.SendSmsAsync(request.PhoneNumber, SmsTemplates.AdminAssignedExistingSalonOwner(request.ShopName));
                 }
@@ -132,15 +135,6 @@ namespace KuaforumAPI.Infrastructure.Services
                 await transaction.RollbackAsync();
                 throw;
             }
-        }
-
-        private static string GenerateTempPassword()
-        {
-            const string chars = "abcdefghijkmnpqrstuvwxyz23456789";
-            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-            var bytes = new byte[6];
-            rng.GetBytes(bytes);
-            return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
         }
     }
 }

@@ -88,11 +88,14 @@ namespace KuaforumAPI.Application.Constants
 
         // ── Çalışan yönetimi SMS'leri ────────────────────────────────────────
 
-        public static string EmployeeAdded(string shopName, string tempPassword) =>
-            $"{shopName} salonuna çalışan olarak eklendiniz. Geçici şifreniz: {tempPassword}";
+        public static string EmployeeAdded(string shopName) =>
+            $"{shopName} salonuna çalışan olarak eklendiniz. Sıradaki girişinizde telefon numaranıza gönderilecek kodla giriş yapabilirsiniz.";
+
+        public static string EmployeeAddedOtp(string shopName) =>
+            $"{shopName} salonuna çalışan olarak eklendiniz. Giriş için salonbir.com adresine gidin ve telefon numaranıza gönderilecek kodu kullanın.";
 
         public static string EmployeeAddedExisting(string shopName) =>
-            $"{shopName} salonuna çalışan olarak eklendiniz. Mevcut şifrenizle giriş yapabilirsiniz.";
+            $"{shopName} salonuna çalışan olarak eklendiniz. Telefon numaranıza gönderilecek kodla giriş yapabilirsiniz.";
 
         public static string EmployeeRemoved(string shopName) =>
             $"{shopName} salonundaki çalışan kaydınız sonlandırıldı.";
@@ -102,8 +105,8 @@ namespace KuaforumAPI.Application.Constants
 
         // ── Admin tarafından oluşturulan salon SMS'leri ──────────────────────
 
-        public static string AdminCreatedNewSalonOwner(string shopName, string tempPassword) =>
-            $"SALONBİR: {shopName} salonu için hesabınız oluşturuldu. Salon sahibi olarak tanımlandınız. Geçici şifreniz: {tempPassword} - salonbir.com adresinden giriş yapabilirsiniz.";
+        public static string AdminCreatedNewSalonOwner(string shopName) =>
+            $"SALONBİR: {shopName} salonu için hesabınız oluşturuldu. Salon sahibi olarak tanımlandınız. salonbir.com adresine gidin ve telefon numaranıza gönderilecek kodla giriş yapın.";
 
         public static string AdminAssignedExistingSalonOwner(string shopName) =>
             $"SALONBİR: {shopName} salonu hesabınıza tanımlandı. Salon panelinize erişebilirsiniz.";
@@ -115,8 +118,5 @@ namespace KuaforumAPI.Application.Constants
 
         public static string GuestOtp(string otp) =>
             $"SALONBİR doğrulama kodunuz: {otp} — Kod 5 dakika geçerlidir. Paylaşmayın.";
-
-        public static string GuestAccountCreated(string tempPassword) =>
-            $"SALONBİR hesabınız oluşturuldu. Kullanıcı adınız telefon numaranız, geçici şifreniz: {tempPassword} — Guvenliginiz icin profilinizden sifrenizi degistirmenizi oneririz. salonbir.com";
     }
 }

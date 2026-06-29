@@ -4,7 +4,6 @@ using KuaforumAPI.Application.DTOs.Auth;
 using Microsoft.Extensions.Logging;
 using KuaforumAPI.Application.Exceptions;
 using AppValidationException = KuaforumAPI.Application.Exceptions.ValidationException;
-using KuaforumAPI.Application.Interfaces.Repositories;
 using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
@@ -26,12 +25,10 @@ namespace KuaforumAPI.Infrastructure.Services
     public class AuthService : IAuthService
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly IDateTimeService _dateTimeService;
         private readonly IImageService _imageService;
         private readonly IValidator<UpdateProfileDto> _updateProfileValidator;
-        private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
         private readonly ApplicationDbContext _context;
         private readonly ISmsService _smsService;
         private readonly ILogger<AuthService> _logger;
@@ -42,370 +39,32 @@ namespace KuaforumAPI.Infrastructure.Services
         private const int OtpRateLimitWindowMinutes = 10;
 
         public AuthService(UserManager<ApplicationUser> userManager,
-                           SignInManager<ApplicationUser> signInManager,
                            IConfiguration configuration,
                            IDateTimeService dateTimeService,
                            IImageService imageService,
                            IValidator<UpdateProfileDto> updateProfileValidator,
-                           IValidator<ChangePasswordDto> changePasswordValidator,
                            ApplicationDbContext context,
                            ISmsService smsService,
                            ILogger<AuthService> logger)
         {
             _userManager = userManager;
-            _signInManager = signInManager;
             _configuration = configuration;
             _dateTimeService = dateTimeService;
             _imageService = imageService;
             _updateProfileValidator = updateProfileValidator;
-            _changePasswordValidator = changePasswordValidator;
             _context = context;
             _smsService = smsService;
             _logger = logger;
         }
 
-        public async Task<AuthResponse> LoginAsync(LoginRequest request)
-        {
-            ApplicationUser user = null;
-
-            // Check if Identifier is Email
-            if (request.Identifier.Contains("@"))
-            {
-                user = await _userManager.FindByEmailAsync(request.Identifier);
-            }
-            else
-            {
-                // Check if Identifier is Phone
-                // Normalization for UX: 
-                // DB stores as "05XXXXXXXXX" (11 digits).
-                // User might enter: "5XXXXXXXXX" (10 digits) or "905XXXXXXXXX" (12 digits).
-                
-                var potentialPhones = new List<string> { request.Identifier };
-                
-                // If 10 digits (e.g. 532...), try adding '0'
-                if (request.Identifier.Length == 10 && !request.Identifier.StartsWith("0"))
-                {
-                    potentialPhones.Add("0" + request.Identifier);
-                }
-                
-                // If 12 digits (e.g. 90532...), try removing '9' and replace with '0' -> actually just substring
-                if (request.Identifier.Length == 12 && request.Identifier.StartsWith("90"))
-                {
-                     potentialPhones.Add("0" + request.Identifier.Substring(2));
-                }
-
-                // Check against any of these variations
-                user = _userManager.Users.FirstOrDefault(u => potentialPhones.Contains(u.PhoneNumber));
-            }
-
-            if (user == null)
-            {
-                throw new UnauthorizedAccessException("Invalid credentials");
-            }
-
-            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
-
-            if (!result.Succeeded)
-            {
-                throw new UnauthorizedAccessException("Invalid credentials");
-            }
-
-            var refreshToken = await CreateRefreshTokenAsync(user.Id);
-
-            return new AuthResponse
-            {
-                Id = user.Id,
-                Email = user.Email,
-                UserName = user.UserName,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                PhoneNumber = user.PhoneNumber,
-                ProfileImageUrl = user.ProfileImageUrl,
-                Token = await GenerateJwtToken(user),
-                RefreshToken = refreshToken
-            };
-        }
-
-        public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
-        {
-            // Uniqueness Check for Phone
-            var existingUserWithPhone = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
-            if (existingUserWithPhone != null)
-            {
-                throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
-            }
-
-            var isSalonOwner = !string.IsNullOrEmpty(request.Role) && request.Role == KuaforumAPI.Application.Constants.Roles.SalonOwner;
-
-            if (isSalonOwner && string.IsNullOrWhiteSpace(request.Email))
-            {
-                throw new AppValidationException("Salon sahipleri için e-posta zorunludur.");
-            }
-
-            var user = new ApplicationUser
-            {
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Email = request.Email,
-                UserName = request.PhoneNumber, // Map PhoneNumber as UserName
-                PhoneNumber = request.PhoneNumber
-            };
-
-            var result = await _userManager.CreateAsync(user, request.Password);
-
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new AppValidationException($"Kayıt başarısız: {errors}");
-            }
-
-            // Assign Role
-            var roleToAssign = isSalonOwner ? KuaforumAPI.Application.Constants.Roles.SalonOwner : KuaforumAPI.Application.Constants.Roles.Customer;
-            await _userManager.AddToRoleAsync(user, roleToAssign);
-
-            var refreshToken = await CreateRefreshTokenAsync(user.Id);
-
-            return new AuthResponse
-            {
-                Id = user.Id,
-                Email = user.Email,
-                UserName = user.UserName,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                PhoneNumber = user.PhoneNumber,
-                ProfileImageUrl = user.ProfileImageUrl,
-                Token = await GenerateJwtToken(user),
-                RefreshToken = refreshToken
-            };
-        }
-
-        public async Task<AuthResponse> RefreshAsync(string refreshToken)
-        {
-            var token = await _context.RefreshTokens
-                .Include(rt => rt.User)
-                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
-
-            if (token == null || token.IsRevoked || token.ExpiresAt <= _dateTimeService.Now)
-                throw new UnauthorizedAccessException("Geçersiz veya süresi dolmuş oturum. Lütfen tekrar giriş yapın.");
-
-            // Rotate: eski token'ı iptal et, yenisini oluştur
-            token.IsRevoked = true;
-            var newRefreshToken = await CreateRefreshTokenAsync(token.UserId);
-            await _context.SaveChangesAsync();
-
-            return new AuthResponse
-            {
-                Id = token.User.Id,
-                Email = token.User.Email,
-                UserName = token.User.UserName,
-                FirstName = token.User.FirstName,
-                LastName = token.User.LastName,
-                PhoneNumber = token.User.PhoneNumber,
-                ProfileImageUrl = token.User.ProfileImageUrl,
-                Token = await GenerateJwtToken(token.User),
-                RefreshToken = newRefreshToken
-            };
-        }
-
-        private async Task<string> CreateRefreshTokenAsync(string userId)
-        {
-            // Kullanıcının eski aktif token'larını iptal et
-            var existingTokens = await _context.RefreshTokens
-                .Where(rt => rt.UserId == userId && !rt.IsRevoked)
-                .ToListAsync();
-            foreach (var t in existingTokens) t.IsRevoked = true;
-
-            var tokenValue = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-            var refreshTokenDays = Convert.ToDouble(_configuration["Jwt:RefreshTokenDurationInDays"] ?? "30");
-
-            var newToken = new RefreshToken
-            {
-                Token = tokenValue,
-                UserId = userId,
-                ExpiresAt = _dateTimeService.Now.AddDays(refreshTokenDays),
-                CreatedAt = _dateTimeService.Now
-            };
-
-            _context.RefreshTokens.Add(newToken);
-            await _context.SaveChangesAsync();
-            return tokenValue;
-        }
-
-        private async Task<string> GenerateJwtToken(ApplicationUser user)
-        {
-            var userRoles = await _userManager.GetRolesAsync(user);
-
-            var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.MobilePhone, user.PhoneNumber ?? "")
-            };
-
-            foreach (var role in userRoles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-            }
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expiry = _dateTimeService.Now.AddDays(Convert.ToDouble(_configuration["Jwt:DurationInDays"] ?? "1"));
-
-            var token = new JwtSecurityToken(
-                _configuration["Jwt:Issuer"],
-                _configuration["Jwt:Audience"],
-                claims,
-                expires: expiry,
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        public async Task<AuthResponse> UpdateProfileAsync(string userId, UpdateProfileDto request)
-        {
-            var validation = await _updateProfileValidator.ValidateAsync(request);
-            if (!validation.IsValid) throw new FluentValidation.ValidationException(validation.Errors);
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
-
-            // Email uniqueness check (only if email is provided and changed)
-            if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
-            {
-                var userWithEmail = await _userManager.FindByEmailAsync(request.Email);
-                if (userWithEmail != null && userWithEmail.Id != userId)
-                {
-                    throw new AppValidationException("Bu e-posta adresi zaten kullanımda.");
-                }
-            }
-
-            // Phone number uniqueness check
-            if (request.PhoneNumber != user.PhoneNumber)
-            {
-                 var userWithPhone = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber && u.Id != userId);
-                 if (userWithPhone != null)
-                 {
-                     throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
-                 }
-            }
-
-            user.FirstName = request.FirstName;
-            user.LastName = request.LastName;
-            user.PhoneNumber = request.PhoneNumber;
-            user.UserName = request.PhoneNumber; // UserName always mirrors PhoneNumber
-            user.Email = request.Email;
-
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new AppValidationException($"Profil güncellenemedi: {errors}");
-            }
-
-            return new AuthResponse
-            {
-                Id = user.Id,
-                Email = user.Email,
-                UserName = user.UserName,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                PhoneNumber = user.PhoneNumber,
-                ProfileImageUrl = user.ProfileImageUrl,
-                Token = await GenerateJwtToken(user)
-            };
-        }
-
-        public async Task ChangePasswordAsync(string userId, ChangePasswordDto request)
-        {
-            var validation = await _changePasswordValidator.ValidateAsync(request);
-            if (!validation.IsValid) throw new FluentValidation.ValidationException(validation.Errors);
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
-
-            var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new AppValidationException($"Şifre değiştirilemedi: {errors}");
-            }
-
-            try
-            {
-                if (user.PhoneNumber != null)
-                    await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.PasswordChanged());
-            }
-            catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
-        }
-
-
-
-        public async Task DeleteAccountAsync(string userId)
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
-
-            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
-            {
-                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
-            }
-
-            var result = await _userManager.DeleteAsync(user);
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new AppValidationException($"Hesap silinemedi: {errors}");
-            }
-        }
-
-        public async Task<string> UpdateProfileImageAsync(string userId, Microsoft.AspNetCore.Http.IFormFile image)
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
-
-            // Delete old image if exists
-            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
-            {
-                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
-            }
-
-            var imageUrl = await _imageService.UploadImageAsync(image, "profile_images");
-            user.ProfileImageUrl = imageUrl;
-            
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded) throw new AppValidationException("Profil fotoğrafı güncellenemedi.");
-
-            return imageUrl;
-        }
-
-        public async Task DeleteProfileImageAsync(string userId)
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
-
-            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
-            {
-                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
-                user.ProfileImageUrl = null;
-                await _userManager.UpdateAsync(user);
-            }
-        }
-
-        // ─── OTP: Login ───────────────────────────────────────────────────────────
+        // ─── OTP: Giriş ──────────────────────────────────────────────────────────
 
         public async Task<SendOtpResponse> SendLoginOtpAsync(SendLoginOtpRequest request)
         {
-            // Önce kimlik bilgilerini doğrula (telefon/şifre yanlışsa OTP bile gönderme)
+            // Telefon numarası kayıtlı mı?
             var user = await FindUserByPhoneAsync(request.PhoneNumber);
             if (user == null)
-                throw new UnauthorizedAccessException("Telefon numarası veya şifre hatalı.");
-
-            var passwordValid = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
-            if (!passwordValid.Succeeded)
-                throw new UnauthorizedAccessException("Telefon numarası veya şifre hatalı.");
+                throw new UnauthorizedAccessException("Bu telefon numarasına kayıtlı hesap bulunamadı.");
 
             await CheckOtpRateLimitAsync(request.PhoneNumber, OtpPurpose.Login);
             await InvalidateExistingOtpsAsync(request.PhoneNumber, OtpPurpose.Login);
@@ -433,14 +92,9 @@ namespace KuaforumAPI.Infrastructure.Services
 
         public async Task<AuthResponse> VerifyLoginOtpAsync(VerifyLoginOtpRequest request)
         {
-            // Kimlik bilgilerini yeniden doğrula
             var user = await FindUserByPhoneAsync(request.PhoneNumber);
             if (user == null)
-                throw new UnauthorizedAccessException("Telefon numarası veya şifre hatalı.");
-
-            var passwordValid = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
-            if (!passwordValid.Succeeded)
-                throw new UnauthorizedAccessException("Telefon numarası veya şifre hatalı.");
+                throw new UnauthorizedAccessException("Bu telefon numarasına kayıtlı hesap bulunamadı.");
 
             await ValidateAndConsumeOtpAsync(request.PhoneNumber, request.OtpCode, OtpPurpose.Login);
 
@@ -448,31 +102,19 @@ namespace KuaforumAPI.Infrastructure.Services
             return BuildAuthResponse(user, await GenerateJwtToken(user), refreshToken);
         }
 
-        // ─── OTP: Register ────────────────────────────────────────────────────────
+        // ─── OTP: Kayıt ──────────────────────────────────────────────────────────
 
         public async Task<SendOtpResponse> SendRegisterOtpAsync(SendRegisterOtpRequest request)
         {
             // Telefon zaten kayıtlıysa hata ver
             var existing = await FindUserByPhoneAsync(request.PhoneNumber);
             if (existing != null)
-                 throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
+                throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
 
             var isSalonOwner = !string.IsNullOrEmpty(request.Role) &&
-                               request.Role == KuaforumAPI.Application.Constants.Roles.SalonOwner;
+                               request.Role == Roles.SalonOwner;
             if (isSalonOwner && string.IsNullOrWhiteSpace(request.Email))
                 throw new AppValidationException("Salon sahipleri için e-posta zorunludur.");
-
-            // Şifre gücü ön kontrolü (Identity kuralları çerçevesinde)
-            var tempUser = new ApplicationUser { UserName = request.PhoneNumber };
-            foreach (var validator in _userManager.PasswordValidators)
-            {
-                var result = await validator.ValidateAsync(_userManager, tempUser, request.Password);
-                if (!result.Succeeded)
-                {
-                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                    throw new AppValidationException($"Şifre gereksinimleri karşılanmıyor: {errors}");
-                }
-            }
 
             await CheckOtpRateLimitAsync(request.PhoneNumber, OtpPurpose.Register);
             await InvalidateExistingOtpsAsync(request.PhoneNumber, OtpPurpose.Register);
@@ -507,9 +149,9 @@ namespace KuaforumAPI.Infrastructure.Services
 
             await ValidateAndConsumeOtpAsync(request.PhoneNumber, request.OtpCode, OtpPurpose.Register);
 
-            // Kullanıcıyı oluştur
+            // Kullanıcıyı oluştur — şifre yerine rastgele iç şifre kullan (kullanıcı hiç bilmez)
             var isSalonOwner = !string.IsNullOrEmpty(request.Role) &&
-                               request.Role == KuaforumAPI.Application.Constants.Roles.SalonOwner;
+                               request.Role == Roles.SalonOwner;
             var user = new ApplicationUser
             {
                 FirstName = request.FirstName,
@@ -520,75 +162,163 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumberConfirmed = true
             };
 
-            var createResult = await _userManager.CreateAsync(user, request.Password);
+            // Rastgele iç şifre — kullanıcıya gösterilmez, sadece Identity gereksinimi için
+            var internalPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
+                                       .Replace("=", "!").Replace("+", "@").Replace("/", "#")[..16]
+                                   + "Aa1!";
+
+            var createResult = await _userManager.CreateAsync(user, internalPassword);
             if (!createResult.Succeeded)
             {
                 var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
                 throw new AppValidationException($"Kayıt başarısız: {errors}");
             }
 
-            var roleToAssign = isSalonOwner
-                ? KuaforumAPI.Application.Constants.Roles.SalonOwner
-                : KuaforumAPI.Application.Constants.Roles.Customer;
+            var roleToAssign = isSalonOwner ? Roles.SalonOwner : Roles.Customer;
             await _userManager.AddToRoleAsync(user, roleToAssign);
 
             var refreshToken = await CreateRefreshTokenAsync(user.Id);
             return BuildAuthResponse(user, await GenerateJwtToken(user), refreshToken);
         }
 
-        // ─── OTP: Şifre Sıfırlama ─────────────────────────────────────────────────
+        // ─── Token Yenileme ───────────────────────────────────────────────────────
 
-        public async Task<SendOtpResponse> SendForgotPasswordOtpAsync(SendForgotPasswordOtpRequest request)
+        public async Task<AuthResponse> RefreshAsync(string refreshToken)
         {
-            var user = await FindUserByPhoneAsync(request.PhoneNumber);
-            if (user == null)
-                throw new AppValidationException("Bu telefon numarasına kayıtlı hesap bulunamadı.");
+            var token = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
 
-            await CheckOtpRateLimitAsync(request.PhoneNumber, OtpPurpose.PasswordReset);
-            await InvalidateExistingOtpsAsync(request.PhoneNumber, OtpPurpose.PasswordReset);
+            if (token == null || token.IsRevoked || token.ExpiresAt <= _dateTimeService.Now)
+                throw new UnauthorizedAccessException("Geçersiz veya süresi dolmuş oturum. Lütfen tekrar giriş yapın.");
 
-            var code = GenerateOtpCode();
-            var otpEntry = new OtpCode
-            {
-                PhoneNumber = request.PhoneNumber,
-                CodeHash = HashOtp(code),
-                Purpose = OtpPurpose.PasswordReset,
-                ExpiresAt = _dateTimeService.Now.AddMinutes(OtpExpiryMinutes)
-            };
-            _context.OtpCodes.Add(otpEntry);
+            // Rotate: eski token'ı iptal et, yenisini oluştur
+            token.IsRevoked = true;
+            var newRefreshToken = await CreateRefreshTokenAsync(token.UserId);
             await _context.SaveChangesAsync();
 
-            await _smsService.SendSmsAsync(request.PhoneNumber,
-                $"Şifre sıfırlama kodunuz: {code}. Kod {OtpExpiryMinutes} dakika geçerlidir. Kimseyle paylaşmayın.");
-
-            return new SendOtpResponse
+            return new AuthResponse
             {
-                Message = $"Sıfırlama kodu {MaskPhone(request.PhoneNumber)} numarasına gönderildi.",
-                ExpiresInSeconds = OtpExpiryMinutes * 60
+                Id = token.User.Id,
+                Email = token.User.Email,
+                UserName = token.User.UserName,
+                FirstName = token.User.FirstName,
+                LastName = token.User.LastName,
+                PhoneNumber = token.User.PhoneNumber,
+                ProfileImageUrl = token.User.ProfileImageUrl,
+                Token = await GenerateJwtToken(token.User),
+                RefreshToken = newRefreshToken
             };
         }
 
-        public async Task ResetPasswordWithOtpAsync(ResetPasswordWithOtpRequest request)
+        // ─── Profil ───────────────────────────────────────────────────────────────
+
+        public async Task<AuthResponse> UpdateProfileAsync(string userId, UpdateProfileDto request)
         {
-            var user = await FindUserByPhoneAsync(request.PhoneNumber);
-            if (user == null)
-                throw new AppValidationException("Bu telefon numarasına kayıtlı hesap bulunamadı.");
+            var validation = await _updateProfileValidator.ValidateAsync(request);
+            if (!validation.IsValid) throw new FluentValidation.ValidationException(validation.Errors);
 
-            await ValidateAndConsumeOtpAsync(request.PhoneNumber, request.OtpCode, OtpPurpose.PasswordReset);
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+            // Email uniqueness check (only if email is provided and changed)
+            if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
+            {
+                var userWithEmail = await _userManager.FindByEmailAsync(request.Email);
+                if (userWithEmail != null && userWithEmail.Id != userId)
+                    throw new AppValidationException("Bu e-posta adresi zaten kullanımda.");
+            }
+
+            // Phone number uniqueness check
+            if (request.PhoneNumber != user.PhoneNumber)
+            {
+                var userWithPhone = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber && u.Id != userId);
+                if (userWithPhone != null)
+                    throw new AppValidationException("Bu telefon numarası zaten kullanımda.");
+            }
+
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
+            user.PhoneNumber = request.PhoneNumber;
+            user.UserName = request.PhoneNumber; // UserName always mirrors PhoneNumber
+            user.Email = request.Email;
+
+            var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new AppValidationException($"Şifre belirlenemedi: {errors}");
+                throw new AppValidationException($"Profil güncellenemedi: {errors}");
             }
 
-            try
+            return new AuthResponse
             {
-                await _smsService.SendSmsAsync(user.PhoneNumber, SmsTemplates.PasswordChanged());
+                Id = user.Id,
+                Email = user.Email,
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                PhoneNumber = user.PhoneNumber,
+                ProfileImageUrl = user.ProfileImageUrl,
+                Token = await GenerateJwtToken(user)
+            };
+        }
+
+        public async Task DeleteAccountAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
+
+            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
+
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new AppValidationException($"Hesap silinemedi: {errors}");
             }
-            catch { }
+        }
+
+        public async Task<string> UpdateProfileImageAsync(string userId, Microsoft.AspNetCore.Http.IFormFile image)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
+
+            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
+
+            var imageUrl = await _imageService.UploadImageAsync(image, "profile_images");
+            user.ProfileImageUrl = imageUrl;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded) throw new AppValidationException("Profil fotoğrafı güncellenemedi.");
+
+            return imageUrl;
+        }
+
+        public async Task DeleteProfileImageAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) throw new NotFoundException("Kullanıcı bulunamadı.");
+
+            if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+            {
+                await _imageService.DeleteImageAsync(user.ProfileImageUrl);
+                user.ProfileImageUrl = null;
+                await _userManager.UpdateAsync(user);
+            }
+        }
+
+        // ─── Logout ───────────────────────────────────────────────────────────────
+
+        public async Task LogoutAsync(string userId)
+        {
+            var tokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+                .ToListAsync();
+            foreach (var t in tokens) t.IsRevoked = true;
+            if (tokens.Any())
+                await _context.SaveChangesAsync();
         }
 
         // ─── OTP: Misafir Kimlik Doğrulama ───────────────────────────────────────
@@ -630,7 +360,6 @@ namespace KuaforumAPI.Infrastructure.Services
             var existingUser = await FindUserByPhoneAsync(request.PhoneNumber);
             if (existingUser != null)
             {
-                // Mevcut kullanıcı olarak giriş yaptır
                 var refreshToken = await CreateRefreshTokenAsync(existingUser.Id);
                 return BuildAuthResponse(existingUser, await GenerateJwtToken(existingUser), refreshToken);
             }
@@ -649,43 +378,80 @@ namespace KuaforumAPI.Infrastructure.Services
                 PhoneNumberConfirmed = true
             };
 
-            // Rastgele şifre — kullanıcı isterse daha sonra sıfırlayabilir
-            var password = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(12))
-                               .Replace("=", "!").Replace("+", "@").Replace("/", "#")[..12];
+            // Rastgele iç şifre — kullanıcıya gösterilmez
+            var internalPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
+                                       .Replace("=", "!").Replace("+", "@").Replace("/", "#")[..16]
+                                   + "Aa1!";
 
-            var createResult = await _userManager.CreateAsync(newUser, password);
+            var createResult = await _userManager.CreateAsync(newUser, internalPassword);
             if (!createResult.Succeeded)
             {
                 var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
                 throw new AppValidationException($"Hesap oluşturulamadı: {errors}");
             }
 
-            await _userManager.AddToRoleAsync(newUser, Application.Constants.Roles.Customer);
-
-            // Şifre SMS ile gönder — kullanıcı daha sonra "Şifremi Unuttum" ile değiştirebilir
-            try
-            {
-                await _smsService.SendSmsAsync(request.PhoneNumber, SmsTemplates.GuestAccountCreated(password));
-            }
-            catch (Exception ex) { _logger.LogWarning(ex, "Misafir hesap SMS gönderilemedi (ana işlem etkilenmedi)."); }
+            await _userManager.AddToRoleAsync(newUser, Roles.Customer);
 
             var newRefreshToken = await CreateRefreshTokenAsync(newUser.Id);
             return BuildAuthResponse(newUser, await GenerateJwtToken(newUser), newRefreshToken);
         }
 
-        // ─── Logout ───────────────────────────────────────────────────────────────
+        // ─── Yardımcı Metodlar ────────────────────────────────────────────────────
 
-        public async Task LogoutAsync(string userId)
+        private async Task<string> CreateRefreshTokenAsync(string userId)
         {
-            var tokens = await _context.RefreshTokens
+            // Kullanıcının eski aktif token'larını iptal et
+            var existingTokens = await _context.RefreshTokens
                 .Where(rt => rt.UserId == userId && !rt.IsRevoked)
                 .ToListAsync();
-            foreach (var t in tokens) t.IsRevoked = true;
-            if (tokens.Any())
-                await _context.SaveChangesAsync();
+            foreach (var t in existingTokens) t.IsRevoked = true;
+
+            var tokenValue = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+            var refreshTokenDays = Convert.ToDouble(_configuration["Jwt:RefreshTokenDurationInDays"] ?? "180");
+
+            var newToken = new RefreshToken
+            {
+                Token = tokenValue,
+                UserId = userId,
+                ExpiresAt = _dateTimeService.Now.AddDays(refreshTokenDays),
+                CreatedAt = _dateTimeService.Now
+            };
+
+            _context.RefreshTokens.Add(newToken);
+            await _context.SaveChangesAsync();
+            return tokenValue;
         }
 
-        // ─── OTP Yardımcı Metodlar ────────────────────────────────────────────────
+        private async Task<string> GenerateJwtToken(ApplicationUser user)
+        {
+            var userRoles = await _userManager.GetRolesAsync(user);
+
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.MobilePhone, user.PhoneNumber ?? "")
+            };
+
+            foreach (var role in userRoles)
+                claims.Add(new Claim(ClaimTypes.Role, role));
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var expiry = _dateTimeService.Now.AddDays(Convert.ToDouble(_configuration["Jwt:DurationInDays"] ?? "1"));
+
+            var token = new JwtSecurityToken(
+                _configuration["Jwt:Issuer"],
+                _configuration["Jwt:Audience"],
+                claims,
+                expires: expiry,
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
 
         private static string GenerateOtpCode()
             => Random.Shared.Next(100000, 1000000).ToString("D6");

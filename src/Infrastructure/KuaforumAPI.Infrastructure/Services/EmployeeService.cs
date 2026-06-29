@@ -63,7 +63,6 @@ namespace KuaforumAPI.Infrastructure.Services
             {
                 var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
                 bool isNewUser = false;
-                string? tempPassword = null;
 
                 if (user == null)
                 {
@@ -79,8 +78,12 @@ namespace KuaforumAPI.Infrastructure.Services
                         PhoneNumberConfirmed = true
                     };
 
-                    tempPassword = GenerateTemporaryPassword();
-                    var result = await _userManager.CreateAsync(user, tempPassword);
+                    // Rastgele iç şifre — kullanıcıya gösterilmez, giriş OTP ile yapılır
+                    var internalPassword = Convert.ToBase64String(
+                        System.Security.Cryptography.RandomNumberGenerator.GetBytes(24))
+                        .Replace("=", "!").Replace("+", "@").Replace("/", "#")[..16] + "Aa1!";
+
+                    var result = await _userManager.CreateAsync(user, internalPassword);
                     if (!result.Succeeded)
                     {
                         var errors = string.Join(", ", result.Errors.Select(e => e.Description));
@@ -146,9 +149,8 @@ namespace KuaforumAPI.Infrastructure.Services
                 {
                     if (user.PhoneNumber != null)
                     {
-                        var msg = isNewUser && tempPassword != null
-                            ? SmsTemplates.EmployeeAdded(shop.Name, tempPassword)
-                            : SmsTemplates.EmployeeAddedExisting(shop.Name);
+                        // Artık şifre gönderilmiyor — çalışan OTP ile giriş yapar
+                        var msg = SmsTemplates.EmployeeAddedOtp(shop.Name);
                         await _smsService.SendSmsAsync(user.PhoneNumber, msg);
                     }
                 }
@@ -159,8 +161,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     IsNewUser = isNewUser,
                     FirstName = user.FirstName,
                     LastName = user.LastName,
-                    PhoneNumber = user.PhoneNumber,
-                    TemporaryPassword = isNewUser ? tempPassword : null
+                    PhoneNumber = user.PhoneNumber
                 };
             }
             catch
@@ -170,14 +171,7 @@ namespace KuaforumAPI.Infrastructure.Services
             }
         }
 
-        private static string GenerateTemporaryPassword()
-        {
-            const string chars = "abcdefghijkmnpqrstuvwxyz23456789";
-            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-            var bytes = new byte[6];
-            rng.GetBytes(bytes);
-            return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
-        }
+
 
         public async Task<List<EmployeeListDto>> GetEmployeesAsync(Guid shopId, string ownerId)
         {
