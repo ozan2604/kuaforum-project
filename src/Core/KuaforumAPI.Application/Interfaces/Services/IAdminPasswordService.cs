@@ -8,6 +8,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
     {
         Task<List<AdminPasswordStatusDto>> GetAllStatusesAsync();
         Task<bool> SetPasswordAsync(SetAdminPasswordRequest request);
+        Task<bool> VerifyPasswordAsync(string key, string password);
         Task<bool> DeletePasswordAsync(string key);
     }
 }

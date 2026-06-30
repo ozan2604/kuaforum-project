@@ -33,6 +33,14 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { message = "Şifre başarıyla kaydedildi." });
         }
 
+        [HttpPost("verify")]
+        public async Task<IActionResult> VerifyPassword([FromBody] SetAdminPasswordRequest request)
+        {
+            var result = await _adminPasswordService.VerifyPasswordAsync(request.Key, request.Password);
+            if (!result) return BadRequest(new { message = "Şifre yanlış veya belirlenmemiş." });
+            return Ok(new { message = "Şifre doğru." });
+        }
+
         [HttpDelete("{key}")]
         public async Task<IActionResult> DeletePassword(string key)
         {

@@ -75,6 +75,18 @@ namespace KuaforumAPI.Infrastructure.Services
             return true;
         }
 
+        public async Task<bool> VerifyPasswordAsync(string key, string password)
+        {
+            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(password))
+                return false;
+
+            var existing = await _context.AdminPasswords.FirstOrDefaultAsync(p => p.Key == key);
+            if (existing == null)
+                return false; // Not set
+
+            return BCrypt.Net.BCrypt.Verify(password, existing.PasswordHash);
+        }
+
         public async Task<bool> DeletePasswordAsync(string key)
         {
             var existing = await _context.AdminPasswords.FirstOrDefaultAsync(p => p.Key == key);
