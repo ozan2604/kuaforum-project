@@ -8,11 +8,13 @@ using KuaforumAPI.Application.Interfaces.Services;
 using KuaforumAPI.Domain.Entities;
 using KuaforumAPI.Domain.Enums;
 using KuaforumAPI.Persistence.Contexts;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace KuaforumAPI.Infrastructure.Services
@@ -23,13 +25,15 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IDateTimeService _dateTimeService;
         private readonly ISmsService _smsService;
         private readonly ILogger<AppointmentService> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService, ISmsService smsService, ILogger<AppointmentService> logger)
+        public AppointmentService(ApplicationDbContext context, IDateTimeService dateTimeService, ISmsService smsService, ILogger<AppointmentService> logger, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _dateTimeService = dateTimeService;
             _smsService = smsService;
             _logger = logger;
+            _userManager = userManager;
         }
 
         public async Task CreateAsync(string userId, CreateAppointmentDto request)
@@ -256,6 +260,53 @@ namespace KuaforumAPI.Infrastructure.Services
             var guestName = string.IsNullOrWhiteSpace(request.GuestCustomerName) ? null : request.GuestCustomerName.Trim();
             var guestPhone = string.IsNullOrWhiteSpace(request.GuestCustomerPhone) ? null : request.GuestCustomerPhone.Trim();
 
+            string? registeredUserId = null;
+            if (!string.IsNullOrWhiteSpace(guestPhone))
+            {
+                var potentialPhones = new List<string> { guestPhone };
+                if (guestPhone.Length == 10 && !guestPhone.StartsWith("0"))
+                    potentialPhones.Add("0" + guestPhone);
+                if (guestPhone.Length == 12 && guestPhone.StartsWith("90"))
+                    potentialPhones.Add("0" + guestPhone[2..]);
+
+                var existingUser = await _userManager.Users.FirstOrDefaultAsync(u => potentialPhones.Contains(u.PhoneNumber!));
+                
+                if (existingUser != null)
+                {
+                    registeredUserId = existingUser.Id;
+                }
+                else
+                {
+                    var nameParts = (guestName ?? "Misafir").Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                    var firstName = nameParts.Length > 0 ? nameParts[0] : "Misafir";
+                    var lastName = nameParts.Length > 1 ? nameParts[1] : "";
+
+                    var newUser = new ApplicationUser
+                    {
+                        FirstName = firstName,
+                        LastName = lastName,
+                        UserName = guestPhone,
+                        PhoneNumber = guestPhone,
+                        PhoneNumberConfirmed = true
+                    };
+
+                    var internalPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
+                                               .Replace("=", "!").Replace("+", "@").Replace("/", "#")[..16]
+                                           + "Aa1!";
+
+                    var createResult = await _userManager.CreateAsync(newUser, internalPassword);
+                    if (createResult.Succeeded)
+                    {
+                        await _userManager.AddToRoleAsync(newUser, Roles.Customer);
+                        registeredUserId = newUser.Id;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Misafir randevusu için kullanıcı oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                    }
+                }
+            }
+
             var groupId = Guid.NewGuid();
             var currentStartTime = appointmentStart;
 
@@ -301,9 +352,9 @@ namespace KuaforumAPI.Infrastructure.Services
                         ShopId = request.ShopId,
                         ShopServiceId = serviceId,
                         ShopEmployeeId = request.ShopEmployeeId,
-                        UserId = null,
-                        GuestCustomerName = guestName,
-                        GuestCustomerPhone = guestPhone,
+                        UserId = registeredUserId,
+                        GuestCustomerName = registeredUserId == null ? guestName : null,
+                        GuestCustomerPhone = registeredUserId == null ? guestPhone : null,
                         StartTime = currentStartTime,
                         EndTime = currentEndTime,
                         Status = AppointmentStatus.Confirmed,
