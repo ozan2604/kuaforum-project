@@ -79,6 +79,22 @@ namespace KuaforumAPI.WebAPI.Controllers
                 return Forbid();
             }
         }
+
+        [HttpGet("{shopId}/Customers")]
+        [Authorize(Roles = "SalonOwner,Employee,Admin")]
+        public async Task<IActionResult> GetShopCustomers(Guid shopId, [FromQuery] string search = "")
+        {
+            var userId = User.IsInRole("Admin") ? null : User.FindFirstValue(ClaimTypes.NameIdentifier);
+            try
+            {
+                var customers = await _shopService.SearchShopCustomersAsync(shopId, userId, search);
+                return Ok(customers);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
         [HttpGet("admin/all")]
         [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.Admin)]
         public async Task<IActionResult> GetAllShops(

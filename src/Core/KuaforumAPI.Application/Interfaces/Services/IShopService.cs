@@ -50,5 +50,6 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task DeleteImageTagAsync(string ownerId, Guid tagId);
 
         Task<List<MediaHighlightDto>> GetMediaHighlightsAsync(string? city, string? district, string? neighborhood, int limit = 40, string? userId = null);
+        Task<List<ShopCustomerDto>> SearchShopCustomersAsync(Guid shopId, string? ownerId, string searchTerm);
     }
 }
