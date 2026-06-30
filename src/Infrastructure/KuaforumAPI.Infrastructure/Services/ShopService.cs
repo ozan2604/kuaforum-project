@@ -1083,23 +1083,44 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var registeredUsersQuery = _context.Appointments
                 .Where(a => a.ShopId == shopId && a.UserId != null)
-                .Select(a => a.User)
-                .Distinct()
-                .Where(u => u != null && ((u.FirstName + " " + u.LastName).ToLower().Contains(searchTerm) || (u.PhoneNumber != null && u.PhoneNumber.Contains(searchTerm))))
-                .Select(u => new ShopCustomerDto { UserId = u.Id, Name = u.FirstName + " " + u.LastName, Phone = u.PhoneNumber });
+                .Where(a => (a.User!.FirstName + " " + a.User.LastName).ToLower().Contains(searchTerm) || (a.User.PhoneNumber != null && a.User.PhoneNumber.Contains(searchTerm)))
+                .GroupBy(a => a.UserId)
+                .Select(g => new ShopCustomerDto
+                {
+                    UserId = g.Key,
+                    Name = g.FirstOrDefault()!.User!.FirstName + " " + g.FirstOrDefault()!.User!.LastName,
+                    Phone = g.FirstOrDefault()!.User!.PhoneNumber,
+                    TotalAppointments = g.Count(),
+                    LastAppointmentDate = g.Max(a => a.StartTime)
+                });
 
             var guestUsersQuery = _context.Appointments
                 .Where(a => a.ShopId == shopId && a.UserId == null && a.GuestCustomerName != null)
                 .Where(a => a.GuestCustomerName!.ToLower().Contains(searchTerm) || (a.GuestCustomerPhone != null && a.GuestCustomerPhone.Contains(searchTerm)))
-                .Select(a => new ShopCustomerDto { UserId = null, Name = a.GuestCustomerName!, Phone = a.GuestCustomerPhone })
-                .Distinct();
+                .GroupBy(a => a.GuestCustomerPhone ?? a.GuestCustomerName)
+                .Select(g => new ShopCustomerDto
+                {
+                    UserId = null,
+                    Name = g.FirstOrDefault()!.GuestCustomerName!,
+                    Phone = g.FirstOrDefault()!.GuestCustomerPhone,
+                    TotalAppointments = g.Count(),
+                    LastAppointmentDate = g.Max(a => a.StartTime)
+                });
 
             var result1 = await registeredUsersQuery.Take(20).ToListAsync();
             var result2 = await guestUsersQuery.Take(20).ToListAsync();
 
             var combined = result1.Concat(result2)
                 .GroupBy(c => c.Phone ?? c.Name)
-                .Select(g => g.First())
+                .Select(g => new ShopCustomerDto
+                {
+                    UserId = g.First().UserId,
+                    Name = g.First().Name,
+                    Phone = g.First().Phone,
+                    TotalAppointments = g.Sum(x => x.TotalAppointments),
+                    LastAppointmentDate = g.Max(x => x.LastAppointmentDate)
+                })
+                .OrderByDescending(c => c.TotalAppointments)
                 .Take(20)
                 .ToList();
 
