@@ -30,6 +30,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<ShopVideoTag> ShopVideoTags { get; set; }
         public DbSet<MobileShopServiceArea> MobileShopServiceAreas { get; set; }
         public DbSet<MediaLike> MediaLikes { get; set; }
+        public DbSet<AdminPassword> AdminPasswords { get; set; }
 
         public DbSet<City> Cities { get; set; }
         public DbSet<District> Districts { get; set; }
@@ -45,6 +46,15 @@ namespace KuaforumAPI.Persistence.Contexts
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            // AdminPassword Configuration
+            builder.Entity<AdminPassword>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Key).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
+                entity.HasIndex(e => e.Key).IsUnique();
+            });
 
             // Location Configuration
             builder.Entity<City>(entity =>
