@@ -53,7 +53,7 @@ namespace KuaforumAPI.WebAPI.Controllers
             var totalCount = await query.CountAsync();
             
             var users = await query
-                .OrderByDescending(u => u.Id)
+                .OrderByDescending(u => u.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
