@@ -1241,7 +1241,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var query = await _context.Appointments
                 .Include(a => a.Shop)
-                .Where(a => !a.IsDeleted && a.CreatedAt >= yearStart) // Yıl başından sonrasını çekiyoruz, öncesi 0 zaten
+                .Where(a => a.CreatedAt >= yearStart) // Yıl başından sonrasını çekiyoruz, öncesi 0 zaten
                 .Select(a => new
                 {
                     a.ShopId,
