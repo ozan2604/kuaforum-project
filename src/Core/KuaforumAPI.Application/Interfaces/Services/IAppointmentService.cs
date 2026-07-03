@@ -20,5 +20,6 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task CancelByCustomerAsync(string userId, Guid appointmentId, string? reason = null);
         Task CancelGroupAsync(string userId, Guid groupId, string? reason = null);
         Task<NoShowResultDto?> UpdateGroupStatusAsync(string? ownerId, Guid groupId, UpdateAppointmentStatusDto request);
+        Task<List<AdminAppointmentStatsDto>> GetAdminAppointmentStatsAsync();
     }
 }

@@ -155,5 +155,12 @@ namespace KuaforumAPI.WebAPI.Controllers
             // Client expects JSON usually. returning null is fine.
             return Ok(appointment);
         }
+        [HttpGet("admin/stats")]
+        [Authorize(Roles = Roles.Admin)]
+        public async Task<IActionResult> GetAdminAppointmentStats()
+        {
+            var result = await _appointmentService.GetAdminAppointmentStatsAsync();
+            return Ok(result);
+        }
     }
 }

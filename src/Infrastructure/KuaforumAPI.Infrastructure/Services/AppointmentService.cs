@@ -1230,5 +1230,50 @@ namespace KuaforumAPI.Infrastructure.Services
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
+        public async Task<List<AdminAppointmentStatsDto>> GetAdminAppointmentStatsAsync()
+        {
+            var now = DateTime.UtcNow;
+            
+            var todayStart = now.Date;
+            var weekStart = todayStart.AddDays(-(int)now.DayOfWeek + (now.DayOfWeek == DayOfWeek.Sunday ? -6 : 1)); // Pazartesi başlangıç
+            var monthStart = new DateTime(now.Year, now.Month, 1);
+            var yearStart = new DateTime(now.Year, 1, 1);
+
+            var query = await _context.Appointments
+                .Include(a => a.Shop)
+                .Where(a => !a.IsDeleted && a.CreatedAt >= yearStart) // Yıl başından sonrasını çekiyoruz, öncesi 0 zaten
+                .Select(a => new
+                {
+                    a.ShopId,
+                    a.Shop.Name,
+                    a.CreatedAt,
+                    IsManual = a.UserId == null // Manuel = UserId yok
+                })
+                .ToListAsync();
+
+            var stats = query
+                .GroupBy(a => new { a.ShopId, a.Name })
+                .Select(g => new AdminAppointmentStatsDto
+                {
+                    ShopId = g.Key.ShopId,
+                    ShopName = g.Key.Name,
+                    
+                    TodayManualCount = g.Count(x => x.CreatedAt >= todayStart && x.IsManual),
+                    TodayNormalCount = g.Count(x => x.CreatedAt >= todayStart && !x.IsManual),
+                    
+                    WeekManualCount = g.Count(x => x.CreatedAt >= weekStart && x.IsManual),
+                    WeekNormalCount = g.Count(x => x.CreatedAt >= weekStart && !x.IsManual),
+                    
+                    MonthManualCount = g.Count(x => x.CreatedAt >= monthStart && x.IsManual),
+                    MonthNormalCount = g.Count(x => x.CreatedAt >= monthStart && !x.IsManual),
+                    
+                    YearManualCount = g.Count(x => x.CreatedAt >= yearStart && x.IsManual),
+                    YearNormalCount = g.Count(x => x.CreatedAt >= yearStart && !x.IsManual)
+                })
+                .OrderByDescending(s => s.TodayManualCount + s.TodayNormalCount) // Bugün en çok randevu alanlar üstte
+                .ToList();
+
+            return stats;
+        }
     }
 }
