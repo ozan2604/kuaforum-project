@@ -31,7 +31,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<MobileShopServiceArea> MobileShopServiceAreas { get; set; }
         public DbSet<MediaLike> MediaLikes { get; set; }
         public DbSet<AdminPassword> AdminPasswords { get; set; }
-
+        public DbSet<AdApplication> AdApplications { get; set; }
         public DbSet<City> Cities { get; set; }
         public DbSet<District> Districts { get; set; }
         public DbSet<Neighborhood> Neighborhoods { get; set; }
@@ -54,6 +54,22 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.Property(e => e.Key).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
                 entity.HasIndex(e => e.Key).IsUnique();
+            });
+
+            // AdApplication Configuration
+            builder.Entity<AdApplication>(entity =>
+            {
+                entity.Property(e => e.MediaUrl).IsRequired().HasMaxLength(1000);
+                entity.Property(e => e.MediaType).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Description).HasMaxLength(2000);
+                entity.Property(e => e.PhoneNumber).HasMaxLength(20);
+                entity.Property(e => e.ExternalLink).HasMaxLength(1000);
+                entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+                
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Location Configuration
