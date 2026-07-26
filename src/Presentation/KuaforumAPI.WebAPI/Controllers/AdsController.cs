@@ -59,5 +59,24 @@ namespace KuaforumAPI.WebAPI.Controllers
             var result = await _adService.GetActiveAdsAsync();
             return Ok(result);
         }
+
+        [HttpPut("{id}")]
+        [Authorize]
+        [RequestSizeLimit(100 * 1024 * 1024)] // 100 MB limit for videos
+        public async Task<IActionResult> UpdateAd(Guid id, [FromForm] UpdateUserAdApplicationDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _adService.UpdateUserAdApplicationAsync(id, userId, dto);
+            return Ok(result);
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteAd(Guid id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _adService.DeleteAdApplicationAsync(id, userId);
+            return NoContent();
+        }
     }
 }

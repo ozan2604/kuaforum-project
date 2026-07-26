@@ -11,5 +11,7 @@ namespace KuaforumAPI.Application.Interfaces.Services
         Task<IEnumerable<AdApplicationDto>> GetAllAdApplicationsAsync();
         Task<AdApplicationDto> UpdateAdApplicationStatusAsync(Guid id, UpdateAdApplicationStatusDto dto);
         Task<IEnumerable<AdApplicationDto>> GetActiveAdsAsync();
+        Task DeleteAdApplicationAsync(Guid id, string userId);
+        Task<AdApplicationDto> UpdateUserAdApplicationAsync(Guid id, string userId, UpdateUserAdApplicationDto dto);
     }
 }
