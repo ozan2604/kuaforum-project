@@ -6,7 +6,8 @@ namespace KuaforumAPI.Application.Interfaces.Services
 {
     public interface ISiteAnalyticsService
     {
-        Task<ApiResponse<bool>> LogVisitAsync(LogVisitDto dto, string ipAddress);
-        Task<ApiResponse<SiteStatsDto>> GetSiteStatsAsync();
+        Task<bool> LogVisitAsync(LogVisitDto dto, string ipAddress);
+        Task<SiteStatsDto> GetSiteStatsAsync();
+        Task<SiteStatsDto> GetShopStatsAsync(Guid shopId);
     }
 }

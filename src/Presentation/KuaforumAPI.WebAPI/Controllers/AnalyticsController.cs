@@ -23,7 +23,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var result = await _analyticsService.LogVisitAsync(dto, ip);
-            return Ok(result);
+            return Ok(new { success = result });
         }
 
         [HttpGet("stats")]
@@ -31,7 +31,15 @@ namespace KuaforumAPI.WebAPI.Controllers
         public async Task<IActionResult> GetStats()
         {
             var result = await _analyticsService.GetSiteStatsAsync();
-            return Ok(result);
+            return Ok(new { success = true, data = result });
+        }
+
+        [HttpGet("shop-stats/{shopId}")]
+        [Authorize(Roles = "SalonOwner")]
+        public async Task<IActionResult> GetShopStats(System.Guid shopId)
+        {
+            var result = await _analyticsService.GetShopStatsAsync(shopId);
+            return Ok(new { success = true, data = result });
         }
     }
 }

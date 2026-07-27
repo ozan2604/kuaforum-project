@@ -11,5 +11,6 @@ namespace KuaforumAPI.Domain.Entities
         public string DeviceType { get; set; } = string.Empty;
         public string Browser { get; set; } = string.Empty;
         public string Os { get; set; } = string.Empty;
+        public Guid? ShopId { get; set; }
     }
 }
