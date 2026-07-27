@@ -221,6 +221,53 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 if (remind2hGroups.Count > 0)
                     _logger.LogInformation("Sent 2h reminders for {Count} appointments.", remind2hGroups.Count);
 
+                // 5.5 3 Gün Sonra Değerlendirme Hatırlatması
+                var threeDaysAgo = now.AddDays(-3);
+                var fourDaysAgo = now.AddDays(-5); // Son 5 güne kadar bakar
+                
+                var reviewReminders = await context.Appointments
+                    .Include(a => a.Shop)
+                    .Include(a => a.User)
+                    .Where(a => a.Status == AppointmentStatus.Completed
+                                && a.EndTime <= threeDaysAgo
+                                && a.EndTime > fourDaysAgo
+                                && a.User != null
+                                && !a.IsReviewReminderSent
+                                && !context.Reviews.Any(r => r.AppointmentId == a.Id))
+                    .ToListAsync(stoppingToken);
+
+                var reviewReminderGroups = reviewReminders
+                    .GroupBy(a => a.GroupId ?? a.Id)
+                    .Select(g => g.First())
+                    .ToList();
+
+                foreach (var appointment in reviewReminders)
+                {
+                    appointment.IsReviewReminderSent = true;
+                }
+
+                if (reviewReminders.Count > 0)
+                    await context.SaveChangesAsync(stoppingToken);
+
+                foreach (var appointment in reviewReminderGroups)
+                {
+                    try
+                    {
+                        if (appointment.User?.PhoneNumber != null)
+                            await smsService.SendSmsAsync(
+                                appointment.User.PhoneNumber,
+                                SmsTemplates.AppointmentReviewReminder3Days(appointment.Shop.Name));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "3 gün değerlendirme hatırlatma SMS gönderilemedi. AppointmentId: {AppointmentId}", appointment.Id);
+                    }
+                }
+
+                if (reviewReminderGroups.Count > 0)
+                    _logger.LogInformation("Sent 3-day review reminders for {Count} appointments.", reviewReminderGroups.Count);
+
+
                 // 6. Eski OTP kodlarını temizle (7 günden eski)
                 var otpCutoff = now.AddDays(-7);
                 var deletedOtps = await context.OtpCodes

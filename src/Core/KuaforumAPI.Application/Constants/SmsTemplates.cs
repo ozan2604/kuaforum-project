@@ -36,7 +36,10 @@ namespace KuaforumAPI.Application.Constants
         }
 
         public static string AppointmentCompleted(string shopName) =>
-            $"Randevunuz tamamlandı. Bizi tercih ettiğiniz için teşekkürler! Aldığınız hizmeti profilinizden değerlendirmeyi unutmayın.";
+            $"Randevunuz tamamlandı. Bizi tercih ettiğiniz için teşekkürler! Aldığınız hizmeti Kuaforum profilinizdeki Yorumlar sekmesinden değerlendirmeyi unutmayın.";
+
+        public static string AppointmentReviewReminder3Days(string shopName) =>
+            $"Merhaba, {shopName} randevunuz nasıldı? Deneyiminizi bizimle ve diğer müşterilerle paylaşmak için lütfen profilinizdeki Yorumlar sekmesinden randevunuzu değerlendirin.";
 
         public static string AppointmentReminder48h(string shopName, DateTime startTime) =>
             $"Yarın randevunuz var! {shopName} - {startTime:HH:mm}. Görüşürüz.";

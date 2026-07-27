@@ -32,6 +32,7 @@ namespace KuaforumAPI.Domain.Entities
         public bool Is48hReminderSent { get; set; } = false;
         public bool Is2hReminderSent { get; set; } = false;
         public bool IsIncludedInOwnerSummary { get; set; } = false;
+        public bool IsReviewReminderSent { get; set; } = false;
 
         // Manuel (walk-in / telefon) randevular için — UserId null olduğunda geçerli
         public string? GuestCustomerName { get; set; }
