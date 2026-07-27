@@ -5,7 +5,7 @@ namespace KuaforumAPI.Application.DTOs.AdApplication
 {
     public class UpdateUserAdApplicationDto
     {
-        public IFormFile Media { get; set; }
+        public IFormFile? Media { get; set; }
 
         [Required(ErrorMessage = "Açıklama gereklidir.")]
         [MaxLength(2000, ErrorMessage = "Açıklama en fazla 2000 karakter olabilir.")]
@@ -15,7 +15,7 @@ namespace KuaforumAPI.Application.DTOs.AdApplication
         [MaxLength(20, ErrorMessage = "Geçersiz telefon numarası.")]
         public string PhoneNumber { get; set; }
 
-        public string ExternalLink { get; set; }
+        public string? ExternalLink { get; set; }
         
         public decimal? Price { get; set; }
     }
