@@ -21,6 +21,7 @@ namespace KuaforumAPI.Persistence
             services.AddScoped<IShopImageRepository, ShopImageRepository>();
 
             services.AddScoped<IShopEmployeeRepository, ShopEmployeeRepository>();
+            services.AddScoped<ISiteVisitRepository, SiteVisitRepository>();
         }
     }
 }

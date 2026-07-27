@@ -35,6 +35,7 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<City> Cities { get; set; }
         public DbSet<District> Districts { get; set; }
         public DbSet<Neighborhood> Neighborhoods { get; set; }
+        public DbSet<SiteVisit> SiteVisits { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
 
