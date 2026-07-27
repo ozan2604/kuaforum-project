@@ -9,17 +9,23 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Identity;
+
 namespace KuaforumAPI.Infrastructure.Services
 {
     public class AdApplicationService : IAdApplicationService
     {
         private readonly ApplicationDbContext _context;
         private readonly IImageService _imageService;
+        private readonly ISmsService _smsService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public AdApplicationService(ApplicationDbContext context, IImageService imageService)
+        public AdApplicationService(ApplicationDbContext context, IImageService imageService, ISmsService smsService, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _imageService = imageService;
+            _smsService = smsService;
+            _userManager = userManager;
         }
 
         public async Task<AdApplicationDto> CreateAdApplicationAsync(string userId, CreateAdApplicationDto dto)
@@ -53,6 +59,23 @@ namespace KuaforumAPI.Infrastructure.Services
 
             _context.AdApplications.Add(adApp);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user?.PhoneNumber != null)
+                    await _smsService.SendSmsAsync(user.PhoneNumber, KuaforumAPI.Application.Constants.SmsTemplates.AdApplicationSubmitted());
+
+                var admins = await _userManager.GetUsersInRoleAsync(KuaforumAPI.Application.Constants.Roles.Admin);
+                foreach (var admin in admins)
+                {
+                    if (!string.IsNullOrEmpty(admin.PhoneNumber))
+                    {
+                        await _smsService.SendSmsAsync(admin.PhoneNumber, KuaforumAPI.Application.Constants.SmsTemplates.NewAdApplicationToAdmin());
+                    }
+                }
+            }
+            catch { }
 
             return MapToDto(adApp);
         }
@@ -101,6 +124,19 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var user = await _userManager.FindByIdAsync(adApp.UserId);
+                if (user?.PhoneNumber != null)
+                {
+                    if (dto.Status == ApplicationStatus.Approved)
+                        await _smsService.SendSmsAsync(user.PhoneNumber, KuaforumAPI.Application.Constants.SmsTemplates.AdApplicationApproved());
+                    else if (dto.Status == ApplicationStatus.Rejected)
+                        await _smsService.SendSmsAsync(user.PhoneNumber, KuaforumAPI.Application.Constants.SmsTemplates.AdApplicationRejected());
+                }
+            }
+            catch { }
 
             return MapToDto(adApp);
         }

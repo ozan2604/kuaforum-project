@@ -86,6 +86,20 @@ namespace KuaforumAPI.Application.Constants
         public static string NewSalonApplicationToAdmin(string shopName) =>
             $"Sisteme yeni bir dükkan başvurusu geldi: {shopName}. Lütfen onay için admin panelini kontrol edin.";
 
+        // ── Reklam Başvuru SMS'leri ───────────────────────────────────────────
+
+        public static string AdApplicationSubmitted() =>
+            "SALONBİR: Reklam başvurunuz alındı. Değerlendirme sonucunda SMS ile bilgilendirileceksiniz.";
+
+        public static string AdApplicationApproved() =>
+            "Tebrikler! Reklam başvurunuz onaylandı ve yayınlanmaya başladı.";
+
+        public static string AdApplicationRejected() =>
+            "Reklam başvurunuz reddedildi. Bilgi için destek hattımızla iletişime geçin.";
+
+        public static string NewAdApplicationToAdmin() =>
+            "Sisteme yeni bir reklam başvurusu geldi. Lütfen onay için admin panelini kontrol edin.";
+
         // ── Çalışan yönetimi SMS'leri ────────────────────────────────────────
 
         public static string EmployeeAdded(string shopName) =>
