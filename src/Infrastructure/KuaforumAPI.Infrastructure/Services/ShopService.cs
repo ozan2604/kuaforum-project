@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 
 namespace KuaforumAPI.Infrastructure.Services
 {
@@ -28,8 +29,9 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly IDateTimeService _dateTimeService;
         private readonly ILogger<ShopService> _logger;
         private readonly IShopCodeGeneratorService _codeGenerator;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService, ILogger<ShopService> logger, IShopCodeGeneratorService codeGenerator)
+        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService, ILogger<ShopService> logger, IShopCodeGeneratorService codeGenerator, UserManager<ApplicationUser> userManager)
         {
             _shopRepository = shopRepository;
             _shopImageRepository = shopImageRepository;
@@ -40,9 +42,53 @@ namespace KuaforumAPI.Infrastructure.Services
             _dateTimeService = dateTimeService;
             _logger = logger;
             _codeGenerator = codeGenerator;
+            _userManager = userManager;
         }
 
 
+
+        public async Task TransferShopOwnershipAsync(Guid shopId, string newPhoneNumber)
+        {
+            var shop = await _shopRepository.GetByIdAsync(shopId);
+            if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+
+            var newOwner = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == newPhoneNumber);
+            
+            if (newOwner != null)
+            {
+                // Ensure the user has the SalonOwner role
+                var isOwner = await _userManager.IsInRoleAsync(newOwner, KuaforumAPI.Application.Constants.Roles.SalonOwner);
+                if (!isOwner)
+                {
+                    await _userManager.AddToRoleAsync(newOwner, KuaforumAPI.Application.Constants.Roles.SalonOwner);
+                }
+                
+                shop.OwnerId = newOwner.Id;
+            }
+            else
+            {
+                // Create a new user with this phone number
+                var user = new ApplicationUser
+                {
+                    UserName = newPhoneNumber,
+                    PhoneNumber = newPhoneNumber,
+                    CreatedAt = _dateTimeService.Now
+                };
+                // Generate a random temporary password for creation (not really used since OTP is primary)
+                var createResult = await _userManager.CreateAsync(user, "TempP@ssw0rd!");
+                
+                if (!createResult.Succeeded)
+                {
+                    throw new Exception("Yeni hesap oluşturulamadı: " + string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                }
+
+                await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.SalonOwner);
+                
+                shop.OwnerId = user.Id;
+            }
+
+            await _shopRepository.UpdateAsync(shop);
+        }
 
         public async Task CreateShopAsync(string userId, CreateShopDto request)
         {

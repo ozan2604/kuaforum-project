@@ -27,7 +27,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var passwords = await _context.AdminPasswords.ToListAsync();
             
             // Expected keys
-            var expectedKeys = new List<string> { "Şifre 1", "Şifre 2" };
+            var expectedKeys = new List<string> { "Admin Panel Giriş Şifresi", "Salon Silme Şifresi" };
             
             var result = new List<AdminPasswordStatusDto>();
             

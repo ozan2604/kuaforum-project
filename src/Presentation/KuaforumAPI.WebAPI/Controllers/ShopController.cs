@@ -114,6 +114,24 @@ namespace KuaforumAPI.WebAPI.Controllers
             return Ok(new { Message = "Shop deleted successfully." });
         }
 
+        [HttpPost("admin/{id}/transfer-ownership")]
+        [Authorize(Roles = KuaforumAPI.Application.Constants.Roles.Admin)]
+        public async Task<IActionResult> TransferShopOwnership(Guid id, [FromBody] TransferOwnershipRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.NewPhoneNumber))
+                return BadRequest(new { Message = "Yeni telefon numarası gereklidir." });
+
+            try
+            {
+                await _shopService.TransferShopOwnershipAsync(id, request.NewPhoneNumber);
+                return Ok(new { Message = "Salon yetkisi başarıyla devredildi." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
         [HttpGet("public/media-highlights")]
         [AllowAnonymous]
         public async Task<IActionResult> GetMediaHighlights(
@@ -494,4 +512,5 @@ namespace KuaforumAPI.WebAPI.Controllers
     }
 
     public record AddClosureDateRequest(DateTime Date, string? Reason);
+    public record TransferOwnershipRequest(string NewPhoneNumber);
 }
