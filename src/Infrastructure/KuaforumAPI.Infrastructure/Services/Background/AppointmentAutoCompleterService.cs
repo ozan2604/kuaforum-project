@@ -297,6 +297,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
         {
             var unnotified = await context.Appointments
                 .Include(a => a.Shop)
+                    .ThenInclude(s => s.Owner)
                 .Include(a => a.ShopEmployee)
                     .ThenInclude(e => e.User)
                 .Where(a => !a.IsIncludedInOwnerSummary)
@@ -313,7 +314,8 @@ namespace KuaforumAPI.Infrastructure.Services.Background
             foreach (var shopGroup in byShop)
             {
                 var shop = shopGroup.First().Shop;
-                if (string.IsNullOrWhiteSpace(shop?.PhoneNumber)) continue;
+                var ownerPhone = shop?.Owner?.PhoneNumber;
+                if (string.IsNullOrWhiteSpace(ownerPhone)) continue;
 
                 var summary = shopGroup
                     .GroupBy(a => a.ShopEmployeeId)
@@ -329,7 +331,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
 
                 try
                 {
-                    await smsService.SendSmsAsync(shop.PhoneNumber,
+                    await smsService.SendSmsAsync(ownerPhone,
                         SmsTemplates.NewAppointmentSummaryForShop(summary));
                     _logger.LogInformation("Özet SMS gönderildi. ShopId: {ShopId}, Toplam: {Total}", shopGroup.Key, unnotified.Count);
                 }

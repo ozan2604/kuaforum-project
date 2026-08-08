@@ -1030,7 +1030,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var now = _dateTimeService.Now;
             var first = appointments.OrderBy(a => a.StartTime).First();
 
-            var shop = await _context.Shops.FindAsync(first.ShopId);
+            var shop = await _context.Shops.Include(s => s.Owner).FirstOrDefaultAsync(s => s.Id == first.ShopId);
             var cancellationHours = shop?.CancellationHours ?? 2;
 
             if ((first.StartTime - now).TotalHours < cancellationHours)
@@ -1053,10 +1053,11 @@ namespace KuaforumAPI.Infrastructure.Services
                 var customerName = customer != null ? $"{customer.FirstName} {customer.LastName}" : "Müşteri";
                 var serviceName = first.ShopService?.Name ?? "";
 
-                if (shop?.PhoneNumber != null)
+                var ownerPhone = shop?.Owner?.PhoneNumber;
+                if (ownerPhone != null)
                 {
                     await _smsService.SendSmsAsync(
-                        shop.PhoneNumber,
+                        ownerPhone,
                         SmsTemplates.AppointmentCancelledByCustomer(customerName, serviceName, first.StartTime));
                 }
 
@@ -1191,7 +1192,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new ValidationException("Yalnızca bekleyen veya onaylanmış randevular iptal edilebilir.");
             }
 
-            var shop = await _context.Shops.FindAsync(appointment.ShopId);
+            var shop = await _context.Shops.Include(s => s.Owner).FirstOrDefaultAsync(s => s.Id == appointment.ShopId);
             var cancellationHours = shop?.CancellationHours ?? 2;
 
             var now = _dateTimeService.Now;
@@ -1214,10 +1215,11 @@ namespace KuaforumAPI.Infrastructure.Services
                     : "Müşteri";
                 var serviceName = appointment.ShopService?.Name ?? "";
 
-                if (shop?.PhoneNumber != null)
+                var ownerPhone = shop?.Owner?.PhoneNumber;
+                if (ownerPhone != null)
                 {
                     await _smsService.SendSmsAsync(
-                        shop.PhoneNumber,
+                        ownerPhone,
                         SmsTemplates.AppointmentCancelledByCustomer(customerName, serviceName, appointment.StartTime));
                 }
 
