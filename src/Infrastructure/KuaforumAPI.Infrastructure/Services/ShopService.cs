@@ -30,8 +30,9 @@ namespace KuaforumAPI.Infrastructure.Services
         private readonly ILogger<ShopService> _logger;
         private readonly IShopCodeGeneratorService _codeGenerator;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ISmsService _smsService;
 
-        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService, ILogger<ShopService> logger, IShopCodeGeneratorService codeGenerator, UserManager<ApplicationUser> userManager)
+        public ShopService(IShopRepository shopRepository, IShopImageRepository shopImageRepository, IShopEmployeeRepository shopEmployeeRepository, IImageService imageService, IValidator<CreateShopDto> validator, ApplicationDbContext context, IDateTimeService dateTimeService, ILogger<ShopService> logger, IShopCodeGeneratorService codeGenerator, UserManager<ApplicationUser> userManager, ISmsService smsService)
         {
             _shopRepository = shopRepository;
             _shopImageRepository = shopImageRepository;
@@ -43,6 +44,7 @@ namespace KuaforumAPI.Infrastructure.Services
             _logger = logger;
             _codeGenerator = codeGenerator;
             _userManager = userManager;
+            _smsService = smsService;
         }
 
 
@@ -51,6 +53,9 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var shop = await _shopRepository.GetByIdAsync(shopId);
             if (shop == null) throw new NotFoundException("Salon bulunamadı.");
+
+            var oldOwner = await _userManager.FindByIdAsync(shop.OwnerId);
+            var oldPhoneNumber = oldOwner?.PhoneNumber;
 
             var newOwner = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == newPhoneNumber);
             
@@ -88,6 +93,29 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             await _shopRepository.UpdateAsync(shop);
+
+            // Eski sahibine SMS gönder
+            if (!string.IsNullOrWhiteSpace(oldPhoneNumber))
+            {
+                try
+                {
+                    await _smsService.SendSmsAsync(oldPhoneNumber, $"Sayın yönetici, {shop.Name} adlı salonunuzun yönetim yetkisi {newPhoneNumber} numaralı kullanıcıya devredilmiştir.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Eski yöneticiye SMS gönderilirken hata oluştu.");
+                }
+            }
+
+            // Yeni sahibine SMS gönder
+            try
+            {
+                await _smsService.SendSmsAsync(newPhoneNumber, $"Tebrikler! {shop.Name} adlı salonun yönetim yetkisi size devredildi. Salonbir sistemine giriş yaparak salonunuzu yönetebilirsiniz.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Yeni yöneticiye SMS gönderilirken hata oluştu.");
+            }
         }
 
         public async Task CreateShopAsync(string userId, CreateShopDto request)
