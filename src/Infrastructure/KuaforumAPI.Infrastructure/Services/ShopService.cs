@@ -69,6 +69,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 }
                 
                 shop.OwnerId = newOwner.Id;
+                shop.PhoneNumber = newPhoneNumber;
             }
             else
             {
@@ -90,6 +91,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.SalonOwner);
                 
                 shop.OwnerId = user.Id;
+                shop.PhoneNumber = newPhoneNumber;
             }
 
             await _shopRepository.UpdateAsync(shop);
