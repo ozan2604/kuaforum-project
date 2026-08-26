@@ -129,7 +129,7 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         }));
 
-    // Dosya yükleme (Cloudinary): her IP'ye 1 dakikada 5 istek
+    // Dosya yükleme: her IP'ye 1 dakikada 5 istek
     options.AddPolicy("upload", ctx => RateLimitPartition.GetFixedWindowLimiter(
         partitionKey: GetIp(ctx),
         factory: _ => new FixedWindowRateLimiterOptions
@@ -224,9 +224,10 @@ var trCulture = new System.Globalization.CultureInfo("tr-TR");
 System.Globalization.CultureInfo.DefaultThreadCurrentCulture = trCulture;
 System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = trCulture;
 
-// Cloudinary
-builder.Services.Configure<KuaforumAPI.Application.Settings.CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
-builder.Services.AddScoped<KuaforumAPI.Application.Interfaces.Services.IImageService, KuaforumAPI.Infrastructure.Services.CloudinaryImageService>();
+// Medya depolama: Cloudflare R2. Yuklenen dosyanin anahtari veritabanina
+// yazilir, tam adres okuma sirasinda Media:BaseUrl ile uretilir.
+builder.Services.Configure<KuaforumAPI.Application.Settings.R2Settings>(builder.Configuration.GetSection("R2"));
+builder.Services.AddScoped<KuaforumAPI.Application.Interfaces.Services.IImageService, KuaforumAPI.Infrastructure.Services.R2StorageService>();
 
 var app = builder.Build();
 
