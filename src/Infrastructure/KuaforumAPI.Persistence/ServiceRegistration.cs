@@ -11,6 +11,11 @@ namespace KuaforumAPI.Persistence
     {
         public static void AddPersistenceServices(this IServiceCollection services, IConfiguration configuration)
         {
+            // Medya adresi: DB anahtar saklar, tam URL bu tabandan uretilir.
+            // Bos birakilirsa donusturucu devre disi kalir (mevcut tam URL'ler aynen calisir).
+            services.Configure<KuaforumAPI.Application.Settings.MediaSettings>(
+                configuration.GetSection("Media"));
+
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
