@@ -1,4 +1,5 @@
 using KuaforumAPI.Domain.Entities;
+using KuaforumAPI.Persistence.Converters;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,10 +39,15 @@ namespace KuaforumAPI.Persistence.Contexts
         public DbSet<SiteVisit> SiteVisits { get; set; }
 
         private readonly KuaforumAPI.Application.Interfaces.Services.IDateTimeService _dateTimeService;
+        private readonly KuaforumAPI.Application.Settings.MediaSettings _mediaSettings;
 
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, KuaforumAPI.Application.Interfaces.Services.IDateTimeService dateTimeService) : base(options)
+        public ApplicationDbContext(
+            DbContextOptions<ApplicationDbContext> options,
+            KuaforumAPI.Application.Interfaces.Services.IDateTimeService dateTimeService,
+            Microsoft.Extensions.Options.IOptions<KuaforumAPI.Application.Settings.MediaSettings> mediaSettings) : base(options)
         {
             _dateTimeService = dateTimeService;
+            _mediaSettings = mediaSettings.Value;
         }
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -551,6 +557,34 @@ namespace KuaforumAPI.Persistence.Contexts
             builder.Entity<UserFavoriteShop>()
                 .HasIndex(f => new { f.CircleUserId, f.ShopId })
                 .HasDatabaseName("IX_UserFavoriteShops_User_Shop");
+
+            ConfigureMediaUrlColumns(builder);
+        }
+
+        /// <summary>
+        /// Medya kolonlarini saglayicidan bagimsiz hale getirir.
+        ///
+        /// Veritabaninda tam URL yerine anahtar saklanir; entity tam URL gorur.
+        /// Boylece saglayici degistiginde (Cloudinary -> R2 -> baska) yalnizca
+        /// MediaSettings.BaseUrl degisir — 60'tan fazla DTO eslemesine,
+        /// web'e ve mobile dokunulmaz.
+        ///
+        /// Gecis guvenligi: BaseUrl bos oldugu surece ya da kayit mutlak bir
+        /// adres tutuyorsa donusturucu degeri oldugu gibi gecirir. Yani bu
+        /// yapilandirma tek basina hicbir davranisi degistirmez; asil gecis
+        /// veri migrasyonu + BaseUrl ayarlandiginda olur.
+        /// </summary>
+        private void ConfigureMediaUrlColumns(ModelBuilder builder)
+        {
+            var converter = new MediaUrlConverter(_mediaSettings.BaseUrl);
+
+            builder.Entity<Shop>().Property(s => s.CoverImagePath).HasConversion(converter);
+            builder.Entity<Shop>().Property(s => s.PromoVideoUrl).HasConversion(converter);
+            builder.Entity<ShopImage>().Property(i => i.Url).HasConversion(converter);
+            builder.Entity<ShopVideo>().Property(v => v.Url).HasConversion(converter);
+            builder.Entity<ReviewImage>().Property(i => i.Url).HasConversion(converter);
+            builder.Entity<AdApplication>().Property(a => a.MediaUrl).HasConversion(converter);
+            builder.Entity<ApplicationUser>().Property(u => u.ProfileImageUrl).HasConversion(converter);
         }
 
         public DbSet<CoreExample> CoreExamples { get; set; }
