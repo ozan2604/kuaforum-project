@@ -177,7 +177,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
                 foreach (var img in imagesToDelete)
                 {
-                    // Delete from Cloudinary
+                    // Depolamadan sil
                     await _imageService.DeleteImageAsync(img.Url);
                     // Remove from DB
                     review.Images.Remove(img);
@@ -250,7 +250,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (review.UserId != userId)
                 throw new ValidationException("Yalnızca kendi değerlendirmelerinizi silebilirsiniz.");
 
-            // Delete Images from Cloudinary
+            // Görselleri depolamadan sil
             foreach (var img in review.Images)
             {
                 await _imageService.DeleteImageAsync(img.Url);

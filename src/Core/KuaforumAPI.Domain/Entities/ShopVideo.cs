@@ -12,7 +12,7 @@ namespace KuaforumAPI.Domain.Entities
         public Guid ShopId { get; set; }
         public virtual Shop Shop { get; set; }
 
-        /// <summary>Cloudinary .mp4 URL'i</summary>
+        /// <summary>Videonun genel erişim adresi</summary>
         public string Url { get; set; }
 
         /// <summary>Görüntüleme sırası (ilk video = 0)</summary>
