@@ -16,7 +16,7 @@ namespace KuaforumAPI.Application.DTOs.AdApplication
         public string PhoneNumber { get; set; }
 
         public string? ExternalLink { get; set; }
-        
+
         public decimal? Price { get; set; }
     }
 }

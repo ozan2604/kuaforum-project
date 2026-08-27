@@ -367,7 +367,7 @@ namespace KuaforumAPI.Infrastructure.Services
             // Yeni Customer hesabı oluştur
             var nameParts = request.Name.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
             var firstName = nameParts.Length > 0 ? nameParts[0] : "Misafir";
-            var lastName  = nameParts.Length > 1 ? nameParts[1] : "";
+            var lastName = nameParts.Length > 1 ? nameParts[1] : "";
 
             var newUser = new ApplicationUser
             {

@@ -21,7 +21,7 @@ namespace KuaforumAPI.WebAPI.Controllers
         private readonly KuaforumAPI.Application.Interfaces.Services.IImageService _imageService;
 
         public UserManagementController(
-            UserManager<ApplicationUser> userManager, 
+            UserManager<ApplicationUser> userManager,
             ApplicationDbContext context,
             KuaforumAPI.Application.Interfaces.Services.IShopService shopService,
             KuaforumAPI.Application.Interfaces.Services.IImageService imageService)
@@ -37,21 +37,21 @@ namespace KuaforumAPI.WebAPI.Controllers
         {
             if (pageSize > 100) pageSize = 100;
             var query = _userManager.Users.AsQueryable();
-            
+
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var lowerSearch = search.ToLower();
-                query = query.Where(u => 
-                    (u.FirstName != null && u.FirstName.ToLower().Contains(lowerSearch)) || 
-                    (u.LastName != null && u.LastName.ToLower().Contains(lowerSearch)) || 
-                    (u.Email != null && u.Email.ToLower().Contains(lowerSearch)) || 
+                query = query.Where(u =>
+                    (u.FirstName != null && u.FirstName.ToLower().Contains(lowerSearch)) ||
+                    (u.LastName != null && u.LastName.ToLower().Contains(lowerSearch)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(lowerSearch)) ||
                     (u.UserName != null && u.UserName.ToLower().Contains(lowerSearch)) ||
                     (u.PhoneNumber != null && u.PhoneNumber.Contains(search))
                 );
             }
 
             var totalCount = await query.CountAsync();
-            
+
             var users = await query
                 .OrderByDescending(u => u.CreatedAt)
                 .Skip((page - 1) * pageSize)
@@ -110,8 +110,8 @@ namespace KuaforumAPI.WebAPI.Controllers
             if (roles.Contains("Admin"))
             {
                 return BadRequest(new { message = "Sistem yöneticileri (Admin) silinemez." });
-            } 
-            
+            }
+
             // 1. If user is a shop owner, delete their shop completely
             var shop = await _context.Shops.FirstOrDefaultAsync(s => s.OwnerId == id);
             if (shop != null)
@@ -140,13 +140,13 @@ namespace KuaforumAPI.WebAPI.Controllers
             {
                 var schedules = await _context.EmployeeSchedules.Where(es => es.ShopEmployeeId == shopEmployee.Id).ToListAsync();
                 _context.EmployeeSchedules.RemoveRange(schedules);
-                
+
                 var services = await _context.ShopEmployeeServices.Where(ses => ses.ShopEmployeeId == shopEmployee.Id).ToListAsync();
                 _context.ShopEmployeeServices.RemoveRange(services);
 
                 var employeeAppointments = await _context.Appointments.Where(a => a.ShopEmployeeId == shopEmployee.Id).ToListAsync();
                 _context.Appointments.RemoveRange(employeeAppointments);
-                
+
                 var employeeReviews = await _context.Reviews.Include(r => r.Images).Where(r => r.ShopEmployeeId == shopEmployee.Id).ToListAsync();
                 foreach (var r in employeeReviews)
                 {

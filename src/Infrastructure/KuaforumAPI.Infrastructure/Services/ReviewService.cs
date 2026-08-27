@@ -79,7 +79,7 @@ namespace KuaforumAPI.Infrastructure.Services
                             Url = imageUrl
                         });
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "[ReviewService] Image upload failed.");
                     }
@@ -333,18 +333,18 @@ namespace KuaforumAPI.Infrastructure.Services
             // Or Average of Employee Averages?
             // "her emplooyeenin kendi toplam puan ortalaması olur. ve bu tüm emplooyelerin puan toplam ortalaması da dükkan detaylarında ve dükkan kartlarında gösteriir."
             // This literally triggers: Average(Employee.AverageRating).
-            
+
             // Let's calculate Average of Employee Averages.
             var employeeStats = await _context.ShopEmployees
                 .Where(se => se.ShopId == shopId && se.ReviewCount > 0)
                 .AverageAsync(se => (double?)se.AverageRating); // Nullable to handle empty
 
-             // If we use all reviews directly:
-             var allReviewsStats = await _context.Reviews
-                .Where(r => r.ShopId == shopId)
-                 .GroupBy(r => r.ShopId)
-                 .Select(g => new { Average = g.Average(r => r.Rating), Count = g.Count() })
-                 .FirstOrDefaultAsync();
+            // If we use all reviews directly:
+            var allReviewsStats = await _context.Reviews
+               .Where(r => r.ShopId == shopId)
+                .GroupBy(r => r.ShopId)
+                .Select(g => new { Average = g.Average(r => r.Rating), Count = g.Count() })
+                .FirstOrDefaultAsync();
 
             // I will use All Reviews Average as it's more standard, unless user complains. 
             // "tüm emplooyelerin puanların oratalaması" could mean (Emp1.Avg + Emp2.Avg) / 2.
@@ -352,7 +352,7 @@ namespace KuaforumAPI.Infrastructure.Services
             // Weighted average (Real average) would be closer to 5.0.
             // Most platforms use Weighted Average.
             // I'll stick to All Reviews Average.
-            
+
             if (allReviewsStats != null)
             {
                 shop.AverageRating = allReviewsStats.Average;

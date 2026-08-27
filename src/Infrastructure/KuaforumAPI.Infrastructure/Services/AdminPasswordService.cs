@@ -25,12 +25,12 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<List<AdminPasswordStatusDto>> GetAllStatusesAsync()
         {
             var passwords = await _context.AdminPasswords.ToListAsync();
-            
+
             // Expected keys
             var expectedKeys = new List<string> { "Admin Panel Giriş Şifresi", "Salon Silme Şifresi" };
-            
+
             var result = new List<AdminPasswordStatusDto>();
-            
+
             foreach (var key in expectedKeys)
             {
                 var existing = passwords.FirstOrDefault(p => p.Key == key);
@@ -52,7 +52,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             var existing = await _context.AdminPasswords.FirstOrDefaultAsync(p => p.Key == request.Key);
             var hash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-            
+
             if (existing != null)
             {
                 existing.PasswordHash = hash;

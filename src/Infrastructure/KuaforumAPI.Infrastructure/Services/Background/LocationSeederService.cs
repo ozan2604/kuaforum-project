@@ -21,7 +21,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
         private readonly IHttpClientFactory _httpClientFactory;
 
         public LocationSeederService(
-            IServiceProvider serviceProvider, 
+            IServiceProvider serviceProvider,
             ILogger<LocationSeederService> logger,
             IHttpClientFactory httpClientFactory)
         {
@@ -42,7 +42,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 {
                     _logger.LogInformation("Starting location seeding from turkiyeapi...");
                     await SeedTurkiyeDataAsync(context, stoppingToken);
-                    
+
                     _logger.LogInformation("Seeding Cyprus data...");
                     await SeedCyprusDataAsync(context, stoppingToken);
                 }
@@ -63,7 +63,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
 
             var content = await response.Content.ReadAsStringAsync(stoppingToken);
             using var doc = JsonDocument.Parse(content);
-            
+
             var dataArray = doc.RootElement.GetProperty("data").EnumerateArray();
             var cities = new List<City>();
             var districts = new List<District>();
@@ -81,7 +81,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 {
                     int districtId = districtData.GetProperty("id").GetInt32();
                     string districtName = districtData.GetProperty("name").GetString() ?? "";
-                    
+
                     districts.Add(new District { Id = districtId, Name = districtName, CityId = cityId });
                 }
             }
@@ -100,7 +100,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
         private async Task SeedCyprusDataAsync(ApplicationDbContext context, CancellationToken stoppingToken)
         {
             int cyprusCityId = 82; // Custom ID for Cyprus
-            
+
             if (await context.Cities.AnyAsync(c => c.Id == cyprusCityId, stoppingToken)) return;
 
             var cyprus = new City { Id = cyprusCityId, Name = "Kıbrıs (KKTC)" };
@@ -117,7 +117,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
             };
 
             await context.Districts.AddRangeAsync(districts, stoppingToken);
-            
+
             // Adding a comprehensive list of neighborhoods for each district
             var neighborhoods = new List<Neighborhood>();
             int nId = 100000;

@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  SOLUTION: KuaforumAPI.sln
+
+jobs:
+  # ── Kalite: bicim, derleme, testler ────────────────────────────────────────
+  quality:
+    name: Bicim · Derleme · Testler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: NuGet onbellegi
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Bagimliliklari yukle
+        run: dotnet restore $SOLUTION
+
+      # Kod tabani su an bicim ihlali icermiyor; bu kapi yeni ihlalleri engeller.
+      - name: Bicim kontrolu
+        run: dotnet format $SOLUTION --verify-no-changes --no-restore
+
+      - name: Derleme
+        run: dotnet build $SOLUTION --configuration Release --no-restore
+
+      - name: Testler
+        run: >
+          dotnet test $SOLUTION --configuration Release --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+
+      - name: Test sonuclarini sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ./TestResults
+          retention-days: 14
+
+  # ── Bagimlilik zafiyetleri ─────────────────────────────────────────────────
+  vulnerabilities:
+    name: Zafiyetli paket taramasi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - run: dotnet restore $SOLUTION
+
+      # `dotnet list --vulnerable` bulgu olsa da 0 ile cikiyor; ciktiyi
+      # kendimiz denetliyoruz. Gecisli bagimliliklar dahil.
+      - name: Zafiyet taramasi (high ve uzeri kirar)
+        run: |
+          dotnet list $SOLUTION package --vulnerable --include-transitive > vuln.txt 2>&1
+          cat vuln.txt
+          if grep -qE '\s(High|Critical)\s' vuln.txt; then
+            echo "::error::High/Critical seviyesinde zafiyetli paket bulundu."
+            exit 1
+          fi
+
+      - name: Tum zafiyetler (bilgi amacli)
+        if: always()
+        run: dotnet list $SOLUTION package --vulnerable --include-transitive || true
+
+  # ── Sizmis sir taramasi ────────────────────────────────────────────────────
+  secrets:
+    name: Sir taramasi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks tum gecmisi tarayabilsin
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Statik guvenlik analizi ────────────────────────────────────────────────
+  sast:
+    name: Statik analiz (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep
+        run: semgrep scan --config p/csharp --config p/secrets --error
+
+  # ── Bagimlilik incelemesi ──────────────────────────────────────────────────
+  #
+  # Su an devre disi: bu is deponun "Dependency graph" ayarinin acik olmasini
+  # gerektiriyor ve ayar admin yetkisi istiyor. Acildiginda asagidaki blok
+  # yorumdan cikarilacak — o zamana kadar sahte bir yesil gostermemek icin
+  # tamamen kapali tutuluyor.
+  #
+  # Ayar yolu: Settings -> Code security and analysis -> Dependency graph
+  #
+  # Not: bagimlilik zafiyetleri zaten `vulnerabilities` isinde taraniyor;
+  # bu is PR'daki bagimlilik DEGISIKLIKLERINI ayrica denetliyor.
+  #
+  # dependency-review:
+  #   name: Bagimlilik incelemesi
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/dependency-review-action@v4
+  #       with:
+  #         fail-on-severity: high

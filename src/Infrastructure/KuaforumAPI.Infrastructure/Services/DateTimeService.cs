@@ -17,7 +17,7 @@ namespace KuaforumAPI.Infrastructure.Services
             catch
             {
                 // Fallback for Linux/Docker environments where "Turkey Standard Time" might be "Europe/Istanbul"
-                try 
+                try
                 {
                     _turkeyTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul");
                 }
@@ -30,7 +30,7 @@ namespace KuaforumAPI.Infrastructure.Services
         }
 
         public DateTime Now => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _turkeyTimeZone);
-        
+
         public DateTime UtcNow => DateTime.UtcNow;
 
         public DateTime ToTurkeyTime(DateTime utcDateTime)

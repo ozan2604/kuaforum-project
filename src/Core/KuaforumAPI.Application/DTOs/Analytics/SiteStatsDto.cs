@@ -8,7 +8,7 @@ namespace KuaforumAPI.Application.DTOs.Analytics
         public int TotalVisitsToday { get; set; }
         public int TotalVisitsThisWeek { get; set; }
         public int TotalVisitsThisMonth { get; set; }
-        
+
         public List<SourceStatDto> Sources { get; set; } = new();
         public List<DeviceStatDto> Devices { get; set; } = new();
         public List<BrowserStatDto> Browsers { get; set; } = new();

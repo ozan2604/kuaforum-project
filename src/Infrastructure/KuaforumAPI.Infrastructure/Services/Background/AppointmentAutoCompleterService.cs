@@ -224,7 +224,7 @@ namespace KuaforumAPI.Infrastructure.Services.Background
                 // 5.5 3 Gün Sonra Değerlendirme Hatırlatması
                 var threeDaysAgo = now.AddDays(-3);
                 var fourDaysAgo = now.AddDays(-5); // Son 5 güne kadar bakar
-                
+
                 var reviewReminders = await context.Appointments
                     .Include(a => a.Shop)
                     .Include(a => a.User)

@@ -1,52 +1,144 @@
-name: Build and deploy ASP.Net Core app to Azure Web App - salonbir-api
+name: Dagitim
+
+# Surum akisi (ADR-006):
+#
+#   ozellik dali -> PR (CI gecmeli) -> main -> TEST (otomatik)
+#                                              |
+#                                          v* etiketi -> CANLI
+#
+# Canliya cikis bilincli bir eylem: etiket atmadan hicbir sey canliya gitmez.
+# Etiketin kendisi denetim izidir — hangi commit'in ne zaman yayinlandigi
+# git gecmisinde duruyor.
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      hedef:
+        description: 'Dagitim hedefi'
+        required: true
+        default: test
+        type: choice
+        options: [test, canli]
+
+concurrency:
+  # Ayni hedefe es zamanli dagitim yapilmasin; sirada bekleyen iptal EDILMEZ.
+  group: dagitim-${{ startsWith(github.ref, 'refs/tags/v') && 'canli' || 'test' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  SOLUTION: KuaforumAPI.sln
 
 jobs:
+  # ── Tek kez derle, iki hedefte de ayni cikti kullanilsin ───────────────────
   build:
+    name: Derle ve paketle
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up .NET 9
-        uses: actions/setup-dotnet@v4.1.0
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore dependencies
-        run: dotnet restore KuaforumAPI.sln
+      - run: dotnet restore $SOLUTION
 
-      - name: Build
-        run: dotnet build KuaforumAPI.sln --configuration Release --no-restore
+      - run: dotnet build $SOLUTION --configuration Release --no-restore
 
-      - name: Publish
-        run: dotnet publish src/Presentation/KuaforumAPI.WebAPI/KuaforumAPI.WebAPI.csproj -c Release --no-build -o ${{env.DOTNET_ROOT}}/myapp
+      # Dagitilacak sey testten gecmis olmali. CI ayrica calisiyor olsa da
+      # buradaki kontrol, dagitim yolunun kendi guvencesi.
+      - name: Testler
+        run: dotnet test $SOLUTION --configuration Release --no-build
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+      - name: Yayimlama paketi
+        run: >
+          dotnet publish src/Presentation/KuaforumAPI.WebAPI/KuaforumAPI.WebAPI.csproj
+          --configuration Release --no-build --output ./yayim
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          name: api
+          path: ./yayim
+          retention-days: 7
 
-  deploy:
-    runs-on: ubuntu-latest
+  # ── main -> TEST ───────────────────────────────────────────────────────────
+  test-ortami:
+    name: TEST ortamina dagit
     needs: build
-
+    runs-on: ubuntu-latest
+    if: >
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'workflow_dispatch' && inputs.hedef == 'test')
+    environment:
+      name: test
+      url: https://salonbir-api-test.azurewebsites.net
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: .net-app
+          name: api
+          path: ./yayim
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
+      - name: Azure Web App'e dagit
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'salonbir-api'
+          app-name: salonbir-api-test
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_TEST }}
+          package: ./yayim
+
+      - name: Duman testi
+        run: |
+          for i in 1 2 3 4 5 6; do
+            kod=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+              "https://salonbir-api-test.azurewebsites.net/api/Shop/public/all?pageNumber=1&pageSize=1" || echo 000)
+            echo "deneme $i: HTTP $kod"
+            [ "$kod" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "::error::TEST ortami dagitim sonrasi saglikli yanit vermedi."
+          exit 1
+
+  # ── v* etiketi -> CANLI ────────────────────────────────────────────────────
+  canli:
+    name: CANLI ortama dagit
+    needs: build
+    runs-on: ubuntu-latest
+    if: >
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.hedef == 'canli')
+    environment:
+      name: canli
+      url: https://api.salonbir.com
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: api
+          path: ./yayim
+
+      - name: Azure Web App'e dagit
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: salonbir-api
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+          package: ./yayim
+
+      # Canlida duman testi kirilirsa dagitim geri alinmaz — ama derhal
+      # gorunur olur. Otomatik geri alma, slot swap'e gecince mumkun olacak.
+      - name: Duman testi
+        run: |
+          for i in 1 2 3 4 5 6; do
+            kod=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+              "https://api.salonbir.com/api/Shop/public/all?pageNumber=1&pageSize=1" || echo 000)
+            echo "deneme $i: HTTP $kod"
+            [ "$kod" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "::error::CANLI ortam dagitim sonrasi saglikli yanit vermedi."
+          exit 1
