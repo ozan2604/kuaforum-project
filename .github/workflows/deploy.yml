@@ -37,6 +37,11 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   SOLUTION: KuaforumAPI.sln
 
+  # Azure varsayilan alan adlarina rastgele sonek ekliyor; kisa bicim
+  # (salonbir-api-test.azurewebsites.net) COZUMLENMEZ.
+  TEST_URL: https://salonbir-api-test-egeahgheapb0cbc8.centralus-01.azurewebsites.net
+  CANLI_URL: https://api.salonbir.com
+
 jobs:
   # ── Tek kez derle, iki hedefte de ayni cikti kullanilsin ───────────────────
   build:
@@ -79,8 +84,10 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.hedef == 'test')
     environment:
       name: test
-      url: https://salonbir-api-test.azurewebsites.net
+      url: https://salonbir-api-test-egeahgheapb0cbc8.centralus-01.azurewebsites.net
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: api
@@ -94,16 +101,7 @@ jobs:
           package: ./yayim
 
       - name: Duman testi
-        run: |
-          for i in 1 2 3 4 5 6; do
-            kod=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
-              "https://salonbir-api-test.azurewebsites.net/api/Shop/public/all?pageNumber=1&pageSize=1" || echo 000)
-            echo "deneme $i: HTTP $kod"
-            [ "$kod" = "200" ] && exit 0
-            sleep 20
-          done
-          echo "::error::TEST ortami dagitim sonrasi saglikli yanit vermedi."
-          exit 1
+        run: ./scripts/duman-testi.sh "$TEST_URL" test
 
   # ── v* etiketi -> CANLI ────────────────────────────────────────────────────
   canli:
@@ -117,6 +115,8 @@ jobs:
       name: canli
       url: https://api.salonbir.com
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: api
@@ -132,13 +132,4 @@ jobs:
       # Canlida duman testi kirilirsa dagitim geri alinmaz — ama derhal
       # gorunur olur. Otomatik geri alma, slot swap'e gecince mumkun olacak.
       - name: Duman testi
-        run: |
-          for i in 1 2 3 4 5 6; do
-            kod=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
-              "https://api.salonbir.com/api/Shop/public/all?pageNumber=1&pageSize=1" || echo 000)
-            echo "deneme $i: HTTP $kod"
-            [ "$kod" = "200" ] && exit 0
-            sleep 20
-          done
-          echo "::error::CANLI ortam dagitim sonrasi saglikli yanit vermedi."
-          exit 1
+        run: ./scripts/duman-testi.sh "$CANLI_URL" canli
