@@ -96,19 +96,19 @@ namespace KuaforumAPI.Infrastructure.Services
                 TotalVisitsToday = allVisits.Count(v => v.CreatedAt.Date == today),
                 TotalVisitsThisWeek = allVisits.Count(v => v.CreatedAt.Date >= startOfWeek),
                 TotalVisitsThisMonth = allVisits.Count(v => v.CreatedAt.Date >= startOfMonth),
-                
+
                 Sources = allVisits
                     .GroupBy(v => v.Source)
                     .Select(g => new SourceStatDto { Source = g.Key, Count = g.Count() })
                     .OrderByDescending(x => x.Count)
                     .ToList(),
-                    
+
                 Devices = allVisits
                     .GroupBy(v => v.DeviceType)
                     .Select(g => new DeviceStatDto { Device = g.Key, Count = g.Count() })
                     .OrderByDescending(x => x.Count)
                     .ToList(),
-                    
+
                 Browsers = allVisits
                     .GroupBy(v => v.Browser)
                     .Select(g => new BrowserStatDto { Browser = g.Key, Count = g.Count() })
@@ -134,19 +134,19 @@ namespace KuaforumAPI.Infrastructure.Services
                 TotalVisitsToday = allVisits.Count(v => v.CreatedAt.Date == today),
                 TotalVisitsThisWeek = allVisits.Count(v => v.CreatedAt.Date >= startOfWeek),
                 TotalVisitsThisMonth = allVisits.Count(v => v.CreatedAt.Date >= startOfMonth),
-                
+
                 Sources = allVisits
                     .GroupBy(v => v.Source)
                     .Select(g => new SourceStatDto { Source = g.Key, Count = g.Count() })
                     .OrderByDescending(x => x.Count)
                     .ToList(),
-                    
+
                 Devices = allVisits
                     .GroupBy(v => v.DeviceType)
                     .Select(g => new DeviceStatDto { Device = g.Key, Count = g.Count() })
                     .OrderByDescending(x => x.Count)
                     .ToList(),
-                    
+
                 Browsers = allVisits
                     .GroupBy(v => v.Browser)
                     .Select(g => new BrowserStatDto { Browser = g.Key, Count = g.Count() })

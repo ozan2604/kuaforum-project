@@ -116,7 +116,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 throw new Exception("Ad application not found.");
 
             adApp.Status = dto.Status;
-            
+
             if (dto.Status == ApplicationStatus.Approved)
             {
                 adApp.ApprovedAt = DateTime.UtcNow;
@@ -152,7 +152,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             // Optionally delete media file here (not strictly required if managed via object storage with cleanup)
             // But we can call imageService delete if we had it, for now just remove the record.
-            
+
             _context.AdApplications.Remove(adApp);
             await _context.SaveChangesAsync();
         }

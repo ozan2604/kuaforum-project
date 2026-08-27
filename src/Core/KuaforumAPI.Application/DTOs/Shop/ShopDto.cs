@@ -19,7 +19,7 @@ namespace KuaforumAPI.Application.DTOs.Shop
         public double? Longitude { get; set; }
         public List<int> Categories { get; set; } = new List<int>();
         public TargetGender GenderPreference { get; set; }
-        
+
         public string SaturdayClosingTime { get; set; }
         public List<ShopScheduleDto> WeeklySchedule { get; set; }
 

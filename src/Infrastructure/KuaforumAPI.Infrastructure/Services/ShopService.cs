@@ -58,7 +58,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var oldPhoneNumber = oldOwner?.PhoneNumber;
 
             var newOwner = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == newPhoneNumber);
-            
+
             if (newOwner != null)
             {
                 // Ensure the user has the SalonOwner role
@@ -67,7 +67,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 {
                     await _userManager.AddToRoleAsync(newOwner, KuaforumAPI.Application.Constants.Roles.SalonOwner);
                 }
-                
+
                 shop.OwnerId = newOwner.Id;
                 shop.PhoneNumber = newPhoneNumber;
             }
@@ -82,14 +82,14 @@ namespace KuaforumAPI.Infrastructure.Services
                 };
                 // Generate a random temporary password for creation (not really used since OTP is primary)
                 var createResult = await _userManager.CreateAsync(user, "TempP@ssw0rd!");
-                
+
                 if (!createResult.Succeeded)
                 {
                     throw new Exception("Yeni hesap oluşturulamadı: " + string.Join(", ", createResult.Errors.Select(e => e.Description)));
                 }
 
                 await _userManager.AddToRoleAsync(user, KuaforumAPI.Application.Constants.Roles.SalonOwner);
-                
+
                 shop.OwnerId = user.Id;
                 shop.PhoneNumber = newPhoneNumber;
             }
@@ -441,7 +441,7 @@ namespace KuaforumAPI.Infrastructure.Services
             if (employees.Any())
             {
                 var allSchedules = employees.SelectMany(e => e.Schedules).ToList();
-                
+
                 for (int i = 0; i < 7; i++)
                 {
                     var day = (DayOfWeek)i;
@@ -556,7 +556,7 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             var imageUrl = await _imageService.UploadImageAsync(file, "shops/covers", 1200, 400);
-            
+
             shop.CoverImagePath = imageUrl;
             await _shopRepository.UpdateAsync(shop);
 
@@ -591,7 +591,7 @@ namespace KuaforumAPI.Infrastructure.Services
             }
 
             var videoUrl = await _imageService.UploadVideoAsync(file, "shops/promo");
-            
+
             // Delete existing promo video if exists
             var existingPromo = await _context.ShopVideos.FirstOrDefaultAsync(v => v.ShopId == shopId && v.DisplayOrder == 0);
             if (existingPromo != null)
@@ -686,7 +686,7 @@ namespace KuaforumAPI.Infrastructure.Services
             var tag = new ShopVideoTag { ShopVideoId = videoId, Name = name };
             _context.ShopVideoTags.Add(tag);
             await _context.SaveChangesAsync();
-            
+
             return new ShopVideoTagDto { Id = tag.Id, Name = tag.Name };
         }
 

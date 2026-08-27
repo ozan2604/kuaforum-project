@@ -116,13 +116,24 @@ jobs:
       - name: Semgrep
         run: semgrep scan --config p/csharp --config p/secrets --error
 
-  # ── Bagimlilik incelemesi (sadece PR) ──────────────────────────────────────
-  dependency-review:
-    name: Bagimlilik incelemesi
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
+  # ── Bagimlilik incelemesi ──────────────────────────────────────────────────
+  #
+  # Su an devre disi: bu is deponun "Dependency graph" ayarinin acik olmasini
+  # gerektiriyor ve ayar admin yetkisi istiyor. Acildiginda asagidaki blok
+  # yorumdan cikarilacak — o zamana kadar sahte bir yesil gostermemek icin
+  # tamamen kapali tutuluyor.
+  #
+  # Ayar yolu: Settings -> Code security and analysis -> Dependency graph
+  #
+  # Not: bagimlilik zafiyetleri zaten `vulnerabilities` isinde taraniyor;
+  # bu is PR'daki bagimlilik DEGISIKLIKLERINI ayrica denetliyor.
+  #
+  # dependency-review:
+  #   name: Bagimlilik incelemesi
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/dependency-review-action@v4
+  #       with:
+  #         fail-on-severity: high

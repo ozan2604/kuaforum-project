@@ -198,7 +198,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     await _smsService.SendSmsAsync(
                         employeeWithUser.User.PhoneNumber,
                         SmsTemplates.NewAppointmentForEmployee(customerName, servicesDisplay, appointmentStart));
-                  }
+                }
             }
             catch (Exception ex) { _logger.LogWarning(ex, "SMS gönderilemedi (ana işlem etkilenmedi)."); }
         }
@@ -270,7 +270,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     potentialPhones.Add("0" + guestPhone[2..]);
 
                 var existingUser = await _userManager.Users.FirstOrDefaultAsync(u => potentialPhones.Contains(u.PhoneNumber!));
-                
+
                 if (existingUser != null)
                 {
                     registeredUserId = existingUser.Id;
@@ -438,17 +438,17 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<PagedResult<AppointmentDto>> GetShopAppointmentsAsync(string? ownerId, Guid shopId, AppointmentStatus? status = null, int page = 1, int pageSize = 10, string? searchTerm = null, DateTime? date = null, Guid? employeeId = null, Guid? serviceId = null)
         {
             pageSize = Math.Clamp(pageSize, 1, 100);
-             var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && (ownerId == null || s.OwnerId == ownerId));
-             if (shop == null) throw new ValidationException("Yetkisiz erişim veya salon bulunamadı.");
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId && (ownerId == null || s.OwnerId == ownerId));
+            if (shop == null) throw new ValidationException("Yetkisiz erişim veya salon bulunamadı.");
 
-             var query = _context.Appointments
-                .AsNoTracking()
-                .Include(a => a.Shop)
-                .Include(a => a.ShopService)
-                .Include(a => a.ShopEmployee)
-                    .ThenInclude(e => e.User)
-                .Include(a => a.User)
-                .Where(a => a.ShopId == shopId);
+            var query = _context.Appointments
+               .AsNoTracking()
+               .Include(a => a.Shop)
+               .Include(a => a.ShopService)
+               .Include(a => a.ShopEmployee)
+                   .ThenInclude(e => e.User)
+               .Include(a => a.User)
+               .Where(a => a.ShopId == shopId);
 
             if (status.HasValue)
             {
@@ -561,10 +561,10 @@ namespace KuaforumAPI.Infrastructure.Services
                 {
                     var msg = request.Status switch
                     {
-                        AppointmentStatus.Confirmed  => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
-                        AppointmentStatus.Rejected   => SmsTemplates.AppointmentRejected(appointment.Shop.Name, appointment.StartTime, request.Reason),
-                        AppointmentStatus.Cancelled  => SmsTemplates.AppointmentCancelledByShop(appointment.Shop.Name, appointment.StartTime, request.Reason),
-                        AppointmentStatus.Completed  => SmsTemplates.AppointmentCompleted(appointment.Shop.Name),
+                        AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
+                        AppointmentStatus.Rejected => SmsTemplates.AppointmentRejected(appointment.Shop.Name, appointment.StartTime, request.Reason),
+                        AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(appointment.Shop.Name, appointment.StartTime, request.Reason),
+                        AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(appointment.Shop.Name),
                         _ => null
                     };
                     if (msg != null)
@@ -576,7 +576,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 {
                     var empMsg = request.Status switch
                     {
-                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejectedToEmployee(appointment.Shop.Name, appointment.StartTime),
+                        AppointmentStatus.Rejected => SmsTemplates.AppointmentRejectedToEmployee(appointment.Shop.Name, appointment.StartTime),
                         AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShopToEmployee(appointment.Shop.Name, appointment.StartTime),
                         _ => null
                     };
@@ -593,7 +593,7 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             var allowed = current switch
             {
-                AppointmentStatus.Pending   => new[] { AppointmentStatus.Confirmed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled },
+                AppointmentStatus.Pending => new[] { AppointmentStatus.Confirmed, AppointmentStatus.Rejected, AppointmentStatus.Cancelled },
                 AppointmentStatus.Confirmed => new[] { AppointmentStatus.Completed, AppointmentStatus.Cancelled, AppointmentStatus.NoShow },
                 AppointmentStatus.Completed => new[] { AppointmentStatus.NoShow },
                 _ => Array.Empty<AppointmentStatus>()
@@ -619,7 +619,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 Price = a.ShopService.Price,
                 Duration = a.ShopService.Duration,
                 ShopEmployeeId = a.ShopEmployeeId,
-                EmployeeName = a.ShopEmployee.Title + " " + (a.ShopEmployee.User != null ? a.ShopEmployee.User.FirstName : ""), 
+                EmployeeName = a.ShopEmployee.Title + " " + (a.ShopEmployee.User != null ? a.ShopEmployee.User.FirstName : ""),
                 UserId = a.UserId,
                 CustomerName = a.UserId != null
                     ? (a.User != null ? a.User.FirstName + " " + a.User.LastName : "")
@@ -678,7 +678,7 @@ namespace KuaforumAPI.Infrastructure.Services
             // We need to query appointments where the StartTime falls on this date.
             // Since we store UTC, we need to be careful. 
             // The 'date' parameter is expected to be Midnight of the day in Turkey Time (or Client Local Time).
-            
+
             // Let's assume 'date' is just the date part.
             // We'll define the range in UTC because DB 'StartTime' is likely UTC (or whatever we standardized to).
             // Actually, we standardized to 'ToTurkeyTime' in Create, but EF stores what we give it. 
@@ -691,7 +691,7 @@ namespace KuaforumAPI.Infrastructure.Services
             // DB'de Turkey time saklanır (DateTimeKind.Unspecified).
             // Gelen 'date' parametresinin sadece tarih kısmını alıp gün sınırlarını belirliyoruz.
             var startOfDay = new DateTime(date.Year, date.Month, date.Day, 0, 0, 0, DateTimeKind.Unspecified);
-            var endOfDay   = startOfDay.AddDays(1);
+            var endOfDay = startOfDay.AddDays(1);
 
             // O gün içinde BAŞLAYAN veya o güne UZANAN randevuları getir
             var appointments = await _context.Appointments
@@ -700,11 +700,11 @@ namespace KuaforumAPI.Infrastructure.Services
                     a.Status != AppointmentStatus.Cancelled &&
                     a.Status != AppointmentStatus.Rejected &&
                     a.StartTime < endOfDay &&
-                    a.EndTime   > startOfDay)
+                    a.EndTime > startOfDay)
                 .Select(a => new TimeSlotDto
                 {
                     StartTime = a.StartTime,
-                    EndTime   = a.EndTime
+                    EndTime = a.EndTime
                 })
                 .ToListAsync();
 
@@ -728,9 +728,9 @@ namespace KuaforumAPI.Infrastructure.Services
                 .Include(a => a.ShopService)
                 .Include(a => a.ShopEmployee)
                     .ThenInclude(e => e.User)
-                .Where(a => 
-                    a.UserId == userId && 
-                    a.ShopId == shopId && 
+                .Where(a =>
+                    a.UserId == userId &&
+                    a.ShopId == shopId &&
                     a.Status == AppointmentStatus.Completed)
                 .OrderByDescending(a => a.EndTime) // Most recent first
                 .FirstOrDefaultAsync();
@@ -746,20 +746,20 @@ namespace KuaforumAPI.Infrastructure.Services
                 // Requirement says "allow adding review". Usually user reviews their latest experience.
                 // If they have 5 unreviewed past appointments, which one do we pick?
                 // Let's iterate or query for the first without review.
-                
+
                 // Better query:
                 // We can't easily do !Any() in a complex query with join in EF Core sometimes depending on version, 
                 // but let's try a subquery approach or just fetch top 5 and filter in memory if needed.
                 // Actually, let's try a direct query.
-                
+
                 appointment = await _context.Appointments
                     .Include(a => a.Shop)
                     .Include(a => a.ShopService)
                     .Include(a => a.ShopEmployee)
                         .ThenInclude(e => e.User)
-                    .Where(a => 
-                        a.UserId == userId && 
-                        a.ShopId == shopId && 
+                    .Where(a =>
+                        a.UserId == userId &&
+                        a.ShopId == shopId &&
                         a.Status == AppointmentStatus.Completed &&
                         !_context.Reviews.Any(r => r.AppointmentId == a.Id)) // Subquery
                     .OrderByDescending(a => a.EndTime)
@@ -775,7 +775,7 @@ namespace KuaforumAPI.Infrastructure.Services
         {
             // Varsayılan: son 30 gün + önümüzdeki 90 gün (takvim görünümü için yeterli)
             var effectiveFrom = from ?? _dateTimeService.Now.AddDays(-30).Date;
-            var effectiveTo   = to   ?? _dateTimeService.Now.AddDays(90).Date.AddDays(1);
+            var effectiveTo = to ?? _dateTimeService.Now.AddDays(90).Date.AddDays(1);
 
             var assignedAppointments = await _context.Appointments
                 .AsNoTracking()
@@ -857,7 +857,7 @@ namespace KuaforumAPI.Infrastructure.Services
 
             if (request.Status == AppointmentStatus.Completed && appointment.StartTime > _dateTimeService.Now)
                 throw new ValidationException("Randevu henüz başlamadığı için bu işlem yapılamaz.");
-            
+
             if (request.Status == AppointmentStatus.NoShow)
             {
                 if (appointment.Status == AppointmentStatus.Completed)
@@ -906,7 +906,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     var msg = request.Status switch
                     {
                         AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(appointment.Shop.Name, appointment.StartTime),
-                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(appointment.Shop.Name, appointment.StartTime, request.Reason),
+                        AppointmentStatus.Rejected => SmsTemplates.AppointmentRejected(appointment.Shop.Name, appointment.StartTime, request.Reason),
                         AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(appointment.Shop.Name, appointment.StartTime, request.Reason),
                         AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(appointment.Shop.Name),
                         _ => null
@@ -988,7 +988,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     var msg = request.Status switch
                     {
                         AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(first.Shop.Name, first.StartTime),
-                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(first.Shop.Name, first.StartTime, request.Reason),
+                        AppointmentStatus.Rejected => SmsTemplates.AppointmentRejected(first.Shop.Name, first.StartTime, request.Reason),
                         AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(first.Shop.Name, first.StartTime, request.Reason),
                         AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(first.Shop.Name),
                         _ => null
@@ -1002,7 +1002,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 {
                     var empMsg = request.Status switch
                     {
-                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejectedToEmployee(first.Shop.Name, first.StartTime),
+                        AppointmentStatus.Rejected => SmsTemplates.AppointmentRejectedToEmployee(first.Shop.Name, first.StartTime),
                         AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShopToEmployee(first.Shop.Name, first.StartTime),
                         _ => null
                     };
@@ -1147,7 +1147,7 @@ namespace KuaforumAPI.Infrastructure.Services
                     var msg = request.Status switch
                     {
                         AppointmentStatus.Confirmed => SmsTemplates.AppointmentConfirmed(shop.Name, first.StartTime),
-                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejected(shop.Name, first.StartTime, request.Reason),
+                        AppointmentStatus.Rejected => SmsTemplates.AppointmentRejected(shop.Name, first.StartTime, request.Reason),
                         AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShop(shop.Name, first.StartTime, request.Reason),
                         AppointmentStatus.Completed => SmsTemplates.AppointmentCompleted(shop.Name),
                         _ => null
@@ -1161,7 +1161,7 @@ namespace KuaforumAPI.Infrastructure.Services
                 {
                     var empMsg = request.Status switch
                     {
-                        AppointmentStatus.Rejected  => SmsTemplates.AppointmentRejectedToEmployee(shop.Name, first.StartTime),
+                        AppointmentStatus.Rejected => SmsTemplates.AppointmentRejectedToEmployee(shop.Name, first.StartTime),
                         AppointmentStatus.Cancelled => SmsTemplates.AppointmentCancelledByShopToEmployee(shop.Name, first.StartTime),
                         _ => null
                     };
@@ -1235,7 +1235,7 @@ namespace KuaforumAPI.Infrastructure.Services
         public async Task<List<AdminAppointmentStatsDto>> GetAdminAppointmentStatsAsync()
         {
             var now = DateTime.UtcNow;
-            
+
             var todayStart = now.Date;
             var weekStart = todayStart.AddDays(-(int)now.DayOfWeek + (now.DayOfWeek == DayOfWeek.Sunday ? -6 : 1)); // Pazartesi başlangıç
             var monthStart = new DateTime(now.Year, now.Month, 1);
@@ -1259,16 +1259,16 @@ namespace KuaforumAPI.Infrastructure.Services
                 {
                     ShopId = g.Key.ShopId,
                     ShopName = g.Key.Name,
-                    
+
                     TodayManualCount = g.Count(x => x.CreatedAt >= todayStart && x.IsManual),
                     TodayNormalCount = g.Count(x => x.CreatedAt >= todayStart && !x.IsManual),
-                    
+
                     WeekManualCount = g.Count(x => x.CreatedAt >= weekStart && x.IsManual),
                     WeekNormalCount = g.Count(x => x.CreatedAt >= weekStart && !x.IsManual),
-                    
+
                     MonthManualCount = g.Count(x => x.CreatedAt >= monthStart && x.IsManual),
                     MonthNormalCount = g.Count(x => x.CreatedAt >= monthStart && !x.IsManual),
-                    
+
                     YearManualCount = g.Count(x => x.CreatedAt >= yearStart && x.IsManual),
                     YearNormalCount = g.Count(x => x.CreatedAt >= yearStart && !x.IsManual)
                 })

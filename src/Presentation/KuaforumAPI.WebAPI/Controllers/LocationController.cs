@@ -62,10 +62,10 @@ namespace KuaforumAPI.WebAPI.Controllers
             {
                 var response = await client.GetAsync($"v1/neighborhoods?districtId={districtId}");
                 var content = await response.Content.ReadAsStringAsync();
-                
+
                 // Fire and forget saving it to DB so next time it's fast
                 // In a real scenario, you'd use a background queue or scoped service.
-                
+
                 return Content(content, "application/json");
             }
             catch

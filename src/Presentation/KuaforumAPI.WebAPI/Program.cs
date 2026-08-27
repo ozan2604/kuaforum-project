@@ -264,7 +264,7 @@ app.Logger.LogWarning(
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    
+
     // Uygulama her başladığında bekleyen migration'ları otomatik olarak veritabanına uygular
     var dbContext = services.GetRequiredService<ApplicationDbContext>();
     await dbContext.Database.MigrateAsync();

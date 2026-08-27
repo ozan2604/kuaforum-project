@@ -72,7 +72,7 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.Property(e => e.PhoneNumber).HasMaxLength(20);
                 entity.Property(e => e.ExternalLink).HasMaxLength(1000);
                 entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
-                
+
                 entity.HasOne(e => e.User)
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
@@ -198,7 +198,7 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.HasOne(se => se.Shop)
                     .WithMany()
                     .HasForeignKey(se => se.ShopId)
-                    .OnDelete(DeleteBehavior.Restrict); 
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(se => se.User)
                     .WithMany()
@@ -247,19 +247,19 @@ namespace KuaforumAPI.Persistence.Contexts
                     .WithMany()
                     .HasForeignKey(ses => ses.ShopServiceId)
                     .OnDelete(DeleteBehavior.Cascade); // Hizmet silinirse atamalar da silinsin.
-                    // Cascade here is generally fine unless it causes cycles.
-                    // Employee -> Shop
-                    // Service -> Shop
-                    // Link -> Employee AND Link -> Service
-                    // Deleting Shop cascades to Employee and Service.
-                    // Deleting Employee cascades to Link.
-                    // Deleting Service cascades to Link.
-                    // This creates multiple paths from Shop to Link (Shop->Employee->Link AND Shop->Service->Link).
-                    // SQL Server will likely complain about "multiple cascade paths".
-                    // So we must Restrict one of them.
-                    // Let's Restrict Service deletion. If a service is assigned to employees, maybe don't delete it or handle manually?
-                    // Actually, let's Restrict BOTH to be safe and consistent with previous fixes, or strictly follow the graph.
-                    // Let's try NoAction/Restrict on Service side.
+                                                       // Cascade here is generally fine unless it causes cycles.
+                                                       // Employee -> Shop
+                                                       // Service -> Shop
+                                                       // Link -> Employee AND Link -> Service
+                                                       // Deleting Shop cascades to Employee and Service.
+                                                       // Deleting Employee cascades to Link.
+                                                       // Deleting Service cascades to Link.
+                                                       // This creates multiple paths from Shop to Link (Shop->Employee->Link AND Shop->Service->Link).
+                                                       // SQL Server will likely complain about "multiple cascade paths".
+                                                       // So we must Restrict one of them.
+                                                       // Let's Restrict Service deletion. If a service is assigned to employees, maybe don't delete it or handle manually?
+                                                       // Actually, let's Restrict BOTH to be safe and consistent with previous fixes, or strictly follow the graph.
+                                                       // Let's try NoAction/Restrict on Service side.
             });
             // Updating logic above:
             builder.Entity<ShopEmployeeService>(entity =>
@@ -267,7 +267,7 @@ namespace KuaforumAPI.Persistence.Contexts
                 entity.HasOne(ses => ses.ShopEmployee)
                     .WithMany()
                     .HasForeignKey(ses => ses.ShopEmployeeId)
-                    .OnDelete(DeleteBehavior.Restrict); 
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(ses => ses.ShopService)
                     .WithMany()
@@ -327,7 +327,7 @@ namespace KuaforumAPI.Persistence.Contexts
             builder.Entity<UserFavoriteShop>(entity =>
             {
                 entity.Property(e => e.CircleUserId).IsRequired();
-                
+
                 entity.HasOne(ufs => ufs.Shop)
                     .WithMany()
                     .HasForeignKey(ufs => ufs.ShopId)
