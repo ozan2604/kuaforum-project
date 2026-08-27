@@ -32,6 +32,17 @@ namespace KuaforumAPI.Application.Settings
         /// </summary>
         public string KeyPrefix { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Test APK dosyalarinin bulundugu klasor.
+        ///
+        /// <see cref="KeyPrefix"/>'ten AYRI ve ortamdan bagimsizdir: APK'lari
+        /// buraya mobil deponun surekli tumlestirme hatti birakiyor ve o hat
+        /// API'nin hangi ortamda kostugunu bilmez. Medya onekine baglanmis
+        /// olsaydi, test API'si dosyalari "test/apk/" altinda arar ama hat
+        /// "apk/" altina yazardi.
+        /// </summary>
+        public string ApkPrefix { get; set; } = "apk/";
+
         /// <summary>Ayarlarin tamami dolu mu — eksikse servis hata firlatir.</summary>
         public bool IsConfigured =>
             !string.IsNullOrWhiteSpace(AccountId) &&
