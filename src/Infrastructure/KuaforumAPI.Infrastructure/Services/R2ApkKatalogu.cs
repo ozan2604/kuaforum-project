@@ -69,29 +69,52 @@ namespace KuaforumAPI.Infrastructure.Services
                 },
                 iptal);
 
-            return yanit.S3Objects
+            return SiralayipCevir(yanit.S3Objects, adet, _mediaBaseUrl);
+        }
+
+        /// <summary>
+        /// Liste yanitini gosterilecek kayitlara cevirir.
+        /// </summary>
+        /// <remarks>
+        /// Ayri ve saf tutulmasinin sebebi test edilebilirligi: S3 istemcisi
+        /// sinifin icinde olusturuldugu icin cagriyi taklit etmek mumkun degil.
+        ///
+        /// <paramref name="nesneler"/> NULL gelebilir. Kova bos oldugunda ya da
+        /// onek altinda hicbir sey yokken SDK bos liste degil null donuyor;
+        /// dogrudan LINQ uygulamak "Value cannot be null (Parameter 'source')"
+        /// ile 500 uretiyordu. Ilk gercek istekte bu yasandi.
+        /// </remarks>
+        internal static IReadOnlyList<ApkDosyasi> SiralayipCevir(
+            List<S3Object>? nesneler,
+            int adet,
+            string mediaBaseUrl)
+        {
+            if (nesneler is null || nesneler.Count == 0)
+                return Array.Empty<ApkDosyasi>();
+
+            return nesneler
+                .Where(o => !string.IsNullOrEmpty(o.Key))
                 .Where(o => o.Key.EndsWith(".apk", StringComparison.OrdinalIgnoreCase))
                 // Boyut ve tarih SDK'da nullable; tarihi olmayan bir nesne
                 // beklenmiyor ama gelirse listenin sonuna dussun, patlamasin.
                 .OrderByDescending(o => o.LastModified ?? DateTime.MinValue)
                 .Take(adet)
-                .Select(Cevir)
+                .Select(o => Cevir(o, mediaBaseUrl))
                 .ToList();
         }
 
-        private ApkDosyasi Cevir(S3Object nesne)
+        private static ApkDosyasi Cevir(S3Object nesne, string mediaBaseUrl)
         {
             var dosyaAdi = nesne.Key.Split('/').Last();
             var (calistirmaNo, commit) = ApkDosyasi.AdiCozumle(dosyaAdi);
 
             return new ApkDosyasi(
                 dosyaAdi,
-                $"{_mediaBaseUrl}/{nesne.Key}",
+                $"{mediaBaseUrl}/{nesne.Key}",
                 nesne.Size ?? 0,
                 nesne.LastModified ?? DateTime.MinValue,
                 calistirmaNo,
                 commit);
         }
-
     }
 }
