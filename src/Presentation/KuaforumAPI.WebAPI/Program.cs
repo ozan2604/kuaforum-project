@@ -1,5 +1,7 @@
 using KuaforumAPI.Persistence.Contexts;
 using KuaforumAPI.Persistence;
+using KuaforumAPI.WebAPI.Endpoints;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.HttpOverrides;
 using KuaforumAPI.Application;
@@ -229,7 +231,34 @@ System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = trCulture;
 builder.Services.Configure<KuaforumAPI.Application.Settings.R2Settings>(builder.Configuration.GetSection("R2"));
 builder.Services.AddScoped<KuaforumAPI.Application.Interfaces.Services.IImageService, KuaforumAPI.Infrastructure.Services.R2StorageService>();
 
+// ── OTP teslimat kanali ─────────────────────────────────────────────────────
+// Production DISI ortamlarda SMS gonderilmez, yakalanir. Kimlik dogrulama
+// mantigi degismez: OTP yine rastgele uretilir, hash'lenir, suresi dolar ve
+// dogrulanir — yalnizca kodun testere ulasma kanali degisir. Sabit test kodu
+// vermek yerine bunun secilme sebebi, test edilen akisin canlidakiyle birebir
+// ayni kalmasi (ve boyle bir kodun yanlislikla canliya sizma riskinin olmamasi).
+//
+// Replace kullaniliyor: "son kayit kazanir" davranisina guvenmek yerine
+// degisim acikca goruluyor.
+if (!builder.Environment.IsProduction())
+{
+    builder.Services.AddSingleton<
+        KuaforumAPI.Application.Interfaces.Services.ICapturedSmsStore,
+        KuaforumAPI.Infrastructure.Services.InMemoryCapturedSmsStore>();
+
+    builder.Services.Replace(ServiceDescriptor.Scoped<
+        KuaforumAPI.Application.Interfaces.Services.ISmsService,
+        KuaforumAPI.Infrastructure.Services.CapturedSmsService>());
+}
+
 var app = builder.Build();
+
+// Hangi kanalin aktif oldugu aciklikla loglanir — yanlis yapilandirma sessiz
+// kalmamali. Canlida "SMS yakalaniyor" satirini gormek derhal mudahale sebebi.
+app.Logger.LogWarning(
+    "OTP teslimat kanali: {Kanal}  (ortam: {Ortam})",
+    app.Environment.IsProduction() ? "GERCEK SMS (NetGSM)" : "YAKALANIYOR — SMS gonderilmiyor",
+    app.Environment.EnvironmentName);
 
 // Auto-Migrate & Seed Roles
 using (var scope = app.Services.CreateScope())
@@ -274,5 +303,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Production'da hicbir sey map etmez.
+app.MapTestOtpEndpoints();
 
 app.Run();
