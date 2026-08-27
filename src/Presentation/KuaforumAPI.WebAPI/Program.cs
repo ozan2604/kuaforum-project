@@ -231,6 +231,14 @@ System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = trCulture;
 builder.Services.Configure<KuaforumAPI.Application.Settings.R2Settings>(builder.Configuration.GetSection("R2"));
 builder.Services.AddScoped<KuaforumAPI.Application.Interfaces.Services.IImageService, KuaforumAPI.Infrastructure.Services.R2StorageService>();
 
+// Test APK listesi. Yalnizca Production DISI ortamlarda kaydediliyor: canlida
+// hem uc map edilmiyor hem de servis hic olusturulmuyor, yani yanlislikla
+// baska bir yerden cagrilmasi da mumkun degil.
+if (!builder.Environment.IsProduction())
+{
+    builder.Services.AddScoped<KuaforumAPI.Application.Interfaces.Services.IApkKatalogu, KuaforumAPI.Infrastructure.Services.R2ApkKatalogu>();
+}
+
 // ── OTP teslimat kanali ─────────────────────────────────────────────────────
 // Production DISI ortamlarda SMS gonderilmez, yakalanir. Kimlik dogrulama
 // mantigi degismez: OTP yine rastgele uretilir, hash'lenir, suresi dolar ve
@@ -306,5 +314,6 @@ app.MapControllers();
 
 // Production'da hicbir sey map etmez.
 app.MapTestOtpEndpoints();
+app.MapTestApkEndpoints();
 
 app.Run();
