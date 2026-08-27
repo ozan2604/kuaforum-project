@@ -237,9 +237,17 @@ namespace KuaforumAPI.Infrastructure.Services
         /// <summary>
         /// Cakismasi mumkun olmayan anahtar uretir. Dosya adi kullanilmiyor:
         /// kullanicidan gelen ad hem cakisabilir hem de yol kacisi riski tasir.
+        ///
+        /// Yapilandirilmissa basa ortam oneki eklenir ("test/shops/covers/...").
+        /// Canlida onek bos oldugu icin bu ek hicbir sey degistirmez.
         /// </summary>
-        private static string BuildKey(string folderName, string extension) =>
-            $"{folderName.Trim('/')}/{Guid.NewGuid():N}{extension}";
+        private string BuildKey(string folderName, string extension)
+        {
+            var key = $"{folderName.Trim('/')}/{Guid.NewGuid():N}{extension}";
+            var onek = _r2.KeyPrefix.Trim('/');
+
+            return string.IsNullOrEmpty(onek) ? key : $"{onek}/{key}";
+        }
 
         private static string NormalizeExtension(string extension)
         {

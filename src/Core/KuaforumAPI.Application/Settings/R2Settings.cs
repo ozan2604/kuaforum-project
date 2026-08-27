@@ -19,6 +19,19 @@ namespace KuaforumAPI.Application.Settings
         /// <summary>Kova adi, orn. "salonbir-media".</summary>
         public string Bucket { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Yuklenen dosyalarin onune eklenen klasor, orn. "test".
+        ///
+        /// Test ortami canliyla ayni kovayi kullaniyor; ayrim bu onekle
+        /// yapiliyor. Boylece test dosyalari canli dosyalarla karismaz ve
+        /// gerektiginde "test/" altini silmek yeterli olur.
+        ///
+        /// Canlida BOS birakilir. Ayri kova acmak yerine onek tercih edildi:
+        /// ikinci kova ikinci bir ozel alan adi ve Cloudflare yapilandirmasi
+        /// gerektirirdi, kazanci ise ayni.
+        /// </summary>
+        public string KeyPrefix { get; set; } = string.Empty;
+
         /// <summary>Ayarlarin tamami dolu mu — eksikse servis hata firlatir.</summary>
         public bool IsConfigured =>
             !string.IsNullOrWhiteSpace(AccountId) &&
